@@ -1,18 +1,3 @@
-# Causal Launching Studio
-
-This is a small local app for building and exporting causal-perception stimuli in the classic "one ball hits another ball" family. It is aimed at exploratory work on Michotte-style launching, causal capture, and occluded tunnel-event variants.
-
-## What the app does
-
-- previews launching clips in a browser canvas
-- exposes adjustable spatiotemporal parameters that matter in the literature
-- supports launcher and target acceleration, after-contact depth ordering for partial overlap, and optional impact sounds
-- includes literature-grounded presets for canonical launching, delayed launching, spatial gap, causal capture, tunnel pass, occluded hidden launch, 175 ms adaptation-style displays, triggering, entraining, and bridged distal launching
-- reports overlap percentage, event category, capture-window status, and approach/onset timing for the current stimulus
-- supports lab-preview, clean-stimulus, and clean-stimulus-with-fixation rendering modes, with simple-disc or 3D-shaded ball styles and custom colors
-- records visual-angle calibration metadata: pixels per degree, ball diameter in degrees, context separation in degrees, gap size in degrees, event offset, and fixation diameter
-- generates downloadable condition matrices for overlap continua, delay-by-overlap boundaries, capture-context manipulations, retinotopic-transfer checks, feature-transfer checks, causal-category comparisons, and context-after-adaptation plans
-- exports the configured stimulus as a `.webm` video, with configurable output frame rate, and a sidecar `.json` parameter file using browser-native APIs
 
 ## Run it
 
