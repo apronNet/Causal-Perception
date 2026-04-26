@@ -4,20 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Causal Launching Studio</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260424-capture-focus" />
   </head>
   <body>
     <div class="page-shell">
       <header class="topbar">
         <div class="title-block">
-          <p class="eyebrow">Experimental Philosophy Tool</p>
           <h1>Causal Launching Studio</h1>
-        </div>
-        <div class="source-strip" aria-label="Literature anchors">
-          <span>0-100% overlap continuum</span>
-          <span>50-90 ms capture window</span>
-          <span>175 ms adaptation events</span>
-          <span>direction-tuned launch routines</span>
         </div>
       </header>
 
@@ -25,77 +18,84 @@
         <aside class="controls-panel">
           <section class="panel-block">
             <div class="section-heading">
-              <h2>Presets</h2>
-              <button id="applyPresetButton" class="secondary-button" type="button">Apply Preset</button>
+              <h2>01 Preset</h2>
+              <button id="applyPresetButton" class="secondary-button" type="button">Apply</button>
             </div>
             <label class="field">
               <span>Scenario</span>
               <select id="presetSelect"></select>
             </label>
+            <div class="preset-save-row">
+              <label class="field">
+                <span>Save as</span>
+                <input id="presetNameInput" maxlength="48" placeholder="Preset name" type="text" />
+              </label>
+              <button id="savePresetButton" class="secondary-button" type="button">Save</button>
+              <button id="deletePresetButton" class="secondary-button" type="button">Remove</button>
+            </div>
             <p id="presetSummary" class="microcopy"></p>
           </section>
 
           <section class="panel-block">
             <div class="section-heading">
-              <h2>Stimulus</h2>
-              <button id="previewButton" class="primary-button" type="button">Play Preview</button>
+              <h2>02 Event</h2>
             </div>
             <div class="control-grid">
               <label class="field">
-                <span>Total duration</span>
+                <span>Duration</span>
                 <input id="durationMs" data-format="int" min="300" max="6000" step="50" type="range" />
                 <output data-for="durationMs"></output>
               </label>
               <label class="field">
-                <span>Pre-contact lead-in</span>
+                <span>Lead-in</span>
                 <input id="leadInMs" data-format="int" min="0" max="1200" step="10" type="range" />
                 <output data-for="leadInMs"></output>
               </label>
               <label class="field">
-                <span>Launcher speed</span>
-                <input id="launcherSpeed" data-format="float1" min="120" max="3200" step="10" type="range" />
+                <span>Speed</span>
+                <input id="launcherSpeed" data-format="float1" min="120" max="5000" step="10" type="range" />
                 <output data-for="launcherSpeed"></output>
               </label>
-              <label class="field">
-                <span>Launcher acceleration</span>
+              <label class="field hidden-control">
+                <span>Launcher accel.</span>
                 <input id="launcherAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
                 <output data-for="launcherAccel"></output>
               </label>
-              <label class="field">
-                <span>Target speed ratio</span>
+              <label class="field hidden-control">
+                <span>Target ratio</span>
                 <input id="targetSpeedRatio" data-format="float2" min="0.4" max="1.8" step="0.05" type="range" />
                 <output data-for="targetSpeedRatio"></output>
               </label>
-              <label class="field">
-                <span>Target acceleration</span>
+              <label class="field hidden-control">
+                <span>Target accel.</span>
                 <input id="targetAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
                 <output data-for="targetAccel"></output>
               </label>
               <label class="field">
-                <span>Launcher after contact</span>
+                <span>After contact</span>
                 <select id="launcherBehavior">
                   <option value="stop">Stops: launching</option>
                   <option value="continue">Continues: pass/slip</option>
                   <option value="entrain">Continues with target: entraining</option>
                 </select>
               </label>
-              <label class="field">
+              <label class="field hidden-control">
                 <span>Target angle</span>
                 <input id="targetAngle" data-format="degrees" min="-75" max="75" step="1" type="range" />
                 <output data-for="targetAngle"></output>
               </label>
               <label class="field">
-                <span>Contact delay</span>
+                <span>Delay</span>
                 <input id="delayMs" data-format="ms" min="0" max="300" step="5" type="range" />
                 <output data-for="delayMs"></output>
               </label>
               <label class="field">
-                <span>Spatial gap / overlap</span>
-                <input id="gapPx" data-format="signedPx" min="-72" max="72" step="2" type="range" />
+                <span>Overlap</span>
+                <input id="gapPx" data-format="overlap" min="-56" max="0" step="1" type="range" />
                 <output data-for="gapPx"></output>
               </label>
-              <label class="field">
-                <span>Spatial marker</span>
+              <label class="field hidden-control">
+                <span>Marker</span>
                 <select id="markerMode">
                   <option value="none">None</option>
                   <option value="bridge">Bridge across gap</option>
@@ -104,8 +104,8 @@
                   <option value="both">Stop and start markers</option>
                 </select>
               </label>
-              <label class="field">
-                <span>Ball radius</span>
+              <label class="field hidden-control">
+                <span>Radius</span>
                 <input id="ballRadius" data-format="intPx" min="18" max="44" step="1" type="range" />
                 <output data-for="ballRadius"></output>
               </label>
@@ -113,60 +113,64 @@
           </section>
 
           <section class="panel-block">
-            <h2>Occlusion And Context</h2>
+            <h2>03 Context</h2>
             <div class="control-grid">
-              <label class="field checkbox-field">
+              <label class="field checkbox-field hidden-control">
                 <input id="occluderEnabled" type="checkbox" />
-                <span>Enable tunnel occluder</span>
+                <span>Tunnel occluder</span>
               </label>
-              <label class="field">
-                <span>Occluder width</span>
+              <label class="field hidden-control">
+                <span>Occluder</span>
                 <input id="occluderWidth" data-format="intPx" min="70" max="260" step="5" type="range" />
                 <output data-for="occluderWidth"></output>
               </label>
-              <label class="field">
-                <span>After-contact depth order</span>
+              <label class="field hidden-control">
+                <span>Overlap order</span>
                 <select id="contactOcclusionMode">
-                  <option value="target-front">Target partially occludes launcher</option>
-                  <option value="launcher-front">Launcher partially occludes target</option>
-                  <option value="alternate">Alternating overlap cue</option>
-                  <option value="none">No special overlap cue</option>
+                  <option value="target-front">Target front</option>
+                  <option value="launcher-front">Launcher front</option>
+                  <option value="alternate">Alternate</option>
+                  <option value="none">None</option>
                 </select>
               </label>
               <label class="field">
-                <span>Context event</span>
+                <span>Context</span>
                 <select id="contextMode">
                   <option value="none">None</option>
                   <option value="launch">Nearby launch</option>
-                  <option value="pass">Nearby pass</option>
-                  <option value="single">Single moving object</option>
+                  <option value="single">Single object</option>
                 </select>
               </label>
               <label class="field">
-                <span>Context timing offset</span>
-                <input id="contextOffsetMs" data-format="signedMs" min="-220" max="220" step="10" type="range" />
+                <span>Context window</span>
+                <input id="contextDurationMs" data-format="ms" min="50" max="750" step="25" type="range" />
+                <output data-for="contextDurationMs"></output>
+              </label>
+              <label class="field">
+                <span>Context timing</span>
+                <input id="contextOffsetMs" data-format="signedMs" min="-220" max="0" step="10" type="range" />
                 <output data-for="contextOffsetMs"></output>
               </label>
               <label class="field">
-                <span>Context direction</span>
+                <span>Direction</span>
                 <select id="contextDirection">
                   <option value="same">Same as test event</option>
                   <option value="opposite">Opposite direction</option>
                 </select>
               </label>
               <label class="field">
-                <span>Context separation</span>
-                <input id="contextYOffset" data-format="intPx" min="80" max="220" step="5" type="range" />
+                <span>Distance</span>
+                <input id="contextYOffset" data-format="intPx" min="80" max="220" step="1" type="range" />
                 <output data-for="contextYOffset"></output>
               </label>
             </div>
           </section>
 
           <section class="panel-block">
-            <h2>Presentation</h2>
+            <h2>04 Display</h2>
             <div class="control-grid">
               <label class="field">
-                <span>Render mode</span>
+                <span>Mode</span>
                 <select id="renderMode">
                   <option value="lab">Lab preview</option>
                   <option value="stimulus">Clean stimulus</option>
@@ -176,62 +180,62 @@
               <label class="field">
                 <span>Background</span>
                 <select id="stageTheme">
-                  <option value="dark">Dark psychophysics</option>
+                  <option value="dark">Dark</option>
                   <option value="midgray">Mid-gray</option>
                   <option value="light">Light</option>
                 </select>
               </label>
-              <label class="field">
-                <span>Object style</span>
+              <label class="field hidden-control">
+                <span>Style</span>
                 <select id="objectStyle">
                   <option value="flat">Simple discs</option>
                   <option value="shaded">3D shaded balls</option>
                 </select>
               </label>
-              <label class="field color-field">
-                <span>Launcher color</span>
+              <label class="field color-field hidden-control">
+                <span>Launcher</span>
                 <input id="launcherColor" type="color" />
               </label>
-              <label class="field color-field">
-                <span>Target color</span>
+              <label class="field color-field hidden-control">
+                <span>Target</span>
                 <input id="targetColor" type="color" />
               </label>
-              <label class="field color-field">
-                <span>Context color</span>
+              <label class="field color-field hidden-control">
+                <span>Context</span>
                 <input id="contextColor" type="color" />
               </label>
-              <label class="field">
-                <span>Pixels per degree</span>
+              <label class="field hidden-control">
+                <span>px / degree</span>
                 <input id="pxPerDva" data-format="pxPerDva" min="20" max="120" step="1" type="range" />
                 <output data-for="pxPerDva"></output>
               </label>
-              <label class="field">
-                <span>Fixation diameter</span>
+              <label class="field hidden-control">
+                <span>Fixation</span>
                 <input id="fixationDva" data-format="dva" min="0.1" max="1.5" step="0.1" type="range" />
                 <output data-for="fixationDva"></output>
               </label>
-              <label class="field">
-                <span>Event horizontal offset</span>
+              <label class="field hidden-control">
+                <span>X offset</span>
                 <input id="stimulusXOffset" data-format="signedPx" min="-80" max="160" step="5" type="range" />
                 <output data-for="stimulusXOffset"></output>
               </label>
-              <label class="field">
-                <span>Event vertical offset</span>
+              <label class="field hidden-control">
+                <span>Y offset</span>
                 <input id="stimulusYOffset" data-format="signedPx" min="-130" max="130" step="5" type="range" />
                 <output data-for="stimulusYOffset"></output>
               </label>
             </div>
           </section>
 
-          <section class="panel-block">
-            <h2>Sound</h2>
+          <section class="panel-block hidden-control-panel">
+            <h2>05 Sound</h2>
             <div class="control-grid">
               <label class="field checkbox-field">
                 <input id="soundEnabled" type="checkbox" />
-                <span>Add impact sound to preview and export</span>
+                <span>Impact sound</span>
               </label>
               <label class="field">
-                <span>Impact sound</span>
+                <span>Type</span>
                 <select id="soundType">
                   <option value="click">Click</option>
                   <option value="thud">Soft thud</option>
@@ -239,41 +243,59 @@
                 </select>
               </label>
               <label class="field">
-                <span>Sound volume</span>
+                <span>Volume</span>
                 <input id="soundVolume" data-format="percent" min="0" max="1" step="0.05" type="range" />
                 <output data-for="soundVolume"></output>
               </label>
             </div>
             <p class="microcopy">
-              The sound is scheduled at the visible contact time and embedded in the exported WebM when
-              the browser supports audio capture.
+              Contact-locked. Exported if supported.
             </p>
           </section>
 
           <section class="panel-block">
             <div class="section-heading">
-              <h2>Export</h2>
-              <button id="exportButton" class="accent-button" type="button">Export Video</button>
+              <h2>05 Export</h2>
+              <button id="exportButton" class="accent-button" type="button">Export</button>
             </div>
             <div class="control-grid">
               <label class="field">
-                <span>Output frame rate</span>
+                <span>Format</span>
+                <select id="outputFormat">
+                  <option value="lab">MP4 if possible</option>
+                  <option value="mp4">Prefer MP4 / H.264</option>
+                  <option value="webm-vp9">WebM / VP9</option>
+                  <option value="webm-vp8">WebM / VP8</option>
+                  <option value="webm">WebM default</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>FPS</span>
                 <input id="fps" data-format="fps" min="12" max="120" step="1" type="range" />
                 <output data-for="fps"></output>
               </label>
               <label class="field">
-                <span>File label</span>
+                <span>Bitrate</span>
+                <input id="videoBitrate" data-format="mbps" min="1" max="20" step="0.5" type="range" />
+                <output data-for="videoBitrate"></output>
+              </label>
+              <label class="field">
+                <span>Filename</span>
                 <input id="fileLabel" maxlength="48" type="text" />
               </label>
             </div>
-            <p id="statusText" class="status-text">Ready.</p>
-            <a id="downloadLink" class="download-link hidden" download>Download latest WebM</a>
-            <button id="metadataButton" class="secondary-button full-button" type="button">Export Parameters JSON</button>
+            <p id="statusText" class="status-text" aria-live="polite">Ready.</p>
+            <a id="downloadLink" class="download-link hidden" download>Download video</a>
+            <button id="metadataButton" class="secondary-button full-button" type="button">Export JSON</button>
             <a id="metadataLink" class="download-link hidden" download>Download latest JSON</a>
           </section>
         </aside>
 
         <section class="stage-panel">
+          <div class="preview-bar">
+            <h2>Preview</h2>
+            <button id="previewButton" class="primary-button preview-button" type="button">Play</button>
+          </div>
           <div class="stage-frame">
             <canvas id="stage" width="960" height="540"></canvas>
             <div class="stage-overlay">
@@ -303,102 +325,52 @@
 
           <div class="results-grid">
             <article class="results-card">
-              <h2>Why These Controls Exist</h2>
+              <h2>Check</h2>
               <p id="literatureBlurb">
-                Direct launching is strongest when the moving ball reaches the target and the target begins
-                moving with little or no delay. Add a spatial gap, full overlap, or a long pause, and the event
-                starts to lose its causal look.
+                Scholl and Nakayama's key test uses a 100% overlap event. Alone it usually looks like a
+                pass; with a synchronized nearby launch it is often captured as causal.
               </p>
             </article>
             <article class="results-card">
-              <h2>Preset Notes</h2>
+              <h2>Preset note</h2>
               <p id="presetNote">
-                The presets recreate a canonical launch, a delayed launch, a gapped event, a causal-capture
-                display, and an occluded tunnel event with hidden launching.
+                Presets now focus on causal capture, its timing controls, and the COGS launch/pass continuum.
               </p>
             </article>
           </div>
 
           <section class="howto-panel" aria-label="How to use Causal Launching Studio">
             <div class="section-heading">
-              <h2>How To Use</h2>
-              <span class="microcopy">A fast workflow for stimulus design</span>
+              <h2>Run</h2>
+              <span class="microcopy">4 steps</span>
             </div>
             <div class="howto-grid">
               <article class="howto-card">
                 <span class="step-number">1</span>
-                <h3>Start From A Preset</h3>
+                <h3>Pick preset</h3>
                 <p>
-                  Choose the closest literature family, then click Apply Preset. Use canonical launching as
-                  the baseline, overlap presets for launch/pass continua, and occluded presets for tunnel cases.
+                  Choose a case. Click Apply.
                 </p>
               </article>
               <article class="howto-card">
                 <span class="step-number">2</span>
-                <h3>Tune The Event Structure</h3>
+                <h3>Tune motion</h3>
                 <p>
-                  Adjust speed, acceleration, delay, gap or overlap, and launcher behavior first. These controls
-                  change the causal display itself, so treat them as experimental variables.
+                  Set speed, delay, overlap.
                 </p>
               </article>
               <article class="howto-card">
                 <span class="step-number">3</span>
-                <h3>Add Context Carefully</h3>
+                <h3>Add context</h3>
                 <p>
-                  Use context events, tunnel occlusion, depth order, and sound only when they are part of the
-                  hypothesis. The standards cards above show overlap, timing, category, and capture status.
+                  Use launch, single-object, timing, direction.
                 </p>
               </article>
               <article class="howto-card">
                 <span class="step-number">4</span>
-                <h3>Export Clean Stimuli</h3>
+                <h3>Export clip</h3>
                 <p>
-                  Switch to clean stimulus or fixation mode before exporting participant-facing clips. Export
-                  the WebM and the JSON sidecar so every parameter can be reported or preregistered.
-                </p>
-              </article>
-            </div>
-          </section>
-
-          <section class="direction-panel" aria-label="Literature-guided next research directions">
-            <div class="section-heading">
-              <h2>Next Research Directions</h2>
-              <span class="microcopy">What the current literature suggests testing next</span>
-            </div>
-            <div class="direction-grid">
-              <article class="direction-card">
-                <h3>Map The Boundary</h3>
-                <p>
-                  Sweep overlap and delay together to estimate where reports shift from launch to pass or
-                  delayed launch. This is the safest next psychometric baseline.
-                </p>
-              </article>
-              <article class="direction-card">
-                <h3>Test Locality</h3>
-                <p>
-                  Use event offsets to compare same-location and shifted-location clips. This supports
-                  retinotopic adaptation designs rather than treating adaptation as a generic response bias.
-                </p>
-              </article>
-              <article class="direction-card">
-                <h3>Separate Features</h3>
-                <p>
-                  Cross direction, speed, and color identity. Recent adaptation work suggests direction is
-                  more diagnostic than speed or color for launch routines.
-                </p>
-              </article>
-              <article class="direction-card">
-                <h3>Pull Apart Categories</h3>
-                <p>
-                  Compare launching, triggering, entraining, and single-object controls. This asks whether
-                  causal perception is one category or several related event kinds.
-                </p>
-              </article>
-              <article class="direction-card">
-                <h3>Context After Adaptation</h3>
-                <p>
-                  Combine ambiguous test events with launch, pass, and no-context trials before and after
-                  adaptation. This targets whether contextual capture bypasses local launch detectors.
+                  Use clean or fixation mode. Save video and JSON.
                 </p>
               </article>
             </div>
@@ -406,23 +378,18 @@
 
           <section class="matrix-panel">
             <div class="section-heading">
-              <h2>Condition Matrix</h2>
-              <button id="matrixButton" class="secondary-button" type="button">Build Matrix JSON</button>
+              <h2>Matrix</h2>
+              <button id="matrixButton" class="secondary-button" type="button">Build JSON</button>
             </div>
             <div class="matrix-controls">
               <label class="field">
                 <span>Design family</span>
                 <select id="matrixPreset">
-                  <option value="delayOverlap">Delay x overlap boundary</option>
-                  <option value="ohl7">Ohl/Rolfs 7-step overlap</option>
+                  <option value="captureContext">S&N context types</option>
+                  <option value="captureDuration">S&N context duration</option>
+                  <option value="captureTiming">S&N timing offset</option>
+                  <option value="captureDirection">S&N direction phase</option>
                   <option value="kominsky9">Kominsky/Scholl 9-step overlap</option>
-                  <option value="captureContext">Capture context types</option>
-                  <option value="captureTiming">Capture timing offsets</option>
-                  <option value="direction">Direction transfer check</option>
-                  <option value="retinotopicTransfer">Retinotopic transfer plan</option>
-                  <option value="featureTransfer">Feature-transfer plan</option>
-                  <option value="categoryCarveup">Causal category carve-up</option>
-                  <option value="contextAdaptation">Context after adaptation</option>
                 </select>
               </label>
               <div>
@@ -437,7 +404,7 @@
 
           <section class="video-panel hidden" id="videoPanel">
             <div class="section-heading">
-              <h2>Latest Export</h2>
+              <h2>Export preview</h2>
               <span id="exportMeta" class="microcopy"></span>
             </div>
             <video id="exportedVideo" controls playsinline></video>
@@ -447,8 +414,7 @@
 
       <footer class="page-footer">
         <p>
-          Built for exploratory stimulus design in causal-perception experiments. Exported files use the
-          browser’s supported WebM codec via MediaRecorder.
+          Local builder. Export depends on browser encoder support.
         </p>
       </footer>
     </div>

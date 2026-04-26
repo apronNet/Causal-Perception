@@ -1,9 +1,17 @@
 (function () {
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d");
+  const STAGE_WIDTH = 960;
+  const STAGE_HEIGHT = 540;
+  const MAX_PREVIEW_PIXEL_RATIO = 3;
+  const EXPORT_SCALE = 2;
+  const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
+  const presetNameInput = document.getElementById("presetNameInput");
+  const savePresetButton = document.getElementById("savePresetButton");
+  const deletePresetButton = document.getElementById("deletePresetButton");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
@@ -46,6 +54,7 @@
     "occluderWidth",
     "contactOcclusionMode",
     "contextMode",
+    "contextDurationMs",
     "contextOffsetMs",
     "contextDirection",
     "contextYOffset",
@@ -62,24 +71,26 @@
     "soundEnabled",
     "soundType",
     "soundVolume",
+    "outputFormat",
     "fps",
+    "videoBitrate",
     "fileLabel"
   ];
 
   const presets = {
     canonical: {
-      label: "Canonical launching",
+      label: "S&N 0% launch",
       summary:
-        "Michotte-style direct launch: contact, near-zero delay, and a slightly slower target preserve the classic causal look.",
+        "Reference event from Scholl and Nakayama: 0% overlap, no context, and a direct launch.",
       note:
-        "Use this as the baseline for contrast conditions. The contact is visible, the delay is zero, and there is no distracting context.",
+        "Use this as the clear-launch comparison. The moving disc stops when the second disc starts.",
       literature:
-        "Canonical launching is the reference case for the literature: one object reaches another, stops, and the second moves with little or no delay.",
+        "Scholl and Nakayama used adjacent-disc launches as the unambiguous causal reference condition.",
       values: {
-        durationMs: 2600,
-        leadInMs: 320,
-        launcherSpeed: 270,
-        targetSpeedRatio: 0.92,
+        durationMs: 1200,
+        leadInMs: 200,
+        launcherSpeed: 860,
+        targetSpeedRatio: 1,
         launcherBehavior: "stop",
         targetAngle: 0,
         delayMs: 0,
@@ -89,11 +100,42 @@
         occluderEnabled: false,
         occluderWidth: 150,
         contextMode: "none",
+        contextDurationMs: 750,
         contextOffsetMs: 0,
         contextDirection: "same",
-        contextYOffset: 135,
-        fps: 30,
-        fileLabel: "canonical-launching"
+        contextYOffset: 112,
+        fps: 60,
+        fileLabel: "sn-0-overlap-launch"
+      }
+    },
+    snPassBaseline: {
+      label: "S&N 100% pass",
+      summary:
+        "The judged event has 100% overlap and no context; Scholl and Nakayama report mostly pass percepts.",
+      note:
+        "This is the baseline full-overlap test. Kinematically A stops and B starts, but observers usually see a pass.",
+      literature:
+        "In Scholl and Nakayama's Experiment 1, the full-overlap event without context was judged causal on 10.7% of trials.",
+      values: {
+        durationMs: 1200,
+        leadInMs: 200,
+        launcherSpeed: 860,
+        targetSpeedRatio: 1,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: -56,
+        markerMode: "none",
+        ballRadius: 28,
+        occluderEnabled: false,
+        occluderWidth: 150,
+        contextMode: "none",
+        contextDurationMs: 750,
+        contextOffsetMs: 0,
+        contextDirection: "same",
+        contextYOffset: 112,
+        fps: 60,
+        fileLabel: "sn-100-overlap-pass"
       }
     },
     delayed: {
@@ -155,17 +197,17 @@
       }
     },
     capture: {
-      label: "Causal capture",
+      label: "S&N capture",
       summary:
-        "The test event is an ambiguous full-overlap pass, but a nearby synchronized launch context can make it look causal.",
+        "The same 100% overlap test is paired with a synchronized nearby launch context.",
       note:
-        "This reproduces the structure of Scholl and Nakayama’s causal-capture displays: the upper event is ambiguous, the lower one is an unambiguous launch.",
+        "This is the main causal-capture preset: judge the upper event while the lower event supplies a clear launch.",
       literature:
-        "Scholl and Nakayama found that the same ambiguous overlap event looked causal on only a small minority of isolated trials but on most trials when a synchronized launch occurred nearby.",
+        "Scholl and Nakayama report 92.1% causal reports for this synchronized launch-context condition, compared with 10.7% for the same test alone.",
       values: {
-        durationMs: 2600,
-        leadInMs: 320,
-        launcherSpeed: 285,
+        durationMs: 1200,
+        leadInMs: 200,
+        launcherSpeed: 860,
         targetSpeedRatio: 1,
         launcherBehavior: "stop",
         targetAngle: 0,
@@ -176,11 +218,132 @@
         occluderEnabled: false,
         occluderWidth: 150,
         contextMode: "launch",
+        contextDurationMs: 750,
         contextOffsetMs: 0,
         contextDirection: "same",
-        contextYOffset: 155,
-        fps: 30,
-        fileLabel: "causal-capture"
+        contextYOffset: 112,
+        fps: 60,
+        fileLabel: "sn-causal-capture"
+      }
+    },
+    snSingleContext: {
+      label: "S&N single control",
+      summary:
+        "The 100% overlap test is paired with one moving context disc, not a launch.",
+      note:
+        "This checks whether mere nearby motion is enough. In the paper, it was not.",
+      literature:
+        "Scholl and Nakayama's single-object context produced only 5% causal reports, so the context must be launch-like rather than merely salient.",
+      values: {
+        durationMs: 1200,
+        leadInMs: 200,
+        launcherSpeed: 860,
+        targetSpeedRatio: 1,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: -56,
+        markerMode: "none",
+        ballRadius: 28,
+        occluderEnabled: false,
+        occluderWidth: 150,
+        contextMode: "single",
+        contextDurationMs: 750,
+        contextOffsetMs: 0,
+        contextDirection: "same",
+        contextYOffset: 112,
+        fps: 60,
+        fileLabel: "sn-single-context-control"
+      }
+    },
+    captureBrief50: {
+      label: "S&N 50 ms window",
+      summary:
+        "Only the impact-centered part of the launch context is shown.",
+      note:
+        "Use this to recreate the duration result: a very short causal context still captures the test event.",
+      literature:
+        "In Scholl and Nakayama's duration manipulation, a 50 ms impact-centered launch context still yielded 60.7% causal reports.",
+      values: {
+        durationMs: 1200,
+        leadInMs: 200,
+        launcherSpeed: 860,
+        targetSpeedRatio: 1,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: -56,
+        markerMode: "none",
+        ballRadius: 28,
+        occluderEnabled: false,
+        occluderWidth: 150,
+        contextMode: "launch",
+        contextDurationMs: 50,
+        contextOffsetMs: 0,
+        contextDirection: "same",
+        contextYOffset: 112,
+        fps: 60,
+        fileLabel: "sn-50ms-context-window"
+      }
+    },
+    captureAsync200: {
+      label: "S&N 200 ms async",
+      summary:
+        "The launch context occurs 200 ms before the full-overlap test event.",
+      note:
+        "This is the temporal-asynchrony control. It should strongly weaken capture.",
+      literature:
+        "Scholl and Nakayama report that a 200 ms asynchrony reduced causal reports to a small minority, about 20%.",
+      values: {
+        durationMs: 1200,
+        leadInMs: 200,
+        launcherSpeed: 860,
+        targetSpeedRatio: 1,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: -56,
+        markerMode: "none",
+        ballRadius: 28,
+        occluderEnabled: false,
+        occluderWidth: 150,
+        contextMode: "launch",
+        contextDurationMs: 750,
+        contextOffsetMs: -200,
+        contextDirection: "same",
+        contextYOffset: 112,
+        fps: 60,
+        fileLabel: "sn-200ms-async-control"
+      }
+    },
+    captureOpposite: {
+      label: "S&N opposite direction",
+      summary:
+        "The context remains a launch, but its motion direction is reversed.",
+      note:
+        "This recreates the directional-phase check. Capture should persist but be weaker than same-direction launch context.",
+      literature:
+        "Scholl and Nakayama found that same-direction motion produced stronger capture, though opposite-direction launch context still produced some capture.",
+      values: {
+        durationMs: 1200,
+        leadInMs: 200,
+        launcherSpeed: 860,
+        targetSpeedRatio: 1,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: -56,
+        markerMode: "none",
+        ballRadius: 28,
+        occluderEnabled: false,
+        occluderWidth: 150,
+        contextMode: "launch",
+        contextDurationMs: 750,
+        contextOffsetMs: 0,
+        contextDirection: "opposite",
+        contextYOffset: 112,
+        fps: 60,
+        fileLabel: "sn-opposite-direction-capture"
       }
     },
     occludedCapture: {
@@ -300,17 +463,17 @@
       }
     },
     entraining: {
-      label: "Entraining",
+      label: "COGS entraining",
       summary:
-        "The launcher continues with the target after contact, producing the pushing-along event family.",
+        "The launcher continues with the target after contact, producing the push/entrain event family.",
       note:
-        "Entraining is important because adaptation work suggests it is not just another case of launching.",
+        "Keep this only for the COGS launch/push contrast; it is not part of the Scholl/Nakayama capture display.",
       literature:
-        "Kominsky and Scholl distinguish entraining from launching-like causality: the mover continues with the patient instead of stopping.",
+        "Kominsky and Wenig use launch/push displays to distinguish launching-like causality from entraining.",
       values: {
-        durationMs: 1900,
-        leadInMs: 180,
-        launcherSpeed: 650,
+        durationMs: 900,
+        leadInMs: 0,
+        launcherSpeed: 2500,
         targetSpeedRatio: 1,
         launcherBehavior: "entrain",
         targetAngle: 0,
@@ -321,11 +484,42 @@
         occluderEnabled: false,
         occluderWidth: 150,
         contextMode: "none",
+        contextDurationMs: 750,
         contextOffsetMs: 0,
         contextDirection: "same",
         contextYOffset: 135,
         fps: 60,
-        fileLabel: "entraining"
+        fileLabel: "cogs-entraining"
+      }
+    },
+    cogsOverlap50: {
+      label: "COGS 50% overlap",
+      summary:
+        "A launch/pass test event at the middle of the 0-100% overlap continuum.",
+      note:
+        "Use the matrix builder for the full nine-step continuum; this preset is the quick midpoint check.",
+      literature:
+        "Kominsky and Wenig describe launch/pass tests with nine overlap levels from 0% launch to 100% pass in 12.5% steps.",
+      values: {
+        durationMs: 320,
+        leadInMs: 0,
+        launcherSpeed: 4200,
+        targetSpeedRatio: 1,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: -28,
+        markerMode: "none",
+        ballRadius: 28,
+        occluderEnabled: false,
+        occluderWidth: 150,
+        contextMode: "none",
+        contextDurationMs: 750,
+        contextOffsetMs: 0,
+        contextDirection: "same",
+        contextYOffset: 135,
+        fps: 60,
+        fileLabel: "cogs-50-overlap-test"
       }
     },
     bridgedGap: {
@@ -359,26 +553,41 @@
     }
   };
 
+  const primaryPresetKeys = [
+    "canonical",
+    "snPassBaseline",
+    "capture",
+    "snSingleContext",
+    "captureBrief50",
+    "captureAsync200",
+    "captureOpposite",
+    "cogsOverlap50",
+    "entraining"
+  ];
+
   const controlDefaults = presets.canonical.values;
   const stimulusDefaults = {
     launcherAccel: 0,
     targetAccel: 0,
+    contextDurationMs: 750,
     contactOcclusionMode: "target-front"
   };
   const presentationDefaults = {
     renderMode: "lab",
     stageTheme: "dark",
     objectStyle: "flat",
-    launcherColor: "#80d3d0",
-    targetColor: "#f3bb7b",
-    contextColor: "#66d0b0",
+    launcherColor: "#e53935",
+    targetColor: "#27c35a",
+    contextColor: "#e53935",
     pxPerDva: 40,
     fixationDva: 0.3,
     stimulusXOffset: 0,
     stimulusYOffset: 0,
     soundEnabled: false,
     soundType: "click",
-    soundVolume: 0.35
+    soundVolume: 0.35,
+    outputFormat: "lab",
+    videoBitrate: 8
   };
   const matrixGuides = {
     delayOverlap:
@@ -388,9 +597,13 @@
     kominsky9:
       "Nine 12.5% overlap steps for finer launch/pass boundary estimates.",
     captureContext:
-      "Compare no-context, single-object, pass-context, and launch-context trials around a full-overlap ambiguous event.",
+      "Compare the three Scholl/Nakayama Experiment 1 cases: no context, single moving object, and launch context.",
+    captureDuration:
+      "Show the launch context for 750, 500, 100, or 50 ms around impact, matching the duration manipulation.",
     captureTiming:
-      "Shift the launch context around the test event to probe the narrow temporal window for causal capture.",
+      "Shift the launch context 0, 50, 100, or 200 ms before the full-overlap test event.",
+    captureDirection:
+      "Cross launch versus single-object context with same versus opposite direction.",
     direction:
       "Vary motion direction and off-axis launch angle to probe direction-tuned causal routines.",
     retinotopicTransfer:
@@ -418,6 +631,28 @@
   let sharedAudioContext = null;
   let previewStart = 0;
   let isExporting = false;
+  let customPresetKeys = [];
+
+  function resizePreviewCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = rect.width || STAGE_WIDTH;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PREVIEW_PIXEL_RATIO);
+    const targetWidth = Math.max(STAGE_WIDTH, Math.round(cssWidth * pixelRatio));
+    const targetHeight = Math.round((targetWidth * STAGE_HEIGHT) / STAGE_WIDTH);
+
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+    }
+  }
+
+  function prepareFrameContext(drawCtx) {
+    const scaleX = drawCtx.canvas.width / STAGE_WIDTH;
+    const scaleY = drawCtx.canvas.height / STAGE_HEIGHT;
+    drawCtx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+    drawCtx.imageSmoothingEnabled = true;
+    drawCtx.imageSmoothingQuality = "high";
+  }
 
   function cloneState() {
     return {
@@ -437,6 +672,7 @@
       occluderWidth: Number(controls.occluderWidth.value),
       contactOcclusionMode: controls.contactOcclusionMode.value,
       contextMode: controls.contextMode.value,
+      contextDurationMs: Number(controls.contextDurationMs.value),
       contextOffsetMs: Number(controls.contextOffsetMs.value),
       contextDirection: controls.contextDirection.value,
       contextYOffset: Number(controls.contextYOffset.value),
@@ -453,7 +689,9 @@
       soundEnabled: controls.soundEnabled.checked,
       soundType: controls.soundType.value,
       soundVolume: Number(controls.soundVolume.value),
+      outputFormat: controls.outputFormat.value,
       fps: Number(controls.fps.value),
+      videoBitrate: Number(controls.videoBitrate.value),
       fileLabel: controls.fileLabel.value.trim() || "causal-launching"
     };
   }
@@ -477,12 +715,25 @@
         return `${number >= 0 ? "+" : ""}${Math.round(number)} ms`;
       case "signedPx":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} px`;
+      case "overlap": {
+        const radius = controls.ballRadius ? Number(controls.ballRadius.value) : 28;
+        if (number < 0) {
+          const overlap = clamp((-number / Math.max(1, radius * 2)) * 100, 0, 100);
+          return `${Math.round(overlap)}% overlap`;
+        }
+        if (number > 0) {
+          return `gap ${Math.round(number)} px`;
+        }
+        return "0% overlap";
+      }
       case "intPx":
         return `${Math.round(number)} px`;
       case "fps":
         return `${Math.round(number)} fps`;
       case "percent":
         return `${Math.round(number * 100)}%`;
+      case "mbps":
+        return `${number.toFixed(1)} Mbps`;
       case "pxPerDva":
         return `${Math.round(number)} px/deg`;
       case "dva":
@@ -496,16 +747,178 @@
     document.querySelectorAll("output[data-for]").forEach((output) => {
       const input = document.getElementById(output.dataset.for);
       output.textContent = formatValue(input.dataset.format, input.value);
+      const fineInput = input.dataset.fineControlId ? document.getElementById(input.dataset.fineControlId) : null;
+      if (fineInput && document.activeElement !== fineInput) {
+        fineInput.value = input.value;
+      }
     });
   }
 
-  function populatePresetMenu() {
-    Object.entries(presets).forEach(([key, preset]) => {
-      const option = document.createElement("option");
-      option.value = key;
-      option.textContent = preset.label;
-      presetSelect.appendChild(option);
+  function enhanceRangePrecision() {
+    document.querySelectorAll('input[type="range"]').forEach((range) => {
+      if (range.dataset.precisionEnhanced === "true") {
+        return;
+      }
+      const labelText = range.closest(".field")?.querySelector("span")?.textContent?.trim() || range.id;
+      const fineInput = document.createElement("input");
+      fineInput.type = "number";
+      fineInput.className = "fine-input";
+      fineInput.id = `${range.id}Fine`;
+      fineInput.value = range.value;
+      fineInput.min = range.min;
+      fineInput.max = range.max;
+      fineInput.step = range.step || "1";
+      fineInput.inputMode = "decimal";
+      fineInput.setAttribute("aria-label", `${labelText} exact value`);
+
+      const pair = document.createElement("div");
+      pair.className = "range-pair";
+      range.parentNode.insertBefore(pair, range);
+      pair.appendChild(range);
+      pair.appendChild(fineInput);
+
+      range.dataset.precisionEnhanced = "true";
+      range.dataset.fineControlId = fineInput.id;
+
+      range.addEventListener("input", () => {
+        fineInput.value = range.value;
+      });
+      fineInput.addEventListener("input", () => {
+        const nextValue = fineInput.value === "" ? range.min : fineInput.value;
+        range.value = clamp(Number(nextValue), Number(range.min), Number(range.max));
+        range.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      fineInput.addEventListener("change", () => {
+        fineInput.value = range.value;
+      });
     });
+  }
+
+  function getPreset(presetKey) {
+    return presets[presetKey] || presets.canonical;
+  }
+
+  function isCustomPresetKey(presetKey) {
+    return customPresetKeys.includes(presetKey);
+  }
+
+  function syncPresetActions() {
+    deletePresetButton.disabled = !isCustomPresetKey(selectedPresetKey);
+  }
+
+  function makePresetOption(key, preset) {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = preset.label;
+    return option;
+  }
+
+  function populatePresetMenu() {
+    presetSelect.innerHTML = "";
+    primaryPresetKeys
+      .filter((key) => presets[key] && !isCustomPresetKey(key))
+      .forEach((key) => {
+        const preset = presets[key];
+        presetSelect.appendChild(makePresetOption(key, preset));
+      });
+
+    if (customPresetKeys.length > 0) {
+      const savedGroup = document.createElement("optgroup");
+      savedGroup.label = "Saved";
+      customPresetKeys.forEach((key) => {
+        const preset = getPreset(key);
+        if (preset) {
+          savedGroup.appendChild(makePresetOption(key, preset));
+        }
+      });
+      presetSelect.appendChild(savedGroup);
+    }
+  }
+
+  function readCustomPresets() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY) || "[]");
+      return Array.isArray(stored) ? stored : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function writeCustomPresets() {
+    try {
+      const savedPresets = customPresetKeys.map((key) => presets[key]).filter(Boolean);
+      localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(savedPresets));
+    } catch (error) {
+      statusText.textContent = "Preset storage unavailable.";
+    }
+  }
+
+  function loadCustomPresets() {
+    readCustomPresets().forEach((preset) => {
+      if (!preset || !preset.label || !preset.values) {
+        return;
+      }
+      const key = preset.key || `custom-${sanitizeLabel(preset.label)}`;
+      presets[key] = {
+        key,
+        label: preset.label,
+        summary: preset.summary || "Saved local preset.",
+        note: preset.note || "Saved in this browser.",
+        literature: preset.literature || "Custom preset saved from the current controls.",
+        values: preset.values
+      };
+      if (!customPresetKeys.includes(key)) {
+        customPresetKeys.push(key);
+      }
+    });
+  }
+
+  function saveCurrentPreset() {
+    const rawName = (presetNameInput.value || controls.fileLabel.value || "Custom preset").trim();
+    const label = rawName || "Custom preset";
+    const baseKey = `custom-${sanitizeLabel(label)}`;
+    const existingKey =
+      customPresetKeys.find((key) => key === baseKey || presets[key]?.label.toLowerCase() === label.toLowerCase()) ||
+      baseKey;
+    const state = cloneState();
+    const preset = {
+      key: existingKey,
+      label,
+      summary: "Saved local preset.",
+      note: "Saved in this browser.",
+      literature: "Custom preset saved from the current controls.",
+      values: state
+    };
+
+    presets[existingKey] = preset;
+    if (!customPresetKeys.includes(existingKey)) {
+      customPresetKeys.push(existingKey);
+    }
+    writeCustomPresets();
+    populatePresetMenu();
+    activePresetKey = existingKey;
+    selectedPresetKey = existingKey;
+    presetSelect.value = existingKey;
+    presetSummary.textContent = preset.summary;
+    presetNote.textContent = preset.note;
+    literatureBlurb.textContent = preset.literature;
+    scenarioBadge.textContent = preset.label;
+    statusText.textContent = "Preset saved.";
+    syncPresetActions();
+  }
+
+  function deleteSelectedPreset() {
+    if (!isCustomPresetKey(selectedPresetKey)) {
+      statusText.textContent = "Built-in preset.";
+      return;
+    }
+
+    delete presets[selectedPresetKey];
+    customPresetKeys = customPresetKeys.filter((key) => key !== selectedPresetKey);
+    writeCustomPresets();
+    populatePresetMenu();
+    applyPreset("canonical");
+    statusText.textContent = "Preset removed.";
   }
 
   function setControls(values) {
@@ -526,10 +939,13 @@
   }
 
   function applyPreset(presetKey) {
+    const preset = getPreset(presetKey);
     activePresetKey = presetKey;
     selectedPresetKey = presetKey;
     presetSelect.value = presetKey;
-    setControls({ ...stimulusDefaults, ...presets[presetKey].values });
+    presetNameInput.value = isCustomPresetKey(presetKey) ? preset.label : "";
+    syncPresetActions();
+    setControls({ ...stimulusDefaults, ...preset.values });
   }
 
   function getDynamicCopy(state) {
@@ -631,6 +1047,8 @@
     let capture = "no context";
     if (state.contextMode !== "none") {
       const offset = Math.abs(state.contextOffsetMs);
+      const contextLabel =
+        state.contextMode === "launch" ? "launch context" : state.contextMode === "single" ? "single context" : "pass context";
       if (offset <= 50) {
         capture = "synchronized";
       } else if (offset <= 90) {
@@ -640,15 +1058,16 @@
       } else {
         capture = "asynchronous";
       }
+      capture += `, ${contextLabel}`;
+      if (state.contextDurationMs < 740) {
+        capture += `, ${Math.round(state.contextDurationMs)} ms`;
+      }
       if (state.contextDirection === "opposite") {
         capture += ", opposite";
       }
-      if (state.contextMode === "pass") {
-        capture += ", pass context";
-      }
     }
 
-    const geometry = getGeometry(state, canvas.height / 2);
+    const geometry = getGeometry(state, STAGE_HEIGHT / 2);
     const direction =
       Math.abs(state.targetAngle) > 30 ? `, ${Math.abs(Math.round(state.targetAngle))}° off-axis` : "";
     const accelerationTag =
@@ -700,8 +1119,8 @@
 
   function refreshText() {
     const state = cloneState();
-    const copy = activePresetKey ? presets[activePresetKey] : getDynamicCopy(state);
-    const queuedPreset = presets[selectedPresetKey];
+    const copy = activePresetKey ? getPreset(activePresetKey) : getDynamicCopy(state);
+    const queuedPreset = getPreset(selectedPresetKey);
     presetSummary.textContent = queuedPreset.summary;
     presetNote.textContent = copy.note;
     literatureBlurb.textContent = copy.literature;
@@ -746,9 +1165,9 @@
   }
 
   function getPalette(state) {
-    const launcher = normalizeHexColor(state.launcherColor, "#80d3d0");
-    const target = normalizeHexColor(state.targetColor, "#f3bb7b");
-    const context = normalizeHexColor(state.contextColor, "#66d0b0");
+    const launcher = normalizeHexColor(state.launcherColor, "#e53935");
+    const target = normalizeHexColor(state.targetColor, "#27c35a");
+    const context = normalizeHexColor(state.contextColor, "#e53935");
     return {
       launcher: {
         fill: launcher,
@@ -858,7 +1277,7 @@
     };
     const theme = themes[state.stageTheme] || themes.dark;
     drawCtx.fillStyle = theme[0];
-    drawCtx.fillRect(0, 0, canvas.width, canvas.height);
+    drawCtx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
     return theme;
   }
 
@@ -868,8 +1287,8 @@
     }
 
     const radius = Math.max(2, (state.pxPerDva * state.fixationDva) / 2);
-    const x = canvas.width / 2;
-    const y = canvas.height / 2;
+    const x = STAGE_WIDTH / 2;
+    const y = STAGE_HEIGHT / 2;
     drawCtx.save();
     drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(17, 34, 33, 0.86)" : "rgba(245, 245, 240, 0.92)";
     drawCtx.lineWidth = 2;
@@ -890,7 +1309,7 @@
     drawCtx.lineWidth = 2;
     drawCtx.beginPath();
     drawCtx.moveTo(78, y + 42);
-    drawCtx.lineTo(canvas.width - 78, y + 42);
+    drawCtx.lineTo(STAGE_WIDTH - 78, y + 42);
     drawCtx.stroke();
   }
 
@@ -937,7 +1356,7 @@
 
   function getGeometry(state, laneY) {
     const radius = state.ballRadius;
-    const targetBaseX = (state.occluderEnabled ? canvas.width * 0.62 : canvas.width * 0.58) + state.stimulusXOffset;
+    const targetBaseX = (state.occluderEnabled ? STAGE_WIDTH * 0.62 : STAGE_WIDTH * 0.58) + state.stimulusXOffset;
     const launcherStopX = targetBaseX - radius * 2 - state.gapPx;
     const launcherStartX = 92 + state.stimulusXOffset;
     const launcherDistance = Math.max(launcherStopX - launcherStartX, 1);
@@ -1019,31 +1438,51 @@
 
     const palette = getPalette(state);
     const laneY = mainEvent.geometry.laneY + state.contextYOffset;
+    const directionSign = mainEvent.geometry.contextDirectionSign;
+    const contextRadius = state.ballRadius * 0.92;
+    const targetBaseX = directionSign === 1 ? mainEvent.geometry.targetBaseX : STAGE_WIDTH - mainEvent.geometry.targetBaseX;
+    const launcherStartX = directionSign === 1 ? 92 : STAGE_WIDTH - 92;
+    const adjustedTime = t - state.contextOffsetMs;
+    const contextWindowMs = Number(state.contextDurationMs) || 750;
+
+    if (contextWindowMs < 740 && Math.abs(adjustedTime - mainEvent.geometry.stopTime) > contextWindowMs / 2) {
+      return;
+    }
+
     if (state.renderMode === "lab") {
       drawTrack(drawCtx, laneY);
     }
 
-    const directionSign = mainEvent.geometry.contextDirectionSign;
-    const contextRadius = state.ballRadius * 0.92;
-    const targetBaseX = directionSign === 1 ? mainEvent.geometry.targetBaseX : canvas.width - mainEvent.geometry.targetBaseX;
-    const launcherStopX =
-      state.contextMode === "pass" ? targetBaseX : targetBaseX - directionSign * contextRadius * 2;
-    const launcherStartX = directionSign === 1 ? 92 : canvas.width - 92;
-    const distance = Math.abs(launcherStopX - launcherStartX);
-    const travelMs = solveTravelMs(distance, state.launcherSpeed, state.launcherAccel);
-    const contextImpactSpeed = velocityAt(travelMs, state.launcherSpeed, state.launcherAccel);
-    const adjustedTime = t - state.contextOffsetMs;
-    const approachElapsed = clamp(adjustedTime - state.leadInMs, 0, travelMs);
-    const approachDistance = Math.min(
-      distance,
-      displacementAt(approachElapsed, state.launcherSpeed, state.launcherAccel)
-    );
-    let launcherX = launcherStartX + directionSign * approachDistance;
-
     if (state.contextMode === "single") {
-      drawObject(drawCtx, state, launcherX, laneY, contextRadius, palette.context.fill, palette.context.outline);
+      const impactX = targetBaseX;
+      let singleX = launcherStartX;
+
+      if (adjustedTime >= state.leadInMs && adjustedTime <= mainEvent.geometry.stopTime) {
+        const progress = clamp(
+          (adjustedTime - state.leadInMs) / Math.max(1, mainEvent.geometry.travelMs),
+          0,
+          1
+        );
+        singleX = lerp(launcherStartX, impactX, progress);
+      } else if (adjustedTime > mainEvent.geometry.stopTime) {
+        const elapsed = adjustedTime - mainEvent.geometry.stopTime;
+        singleX =
+          impactX + directionSign * displacementAt(elapsed, mainEvent.geometry.launcherImpactSpeed, state.launcherAccel);
+      }
+
+      const singlePalette = adjustedTime < mainEvent.geometry.stopTime ? palette.context : palette.target;
+      drawObject(drawCtx, state, singleX, laneY, contextRadius, singlePalette.fill, singlePalette.outline);
       return;
     }
+
+    const launcherStopX =
+      state.contextMode === "pass" ? targetBaseX : targetBaseX - directionSign * contextRadius * 2;
+    const distance = Math.abs(launcherStopX - launcherStartX);
+    const travelMs = Math.max(1, mainEvent.geometry.travelMs);
+    const contextImpactSpeed = distance / (travelMs / 1000);
+    const approachElapsed = clamp(adjustedTime - state.leadInMs, 0, travelMs);
+    const approachDistance = distance * (approachElapsed / travelMs);
+    let launcherX = launcherStartX + directionSign * approachDistance;
 
     if (state.contextMode === "pass") {
       if (adjustedTime >= mainEvent.geometry.stopTime) {
@@ -1076,7 +1515,7 @@
     }
 
     const width = state.occluderWidth;
-    const left = canvas.width / 2 - width / 2;
+    const left = STAGE_WIDTH / 2 - width / 2;
     const top = laneY - state.ballRadius * 1.9;
     const height = state.ballRadius * 3.8;
     const right = left + width;
@@ -1149,7 +1588,7 @@
       );
     }
 
-    if (eventState.targetX - radius > occluderBounds.right && eventState.targetX < canvas.width + radius) {
+    if (eventState.targetX - radius > occluderBounds.right && eventState.targetX < STAGE_WIDTH + radius) {
       drawObject(
         drawCtx,
         state,
@@ -1180,14 +1619,18 @@
   }
 
   function drawFrame(state, t, drawCtx) {
-    drawCtx.clearRect(0, 0, canvas.width, canvas.height);
+    if (drawCtx === ctx) {
+      resizePreviewCanvas();
+    }
+    prepareFrameContext(drawCtx);
+    drawCtx.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
     const theme = drawStageBackground(drawCtx, state);
 
     if (state.renderMode === "lab") {
       drawCtx.fillStyle = theme[1];
       for (let i = 0; i < 10; i += 1) {
         const y = 84 + i * 44;
-        drawCtx.fillRect(0, y, canvas.width, 1);
+        drawCtx.fillRect(0, y, STAGE_WIDTH, 1);
       }
     }
 
@@ -1215,7 +1658,7 @@
       drawCtx.save();
       drawCtx.font = '500 14px "Avenir Next", "Segoe UI", sans-serif';
       drawCtx.fillStyle = "rgba(240, 245, 245, 0.7)";
-      drawCtx.fillText(`t = ${Math.round(t)} ms`, canvas.width - 116, canvas.height - 28);
+      drawCtx.fillText(`t = ${Math.round(t)} ms`, STAGE_WIDTH - 116, STAGE_HEIGHT - 28);
       drawCtx.restore();
     }
   }
@@ -1296,7 +1739,7 @@
   }
 
   function getMainLaneY(state) {
-    return canvas.height / 2 - (state.contextMode === "none" ? 0 : 52) + state.stimulusYOffset;
+    return STAGE_HEIGHT / 2 - (state.contextMode === "none" ? 0 : 52) + state.stimulusYOffset;
   }
 
   function stopPreview() {
@@ -1351,12 +1794,54 @@
       .replace(/^-+|-+$/g, "") || "causal-launching";
   }
 
-  function buildMetadata(state, filename) {
+  function getMimeCandidates(state) {
+    const mp4 = state.soundEnabled
+      ? ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4"]
+      : ["video/mp4;codecs=avc1.42E01E", "video/mp4"];
+    const vp9 = state.soundEnabled
+      ? ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp9"]
+      : ["video/webm;codecs=vp9"];
+    const vp8 = state.soundEnabled
+      ? ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp8"]
+      : ["video/webm;codecs=vp8"];
+    const webm = ["video/webm"];
+
+    if (state.outputFormat === "mp4") {
+      return [...mp4, ...vp9, ...vp8, ...webm];
+    }
+    if (state.outputFormat === "webm-vp9") {
+      return [...vp9, ...webm];
+    }
+    if (state.outputFormat === "webm-vp8") {
+      return [...vp8, ...webm];
+    }
+    if (state.outputFormat === "webm") {
+      return webm;
+    }
+    return [...mp4, ...vp9, ...vp8, ...webm];
+  }
+
+  function chooseExportFormat(state) {
+    const candidates = getMimeCandidates(state);
+    const mimeType = candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || "video/webm";
+    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+    const usedFallback =
+      state.outputFormat === "mp4" && !mimeType.includes("mp4")
+        ? true
+        : state.outputFormat.startsWith("webm") && !mimeType.includes("webm");
+    return {
+      mimeType,
+      extension,
+      usedFallback
+    };
+  }
+
+  function buildMetadata(state, filename, exportDetails = {}) {
     const standards = getStandards(state);
     return {
       filename,
       generatedAt: new Date().toISOString(),
-      preset: activePresetKey ? presets[activePresetKey].label : "Custom stimulus",
+      preset: activePresetKey ? getPreset(activePresetKey).label : "Custom stimulus",
       standards,
       parameters: {
         durationMs: state.durationMs,
@@ -1376,6 +1861,7 @@
         occluderWidthPx: state.occluderWidth,
         contactOcclusionMode: state.contactOcclusionMode,
         contextMode: state.contextMode,
+        contextDurationMs: state.contextDurationMs,
         contextOffsetMs: state.contextOffsetMs,
         contextDirection: state.contextDirection,
         contextYOffsetPx: state.contextYOffset,
@@ -1396,13 +1882,24 @@
         soundEnabled: state.soundEnabled,
         soundType: state.soundType,
         soundVolume: state.soundVolume,
+        outputFormat: state.outputFormat,
+        videoBitrateMbps: state.videoBitrate,
         fps: state.fps
       },
+      export: {
+        requestedFormat: state.outputFormat,
+        actualMimeType: exportDetails.mimeType || null,
+        extension: exportDetails.extension || null,
+        logicalWidthPx: STAGE_WIDTH,
+        logicalHeightPx: STAGE_HEIGHT,
+        encodedWidthPx: exportDetails.width || null,
+        encodedHeightPx: exportDetails.height || null,
+        bitrateMbps: state.videoBitrate,
+        browserEncoded: true
+      },
       literatureBasis: [
-        "Scholl & Nakayama 2002: causal capture with full-overlap test events and synchronized launch context.",
-        "Young & Falmier 2008: distal launching with bridge or location markers.",
-        "Kominsky & Scholl 2020 / Kominsky & Wenig 2025: launching-like, triggering, and entraining distinctions.",
-        "Ohl & Rolfs 2024/2025 and Sommer et al. 2025: 0-100% overlap continua, 175 ms events, direction tuning, and context/adaptation separation."
+        "Scholl & Nakayama 2002: full-overlap test events, synchronized launch context, brief impact windows, temporal asynchrony, and direction phase.",
+        "Kominsky & Wenig 2025: launch/pass overlap continua and launch/push entraining contrasts."
       ]
     };
   }
@@ -1458,6 +1955,7 @@
         occluderWidthPx: condition.occluderWidth,
         contactOcclusionMode: condition.contactOcclusionMode,
         contextMode: condition.contextMode,
+        contextDurationMs: condition.contextDurationMs,
         contextOffsetMs: condition.contextOffsetMs,
         contextDirection: condition.contextDirection,
         contextYOffsetPx: condition.contextYOffset,
@@ -1474,6 +1972,8 @@
         soundEnabled: condition.soundEnabled,
         soundType: condition.soundType,
         soundVolume: condition.soundVolume,
+        outputFormat: condition.outputFormat,
+        videoBitrateMbps: condition.videoBitrate,
         fps: condition.fps
       }
     };
@@ -1485,6 +1985,7 @@
       renderMode: baseState.renderMode === "lab" ? "fixation" : baseState.renderMode,
       objectStyle: "flat",
       stageTheme: baseState.stageTheme,
+      contextDurationMs: 750,
       contextOffsetMs: 0,
       contextDirection: "same",
       markerMode: "none",
@@ -1557,9 +2058,9 @@
         conditions: overlaps.map((overlap) =>
           withCondition(base, {
             label: `overlap-${overlap.toFixed(1).replace(".", "-")}`,
-            durationMs: 500,
+            durationMs: 320,
             leadInMs: 0,
-            launcherSpeed: 2500,
+            launcherSpeed: 4200,
             targetSpeedRatio: 1,
             launcherBehavior: "stop",
             delayMs: 0,
@@ -1572,10 +2073,10 @@
     }
 
     if (kind === "captureContext") {
-      const contexts = ["none", "single", "pass", "launch"];
+      const contexts = ["none", "single", "launch"];
       return {
-        family: "Causal-capture context types",
-        note: "Full-overlap test event paired with no context, single-object control, pass context, or launch context.",
+        family: "Scholl/Nakayama context types",
+        note: "Full-overlap test event paired with no context, a single-object context, or a synchronized launch context.",
         conditions: contexts.map((contextMode) =>
           withCondition(base, {
             label: `full-overlap-${contextMode}-context`,
@@ -1584,28 +2085,76 @@
             targetSpeedRatio: 1,
             delayMs: 0,
             contextMode,
+            contextDurationMs: 750,
             contextOffsetMs: 0,
-            fps: 30
+            fps: 60
+          })
+        )
+      };
+    }
+
+    if (kind === "captureDuration") {
+      const durations = [750, 500, 100, 50];
+      return {
+        family: "Scholl/Nakayama context durations",
+        note: "Full-overlap test event with synchronized launch context shown for the full event or for an impact-centered window.",
+        conditions: durations.map((duration) =>
+          withCondition(base, {
+            label: duration === 750 ? "launch-context-full-750" : `launch-context-window-${duration}`,
+            gapPx: -base.ballRadius * 2,
+            launcherBehavior: "stop",
+            targetSpeedRatio: 1,
+            delayMs: 0,
+            contextMode: "launch",
+            contextDurationMs: duration,
+            contextOffsetMs: 0,
+            fps: 60
           })
         )
       };
     }
 
     if (kind === "captureTiming") {
-      const offsets = [-200, -90, -50, 0, 50, 90, 200];
+      const offsets = [0, -50, -100, -200];
       return {
-        family: "Causal-capture timing offsets",
-        note: "Full-overlap test event with launch context shifted around impact.",
+        family: "Scholl/Nakayama timing offsets",
+        note: "Full-overlap test event with the launch context occurring 0, 50, 100, or 200 ms before the test overlap.",
         conditions: offsets.map((offset) =>
           withCondition(base, {
-            label: `launch-context-offset-${offset}`,
+            label: offset === 0 ? "launch-context-synchronous" : `launch-context-first-${Math.abs(offset)}ms`,
             gapPx: -base.ballRadius * 2,
             launcherBehavior: "stop",
             targetSpeedRatio: 1,
             delayMs: 0,
             contextMode: "launch",
+            contextDurationMs: 750,
             contextOffsetMs: offset,
-            fps: 30
+            fps: 60
+          })
+        )
+      };
+    }
+
+    if (kind === "captureDirection") {
+      const conditions = [
+        { contextMode: "launch", contextDirection: "same", label: "same-direction-launch" },
+        { contextMode: "launch", contextDirection: "opposite", label: "opposite-direction-launch" },
+        { contextMode: "single", contextDirection: "same", label: "same-direction-single" },
+        { contextMode: "single", contextDirection: "opposite", label: "opposite-direction-single" }
+      ];
+      return {
+        family: "Scholl/Nakayama direction phase",
+        note: "Full-overlap test event crossed with launch versus single-object context and same versus opposite direction.",
+        conditions: conditions.map((condition) =>
+          withCondition(base, {
+            ...condition,
+            gapPx: -base.ballRadius * 2,
+            launcherBehavior: "stop",
+            targetSpeedRatio: 1,
+            delayMs: 0,
+            contextDurationMs: 750,
+            contextOffsetMs: 0,
+            fps: 60
           })
         )
       };
@@ -1924,7 +2473,7 @@
     const matrix = buildConditionMatrix(matrixPreset.value, state);
     const payload = {
       generatedAt: new Date().toISOString(),
-      sourcePreset: activePresetKey ? presets[activePresetKey].label : "Custom stimulus",
+      sourcePreset: activePresetKey ? getPreset(activePresetKey).label : "Custom stimulus",
       family: matrix.family,
       note: matrix.note,
       guide: matrixGuides[matrixPreset.value] || "",
@@ -1965,8 +2514,8 @@
 
     const state = cloneState();
     const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = canvas.width;
-    exportCanvas.height = canvas.height;
+    exportCanvas.width = STAGE_WIDTH * EXPORT_SCALE;
+    exportCanvas.height = STAGE_HEIGHT * EXPORT_SCALE;
     const exportCtx = exportCanvas.getContext("2d");
     const stream = exportCanvas.captureStream(state.fps);
     let exportAudioContext = null;
@@ -1994,18 +2543,34 @@
       }
     }
 
-    let mimeType = "video/webm";
-    if (state.soundEnabled && MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
-      mimeType = "video/webm;codecs=vp9,opus";
-    } else if (state.soundEnabled && MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
-      mimeType = "video/webm;codecs=vp8,opus";
-    } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
-      mimeType = "video/webm;codecs=vp9";
-    } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
-      mimeType = "video/webm;codecs=vp8";
+    const exportFormat = chooseExportFormat(state);
+    exportFormat.width = exportCanvas.width;
+    exportFormat.height = exportCanvas.height;
+    const mimeType = exportFormat.mimeType;
+    if (exportFormat.usedFallback) {
+      statusText.textContent = "Requested format unsupported; using browser fallback.";
     }
 
-    const recorder = new MediaRecorder(stream, { mimeType });
+    const recorderOptions = {
+      mimeType,
+      videoBitsPerSecond: Math.round(state.videoBitrate * 1000000)
+    };
+    if (state.soundEnabled) {
+      recorderOptions.audioBitsPerSecond = 128000;
+    }
+
+    let recorder;
+    try {
+      recorder = new MediaRecorder(stream, recorderOptions);
+    } catch (error) {
+      statusText.textContent = "Selected encoder failed; retrying WebM.";
+      recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm",
+        videoBitsPerSecond: Math.round(state.videoBitrate * 1000000)
+      });
+      exportFormat.mimeType = "video/webm";
+      exportFormat.extension = "webm";
+    }
     const chunks = [];
 
     recorder.ondataavailable = (event) => {
@@ -2042,17 +2607,21 @@
     currentObjectUrl = URL.createObjectURL(blob);
 
     const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    const filename = `${sanitizeLabel(state.fileLabel)}-${timestamp}.webm`;
-    const metadataFilename = filename.replace(/\.webm$/, ".json");
+    const filename = `${sanitizeLabel(state.fileLabel)}-${timestamp}.${exportFormat.extension}`;
+    const metadataFilename = filename.replace(/\.(webm|mp4)$/, ".json");
     downloadLink.href = currentObjectUrl;
     downloadLink.download = filename;
     downloadLink.textContent = `Download ${filename}`;
     downloadLink.classList.remove("hidden");
-    setMetadataDownload(buildMetadata(state, filename), metadataFilename);
+    setMetadataDownload(buildMetadata(state, filename, exportFormat), metadataFilename);
 
     exportedVideo.src = currentObjectUrl;
     videoPanel.classList.remove("hidden");
-    exportMeta.textContent = `${Math.round(state.durationMs)} ms - ${state.fps} fps - ${mimeType}`;
+    exportMeta.textContent = `${Math.round(state.durationMs)} ms - ${state.fps} fps - ${exportFormat.width}x${
+      exportFormat.height
+    } - ${
+      exportFormat.extension.toUpperCase()
+    } - ${mimeType}`;
     statusText.textContent = "Export finished.";
 
     const autoDownload = document.createElement("a");
@@ -2105,7 +2674,9 @@
           "soundEnabled",
           "soundType",
           "soundVolume",
-          "fps"
+          "outputFormat",
+          "fps",
+          "videoBitrate"
         ].includes(id)
       ) {
         const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
@@ -2129,9 +2700,11 @@
 
     presetSelect.addEventListener("change", () => {
       selectedPresetKey = presetSelect.value;
-      const preset = presets[selectedPresetKey];
+      const preset = getPreset(selectedPresetKey);
       presetSummary.textContent = preset.summary;
-      statusText.textContent = "Preset queued. Click Apply Preset to load it.";
+      presetNameInput.value = isCustomPresetKey(selectedPresetKey) ? preset.label : "";
+      syncPresetActions();
+      statusText.textContent = "Preset queued. Click Apply.";
     });
 
     applyPresetButton.addEventListener("click", () => {
@@ -2140,12 +2713,18 @@
     });
 
     previewButton.addEventListener("click", playPreview);
+    savePresetButton.addEventListener("click", saveCurrentPreset);
+    deletePresetButton.addEventListener("click", deleteSelectedPreset);
     exportButton.addEventListener("click", exportVideo);
     metadataButton.addEventListener("click", exportParameters);
     matrixButton.addEventListener("click", exportMatrix);
     matrixPreset.addEventListener("change", () => {
       updateMatrixGuide();
-      matrixSummary.textContent = "Matrix queued. Click Build Matrix JSON to generate it.";
+      matrixSummary.textContent = "Matrix queued. Click Build JSON.";
+    });
+
+    window.addEventListener("resize", () => {
+      drawFrame(cloneState(), 0, ctx);
     });
   }
 
@@ -2163,8 +2742,10 @@
     });
   }
 
+  loadCustomPresets();
   populatePresetMenu();
   initializeRanges();
+  enhanceRangePrecision();
   bindControls();
   updateMatrixGuide();
   applyPreset("canonical");

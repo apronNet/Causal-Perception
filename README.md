@@ -1,78 +1,110 @@
+# Causal Launching Studio
 
-## Run it
+This is a small local app for building and exporting causal-perception stimuli in the classic "one ball hits another ball" family. The current version is narrowed around Scholl and Nakayama's causal-capture displays and the launch/pass and launch/push contrasts used in recent COGS-style adaptation work.
 
-From this directory:
+## Open the app
+
+Use the hosted web app:
+
+[Open Causal Launching Studio](https://apronnet.github.io/Causal-Perception/)
+
+No installation is needed. The app runs entirely in the browser, and generated videos/JSON files stay on the visitor's computer unless they choose to share them.
+
+## Visitor path
+
+1. Open the hosted app.
+2. Pick a preset and press `Apply`.
+3. Press `Play` to inspect the clip.
+4. Switch to `Clean stimulus` or `Clean stimulus with fixation` before exporting participant-facing clips.
+5. Press `Export` for a video and `Export JSON` for the parameter record.
+
+## What the app does
+
+- previews launching clips in a browser canvas
+- exposes the spatiotemporal parameters that matter for these papers: overlap, stop/continue/entrain behavior, delay, context type, context duration, context timing, direction, and separation
+- includes literature-grounded presets for the 0% launch reference, 100% pass baseline, synchronized causal capture, single-object control, 50 ms context window, 200 ms asynchronous control, opposite-direction capture, COGS 50% overlap, and COGS entraining
+- reports overlap percentage, event category, capture-window status, and approach/onset timing for the current stimulus
+- supports lab-preview, clean-stimulus, and clean-stimulus-with-fixation rendering modes
+- adds exact numeric entry beside each slider, so pilot values can be typed rather than approximated by dragging
+- records stimulus metadata: overlap, timing, context, display mode, frame rate, bitrate, and the computed standards cards
+- generates downloadable condition matrices for Scholl/Nakayama context type, context duration, temporal asynchrony, direction phase, and Kominsky/Scholl nine-step overlap continua
+- exports the configured stimulus as MP4/H.264 when the browser supports it, otherwise WebM, with frame rate, bitrate, and a sidecar `.json` parameter file
+
+## Deployment process
+
+This repository is ready for GitHub Pages without a build step because the app is plain `index.html`, `app.js`, and `styles.css` at the repository root.
+
+To activate the public link:
+
+1. In GitHub, open `Settings` -> `Pages`.
+2. Set `Source` to `Deploy from a branch`.
+3. Select the `main` branch and the repository root folder.
+4. Press `Save`.
+5. Give visitors this link:
+
+[https://apronnet.github.io/Causal-Perception/](https://apronnet.github.io/Causal-Perception/)
+
+If the hosted link is not enabled yet, run it locally from this directory:
 
 ```bash
 python3 serve.py
 ```
 
-Then open:
-
-[http://127.0.0.1:8000](http://127.0.0.1:8000)
-
-You can also use:
-
-```bash
-python3 -m http.server 8000
-```
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ## How to use it
 
-1. Start from the closest preset. Use canonical launching as the baseline, overlap presets for launch/pass continua, capture presets for context effects, and occluded presets for tunnel-style displays.
-2. Tune event-structure variables first: speed, acceleration, delay, spatial gap or overlap, target angle, and whether the launcher stops, continues, or entrains the target.
-3. Add context only when it is part of the hypothesis. Nearby launches, pass controls, tunnel occlusion, after-contact depth order, and sound can all change the percept rather than merely decorate it.
+1. Start from the closest preset. Use S&N 100% pass for the isolated full-overlap baseline and S&N capture for the synchronized launch-context condition.
+2. Tune event-structure variables first: speed, delay, overlap, and whether the launcher stops, continues, or entrains the target.
+3. Add context only when it is part of the hypothesis: nearby launch, single moving object, context window, timing, direction, and vertical separation.
 4. Check the standards cards after each change. They summarize spatial relation, event category, capture timing, and approach/onset timing for the current stimulus.
-5. Use event horizontal and vertical offsets when the research question concerns retinotopic location or adaptation transfer.
-6. Switch to clean stimulus or fixation mode before exporting participant-facing videos. Keep lab preview for piloting and debugging.
-7. Export both the WebM and the JSON sidecar. The JSON records the exact stimulus parameters, visual-angle metadata, colors, sound settings, and frame rate.
-8. Use Build Matrix JSON when you need a preregisterable condition family rather than one hand-tuned clip.
+5. Switch to clean stimulus or fixation mode before exporting participant-facing videos. Keep lab preview for piloting and debugging.
+6. Export both the video and the JSON sidecar. The JSON records the exact stimulus parameters, format, bitrate, and frame rate.
+7. Use Build JSON in the Matrix panel when you need a preregisterable condition family rather than one hand-tuned clip.
 
 ## Literature-guided next directions
 
-1. Boundary mapping: cross overlap with delay before interpreting a condition as clearly causal or non-causal. This gives a local psychometric map for the exact display geometry.
-2. Retinotopic locality: compare same-location and shifted-location adapt/test clips. Retinotopic specificity is one of the strongest reasons to treat causal launching as perceptual rather than merely inferential.
-3. Feature transfer: cross motion direction, speed, and color identity. Recent adaptation work suggests direction tuning is more diagnostic than speed or color identity.
-4. Category carve-up: compare launching, triggering, entraining, pass/slip, and single-object controls. The point is to test whether causal perception is one kind or several related categories.
-5. Context after adaptation: compare no-context, launch-context, and pass-context trials before and after launch adaptation. This targets whether causal capture operates through local launch detectors or through a broader contextual route.
+1. Context type: compare full-overlap no-context, single-object context, and launch-context trials.
+2. Context duration: test whether 750, 500, 100, and 50 ms impact-centered context windows preserve capture.
+3. Temporal synchrony: shift the launch context 0, 50, 100, or 200 ms before the full-overlap test event.
+4. Direction phase: compare same-direction and opposite-direction launch context, plus the matched single-object controls.
+5. Overlap continuum: use the nine-step 0-100% overlap matrix for COGS-style launch/pass psychometric checks.
+6. Launch/push contrast: use the entraining preset when the question concerns whether entraining is a distinct causal percept.
+
+## Interface design pass
+
+The interface now follows a stricter research-tool rule: every visible control should either set a stimulus parameter, check the current stimulus, or export a reproducible record. The design pass uses Nielsen's usability heuristics for visible system status, recognition rather than recall, and minimalist design; GOV.UK form guidance for short visible labels and common-case ordering; and Swiss/International Typographic Style principles of grid layout, sans serif type, precise rules, and restrained color.
+
+Design references used for this pass:
+
+- Nielsen Norman Group, "10 Usability Heuristics for User Interface Design": https://www.nngroup.com/articles/ten-usability-heuristics/
+- GOV.UK Service Manual, "Structuring forms": https://www.gov.uk/service-manual/design/form-structure
+- GOV.UK Design System, "Text input": https://design-system.service.gov.uk/components/text-input/
+- Swiss National Library, "The International style 1950-1970": https://www.nb.admin.ch/en/the-international-style-1950-1970
 
 ## Literature notes used to shape the parameters
 
-1. Michotte's launching effect is the baseline case: object A reaches object B, A stops, and B begins moving in the same direction with little or no delay. Later reviews still treat this as the prototypical causal-perception display.
-2. Delay matters sharply. Michotte reported weakening by around 70 ms and disappearance by longer delays; a 2025 registered replication found strong sensitivity beginning even earlier on rating measures, with delayed-launch impressions rising around the 70-100 ms region rather than an all-or-none collapse.
-3. Spatial gaps matter too, though not always as an absolute cutoff. The 2025 replication argues that gap effects are strong but can interact with speed and with the wording used to measure the percept, so a gap display should be treated as a graded manipulation rather than a guaranteed non-causal control.
-4. Causal capture shows that nearby context can change the percept of an ambiguous collision. Scholl and Nakayama (2002) found that a full-overlap pass display was judged causal only rarely in isolation, but very often when paired with a synchronized nearby launch event. The effect weakened with temporal asynchrony and with opposite-direction motion.
-5. Occluded or tunnel events can also be modulated by causal context. Bae and Flombaum (2011) report that the central tunnel event is typically seen as a pass in isolation, but synchronized launch context can make observers perceive a hidden causal launch behind the occluder.
-6. Recent adaptation work treats overlap as a launch/pass continuum. Ohl and Rolfs use seven evenly spaced overlap steps from 0% to 100% in brief 175 ms events; Kominsky and Scholl use nine steps from 0% to 100% in 12.5% increments.
-7. Launching, triggering, and entraining should not be collapsed. Kominsky and Scholl found triggering transfers with launching-like adaptation, while entraining does not.
-8. Direction is not a neutral detail in adaptation paradigms. Ohl and Rolfs report direction-tuned causal routines, with adaptation transfer depending on whether the tested launch direction matches the adapted direction.
-9. Participant-facing stimuli should usually be cleaner than lab previews. The app therefore separates lab annotations from exported stimulus rendering, so a video can include only the discs and an optional fixation mark.
-10. Visual-angle metadata is included because the adaptation literature typically reports positions, object sizes, and separations in degrees of visual angle rather than raw pixels.
-11. Visual object appearance is deliberately separated from the event structure. Color and simple-versus-shaded rendering can be varied without changing contact, gap, delay, or context parameters.
-12. Sound is optional because auditory impact cues can change apparent causality. When enabled, the app records the chosen sound type and volume in the JSON sidecar.
-13. Event offsets are included because retinotopic adaptation designs require same-location and shifted-location stimuli relative to fixation.
-14. The newer matrix families are plans, not automatic trial runners: they encode phase, role, prediction, and literature anchor so the condition file can become a preregistration scaffold.
+1. Scholl and Nakayama's key test event is a 100% overlap display. In isolation it was judged causal on only 10.7% of trials.
+2. The synchronized launch-context condition uses the same full-overlap test event, but adds a nearby 0% overlap launch. It was judged causal on 92.1% of trials.
+3. The single-object context is a control for mere nearby motion. It produced only 5% causal reports in the 2002 study.
+4. The context can be brief. A 50 ms impact-centered launch context still produced 60.7% causal reports.
+5. Synchrony matters. When the context launch occurred 200 ms before the full-overlap test event, capture fell to a small minority of trials, about 20%.
+6. Direction matters, but not all-or-none. Same-direction launch context produced stronger capture than opposite-direction launch context, though opposite-direction launch context still produced some capture.
+7. Kominsky and Wenig treat overlap as a launch/pass continuum: 0% overlap is prototypical launching, 100% overlap is prototypical passing, and intermediate steps support psychometric functions.
+8. Kominsky and Wenig also distinguish launching from entraining with a launch/push contrast, where the key variable is how long A continues to move with B after contact.
 
 ## Main references
 
 - Michotte, A. (1963). *The Perception of Causality*. London: Methuen.
 - Scholl, B. J., & Tremoulet, P. D. (2000). "Perceptual causality and animacy." *Trends in Cognitive Sciences*, 4(8), 299-309. [PubMed](https://pubmed.ncbi.nlm.nih.gov/10904254/)
 - Scholl, B. J., & Nakayama, K. (2002). "Causal capture: Contextual effects on the perception of collision events." *Psychological Science*, 13(6), 493-498. [PDF](https://perception.yale.edu/papers/02-Scholl-Nakayama-PsychSci.pdf)
-- Bae, G. Y., & Flombaum, J. I. (2011). "Amodal causal capture in the tunnel effect." *Perception*, 40(1), 74-90. [PubMed](https://pubmed.ncbi.nlm.nih.gov/21513186/)
-- Young, M. E., & Falmier, O. (2008). "Launching at a distance: The effect of spatial markers." *The Quarterly Journal of Experimental Psychology*, 61(9), 1356-1370.
 - Kominsky, J. F., & Scholl, B. J. (2020). "Retinotopic adaptation reveals distinct categories of causal perception." *Cognition*, 203, 104339.
 - Kominsky, J. F., & Wenig, K. (2025). "Causal Perception(s)." *Cognitive Science*, 49, e70107.
-- Ohl, S., & Rolfs, M. (2024). "Visual routines for detecting causal interactions are tuned to motion direction." *eLife*, 13, RP93454.
-- Sommer, B., Rolfs, M., & Ohl, S. (2025). "Putting causality into context: Causal capture escapes the visual adaptation of causality." bioRxiv.
-- Straube, B., & Chatterjee, A. (2010). "Space and time in perceptual causality." *Frontiers in Human Neuroscience*, 4, 28. [Open access](https://www.frontiersin.org/articles/10.3389/fnhum.2010.00028/pdf)
-- White, P. A. (2018). "Perceptual impressions of causality are affected by common fate." *Psychological Research*, 82(4), 652-664. [PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC6013513/)
-- White, P. A. (2025). "Michotte's research on perceptual impressions of causality: a registered replication study." *Royal Society Open Science*, 12, 250244. [PDF](https://orca.cardiff.ac.uk/id/eprint/178603/1/white-2025-michotte-s-research-on-perceptual-impressions-of-causality-a-registered-replication-study.pdf)
 
 ## Current limits
 
-- export format is WebM, because the app uses browser-native recording rather than a bundled video encoder
+- video export uses browser-native MediaRecorder; MP4/H.264 appears when supported, and WebM is the fallback
 - the app is a stimulus generator, not a trial runner or response-collection framework
 - matrix export creates condition specifications, not automatic batch-rendered videos
-- the occluded mode is a practical hidden-launch/tunnel approximation for experiment design, not a claim that it exactly reproduces every historical stimulus geometry
-- the 175 ms adaptation-style preset matches the approach/onset timing; the exported clip remains longer so the event can be reviewed and used outside a trial runner
-- browser audio recording depends on MediaRecorder and AudioContext support; unsupported browsers will still export silent WebM files
+- the app approximates historical display geometry in browser pixels; use the JSON sidecar to record exact exported values
+- the visible controls are intentionally narrow; older broad-animation controls are not part of the main workflow
