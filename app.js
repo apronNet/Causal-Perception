@@ -5,6 +5,7 @@
   const STAGE_HEIGHT = 540;
   const MAX_PREVIEW_PIXEL_RATIO = 3;
   const EXPORT_SCALE = 2;
+  const PSYCHOPY_STIMULI_FOLDER = "stimuli";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
 
@@ -16,8 +17,10 @@
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
+  const psychopyButton = document.getElementById("psychopyButton");
   const downloadLink = document.getElementById("downloadLink");
   const metadataLink = document.getElementById("metadataLink");
+  const psychopyLink = document.getElementById("psychopyLink");
   const statusText = document.getElementById("statusText");
   const stageOverlay = document.querySelector(".stage-overlay");
   const scenarioBadge = document.getElementById("scenarioBadge");
@@ -630,6 +633,7 @@
   let selectedPresetKey = "canonical";
   let currentObjectUrl = null;
   let currentMetadataUrl = null;
+  let currentPsychopyUrl = null;
   let previewHandle = null;
   let impactSoundTimer = null;
   let sharedAudioContext = null;
@@ -1952,12 +1956,15 @@
 
   function chooseExportFormat(state) {
     const candidates = getMimeCandidates(state);
-    const mimeType = candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || "video/webm";
+    const canCheckSupport = typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function";
+    const mimeType = canCheckSupport
+      ? candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || "video/webm"
+      : candidates[0] || "video/webm";
     const extension = mimeType.includes("mp4") ? "mp4" : "webm";
     const usedFallback =
-      state.outputFormat === "mp4" && !mimeType.includes("mp4")
+      canCheckSupport && state.outputFormat === "mp4" && !mimeType.includes("mp4")
         ? true
-        : state.outputFormat.startsWith("webm") && !mimeType.includes("webm");
+        : canCheckSupport && state.outputFormat.startsWith("webm") && !mimeType.includes("webm");
     return {
       mimeType,
       extension,
@@ -1965,12 +1972,133 @@
     };
   }
 
+  function getEncodedDimensions(exportDetails = {}) {
+    return {
+      width: exportDetails.width || STAGE_WIDTH * EXPORT_SCALE,
+      height: exportDetails.height || STAGE_HEIGHT * EXPORT_SCALE
+    };
+  }
+
+  function getExportFrameCount(state) {
+    return Math.max(1, Math.ceil(state.durationMs / (1000 / state.fps)));
+  }
+
+  function getExportDurationSec(state) {
+    return Number((getExportFrameCount(state) / state.fps).toFixed(3));
+  }
+
+  function getIntendedDurationSec(state) {
+    return Number((state.durationMs / 1000).toFixed(3));
+  }
+
+  function getConditionName() {
+    const preset = activePresetKey ? getPreset(activePresetKey) : null;
+    return preset ? preset.label : "Custom stimulus";
+  }
+
+  function getPsychopyMoviePath(filename) {
+    return `${PSYCHOPY_STIMULI_FOLDER}/${filename}`;
+  }
+
+  function getPsychopyCsvName(filename) {
+    return filename.replace(/\.(webm|mp4)$/i, "-psychopy.csv");
+  }
+
+  function buildPsychopyMetadata(state, filename, exportDetails = {}) {
+    const standards = getStandards(state);
+    const encoded = getEncodedDimensions(exportDetails);
+    const durationSec = getExportDurationSec(state);
+    const movieFile = getPsychopyMoviePath(filename);
+
+    return {
+      movieFile,
+      conditionsFile: getPsychopyCsvName(filename),
+      builder: {
+        loopConditionsFile: getPsychopyCsvName(filename),
+        movieComponentMovieFile: "$movieFile",
+        spatialUnits: "pix",
+        sizePix: [encoded.width, encoded.height],
+        positionPix: [0, 0],
+        startType: "time (s)",
+        startSec: 0,
+        stopType: "duration (s)",
+        durationSec,
+        intendedDurationSec: getIntendedDurationSec(state),
+        forceEndRoutine: true,
+        loopPlayback: false,
+        noAudio: !state.soundEnabled,
+        syncTimingWithScreenRefresh: true
+      },
+      coder: {
+        className: "psychopy.visual.MovieStim",
+        filename: movieFile,
+        units: "pix",
+        size: [encoded.width, encoded.height],
+        pos: [0, 0],
+        loop: false,
+        noAudio: !state.soundEnabled
+      },
+      timing: {
+        nativeMovieFps: state.fps,
+        frameCount: getExportFrameCount(state),
+        encodedDurationSec: durationSec,
+        intendedDurationSec: getIntendedDurationSec(state),
+        impactSec: Number((standards.impactMs / 1000).toFixed(3)),
+        targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3))
+      },
+      placement: `Put the movie in ${PSYCHOPY_STIMULI_FOLDER}/ next to the PsychoPy experiment and use the CSV as the loop conditions file.`
+    };
+  }
+
+  function csvCell(value) {
+    const text = value === null || value === undefined ? "" : String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+
+  function buildPsychopyCsv(state, filename, exportDetails = {}) {
+    const standards = getStandards(state);
+    const encoded = getEncodedDimensions(exportDetails);
+    const row = {
+      movieFile: getPsychopyMoviePath(filename),
+      conditionName: getConditionName(),
+      movieDurationSec: getExportDurationSec(state),
+      intendedDurationSec: getIntendedDurationSec(state),
+      movieFPS: state.fps,
+      frameCount: getExportFrameCount(state),
+      widthPx: encoded.width,
+      heightPx: encoded.height,
+      units: "pix",
+      positionXPix: 0,
+      positionYPix: 0,
+      forceEndRoutine: "true",
+      loopPlayback: "false",
+      noAudio: String(!state.soundEnabled),
+      contactDelayMs: state.delayMs,
+      overlapPercent: standards.overlapPercent,
+      impactMs: standards.impactMs,
+      targetOnsetMs: standards.targetOnsetMs,
+      contextMode: state.contextMode,
+      contextDurationMs: state.contextDurationMs,
+      contextOffsetMs: state.contextOffsetMs,
+      contextDirection: state.contextDirection,
+      contextSeparationPx: state.contextYOffset,
+      groupingMode: state.groupingMode,
+      colorChangeMode: state.colorChangeMode,
+      launcherColor: state.launcherColor,
+      targetColor: state.targetColor,
+      contextColor: state.contextColor
+    };
+    const columns = Object.keys(row);
+    return `${columns.join(",")}\n${columns.map((column) => csvCell(row[column])).join(",")}\n`;
+  }
+
   function buildMetadata(state, filename, exportDetails = {}) {
     const standards = getStandards(state);
+    const encoded = getEncodedDimensions(exportDetails);
     return {
       filename,
       generatedAt: new Date().toISOString(),
-      preset: activePresetKey ? getPreset(activePresetKey).label : "Custom stimulus",
+      preset: getConditionName(),
       standards,
       parameters: {
         durationMs: state.durationMs,
@@ -2024,11 +2152,15 @@
         extension: exportDetails.extension || null,
         logicalWidthPx: STAGE_WIDTH,
         logicalHeightPx: STAGE_HEIGHT,
-        encodedWidthPx: exportDetails.width || null,
-        encodedHeightPx: exportDetails.height || null,
+        encodedWidthPx: encoded.width,
+        encodedHeightPx: encoded.height,
+        intendedDurationSec: getIntendedDurationSec(state),
+        encodedDurationSec: getExportDurationSec(state),
+        frameCount: getExportFrameCount(state),
         bitrateMbps: state.videoBitrate,
         browserEncoded: true
       },
+      psychopy: buildPsychopyMetadata(state, filename, exportDetails),
       literatureBasis: [
         "Scholl & Nakayama 2002: full-overlap test events, synchronized launch context, brief impact windows, temporal asynchrony, and direction phase.",
         "Kominsky & Wenig 2025: launch/pass overlap continua and launch/push entraining contrasts."
@@ -2048,12 +2180,35 @@
     metadataLink.classList.remove("hidden");
   }
 
+  function setPsychopyDownload(csv, preferredName) {
+    const blob = new Blob([csv], { type: "text/csv" });
+    if (currentPsychopyUrl) {
+      URL.revokeObjectURL(currentPsychopyUrl);
+    }
+    currentPsychopyUrl = URL.createObjectURL(blob);
+    psychopyLink.href = currentPsychopyUrl;
+    psychopyLink.download = preferredName;
+    psychopyLink.textContent = `Download ${preferredName}`;
+    psychopyLink.classList.remove("hidden");
+  }
+
   function exportParameters() {
     const state = cloneState();
     const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
     const filename = `${sanitizeLabel(state.fileLabel)}-${timestamp}.json`;
-    setMetadataDownload(buildMetadata(state, filename), filename);
-    statusText.textContent = "Parameter JSON ready.";
+    const exportFormat = chooseExportFormat(state);
+    const movieFilename = filename.replace(/\.json$/, `.${exportFormat.extension}`);
+    setMetadataDownload(buildMetadata(state, movieFilename, exportFormat), filename);
+    setPsychopyDownload(buildPsychopyCsv(state, movieFilename, exportFormat), getPsychopyCsvName(movieFilename));
+    statusText.textContent = "JSON and PsychoPy CSV ready.";
+  }
+
+  function exportPsychopyCsv() {
+    const state = cloneState();
+    const exportFormat = chooseExportFormat(state);
+    const filename = `${sanitizeLabel(state.fileLabel)}.${exportFormat.extension}`;
+    setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), getPsychopyCsvName(filename));
+    statusText.textContent = "PsychoPy CSV ready.";
   }
 
   function withCondition(baseState, overrides) {
@@ -2691,11 +2846,11 @@
     recorder.start();
 
     const frameDuration = 1000 / state.fps;
-    const totalFrames = Math.ceil(state.durationMs / frameDuration);
-    for (let frame = 0; frame <= totalFrames; frame += 1) {
+    const totalFrames = getExportFrameCount(state);
+    for (let frame = 0; frame < totalFrames; frame += 1) {
       const time = Math.min(frame * frameDuration, state.durationMs);
       drawFrame(state, time, exportCtx);
-      statusText.textContent = `Exporting frame ${frame + 1} of ${totalFrames + 1}…`;
+      statusText.textContent = `Exporting frame ${frame + 1} of ${totalFrames}…`;
       await new Promise((resolve) => window.setTimeout(resolve, frameDuration));
     }
 
@@ -2714,20 +2869,22 @@
     const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
     const filename = `${sanitizeLabel(state.fileLabel)}-${timestamp}.${exportFormat.extension}`;
     const metadataFilename = filename.replace(/\.(webm|mp4)$/, ".json");
+    const psychopyFilename = getPsychopyCsvName(filename);
     downloadLink.href = currentObjectUrl;
     downloadLink.download = filename;
     downloadLink.textContent = `Download ${filename}`;
     downloadLink.classList.remove("hidden");
     setMetadataDownload(buildMetadata(state, filename, exportFormat), metadataFilename);
+    setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
 
     exportedVideo.src = currentObjectUrl;
     videoPanel.classList.remove("hidden");
-    exportMeta.textContent = `${Math.round(state.durationMs)} ms - ${state.fps} fps - ${exportFormat.width}x${
-      exportFormat.height
-    } - ${
+    exportMeta.textContent = `${Math.round(getExportDurationSec(state) * 1000)} ms - ${state.fps} fps - ${
+      exportFormat.width
+    }x${exportFormat.height} - ${
       exportFormat.extension.toUpperCase()
     } - ${mimeType}`;
-    statusText.textContent = "Export finished.";
+    statusText.textContent = "Export finished. PsychoPy files ready.";
 
     const autoDownload = document.createElement("a");
     autoDownload.href = currentObjectUrl;
@@ -2827,6 +2984,7 @@
     deletePresetButton.addEventListener("click", deleteSelectedPreset);
     exportButton.addEventListener("click", exportVideo);
     metadataButton.addEventListener("click", exportParameters);
+    psychopyButton.addEventListener("click", exportPsychopyCsv);
 
     window.addEventListener("resize", () => {
       drawFrame(cloneState(), 0, ctx);

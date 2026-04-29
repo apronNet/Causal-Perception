@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260429-compact-layout" />
+    <link rel="stylesheet" href="styles.css?v=20260429-psychopy-export" />
   </head>
   <body>
     <div class="page-shell">
@@ -291,7 +291,7 @@
               <label class="field">
                 <span>Format</span>
                 <select id="outputFormat">
-                  <option value="lab">MP4 if possible</option>
+                  <option value="lab">PsychoPy MP4 if possible</option>
                   <option value="mp4">Prefer MP4 / H.264</option>
                   <option value="webm-vp9">WebM / VP9</option>
                   <option value="webm-vp8">WebM / VP8</option>
@@ -317,6 +317,8 @@
             <a id="downloadLink" class="download-link hidden" download>Download video</a>
             <button id="metadataButton" class="secondary-button full-button" type="button">Export JSON</button>
             <a id="metadataLink" class="download-link hidden" download>Download latest JSON</a>
+            <button id="psychopyButton" class="secondary-button full-button" type="button">Export PsychoPy CSV</button>
+            <a id="psychopyLink" class="download-link hidden" download>Download PsychoPy CSV</a>
           </section>
         </aside>
 
@@ -350,6 +352,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260429-compact-layout"></script>
+    <script src="app.js?v=20260429-psychopy-export"></script>
   </body>
 </html>
