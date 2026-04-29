@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260429-launching-video-maker" />
+    <link rel="stylesheet" href="styles.css?v=20260429-color-change" />
   </head>
   <body>
     <div class="page-shell">
@@ -192,6 +192,19 @@
                   <option value="shaded">3D shaded balls</option>
                 </select>
               </label>
+              <label class="field">
+                <span>Sudden color</span>
+                <select id="colorChangeMode">
+                  <option value="none">None</option>
+                  <option value="target">Target at contact</option>
+                  <option value="launcher">Launcher at contact</option>
+                  <option value="both">Both at contact</option>
+                </select>
+              </label>
+              <label class="field color-field">
+                <span>Change to</span>
+                <input id="colorChangeColor" type="color" />
+              </label>
               <label class="field color-field hidden-control">
                 <span>Launcher</span>
                 <input id="launcherColor" type="color" />
@@ -356,6 +369,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260429-launching-video-maker"></script>
+    <script src="app.js?v=20260429-color-change"></script>
   </body>
 </html>

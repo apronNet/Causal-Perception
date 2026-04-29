@@ -57,6 +57,8 @@
     "renderMode",
     "stageTheme",
     "objectStyle",
+    "colorChangeMode",
+    "colorChangeColor",
     "launcherColor",
     "targetColor",
     "contextColor",
@@ -98,6 +100,8 @@
     renderMode: "Preview/export display style.",
     stageTheme: "Background luminance.",
     objectStyle: "Flat or shaded objects.",
+    colorChangeMode: "Sudden color switch at contact.",
+    colorChangeColor: "Post-contact color.",
     launcherColor: "First-object color.",
     targetColor: "Second-object color.",
     contextColor: "Context-object color.",
@@ -642,6 +646,8 @@
     renderMode: "stimulus",
     stageTheme: "dark",
     objectStyle: "flat",
+    colorChangeMode: "none",
+    colorChangeColor: "#f2d94e",
     launcherColor: "#e53935",
     targetColor: "#27c35a",
     contextColor: "#e53935",
@@ -719,6 +725,8 @@
       renderMode: controls.renderMode.value,
       stageTheme: controls.stageTheme.value,
       objectStyle: controls.objectStyle.value,
+      colorChangeMode: controls.colorChangeMode.value,
+      colorChangeColor: controls.colorChangeColor.value,
       launcherColor: controls.launcherColor.value,
       targetColor: controls.targetColor.value,
       contextColor: controls.contextColor.value,
@@ -1295,6 +1303,28 @@
     };
   }
 
+  function getPaletteAtTime(state, eventState) {
+    const palette = getPalette(state);
+    if (state.colorChangeMode === "none" || eventState.time < eventState.geometry.targetStartTime) {
+      return palette;
+    }
+
+    const changed = normalizeHexColor(state.colorChangeColor, "#f2d94e");
+    const changedStyle = {
+      fill: changed,
+      outline: shadeHexColor(changed, -0.48)
+    };
+
+    if (state.colorChangeMode === "launcher" || state.colorChangeMode === "both") {
+      palette.launcher = changedStyle;
+    }
+    if (state.colorChangeMode === "target" || state.colorChangeMode === "both") {
+      palette.target = changedStyle;
+    }
+
+    return palette;
+  }
+
   function displacementAt(elapsedMs, initialVelocity, acceleration) {
     const minVelocity = 20;
     const velocity = Math.max(minVelocity, initialVelocity);
@@ -1633,7 +1663,7 @@
   }
 
   function drawOpenEvent(drawCtx, state, eventState) {
-    const palette = getPalette(state);
+    const palette = getPaletteAtTime(state, eventState);
     const radius = state.ballRadius;
     const launcher = {
       x: eventState.launcherX,
@@ -1672,7 +1702,7 @@
 
   function drawOccludedEvent(drawCtx, state, eventState, occluderBounds) {
     const radius = state.ballRadius;
-    const palette = getPalette(state);
+    const palette = getPaletteAtTime(state, eventState);
 
     if (eventState.launcherX + radius < occluderBounds.left) {
       drawObject(
@@ -1955,6 +1985,8 @@
         renderMode: state.renderMode,
         stageTheme: state.stageTheme,
         objectStyle: state.objectStyle,
+        colorChangeMode: state.colorChangeMode,
+        colorChangeColor: state.colorChangeColor,
         launcherColor: state.launcherColor,
         targetColor: state.targetColor,
         contextColor: state.contextColor,
@@ -2049,6 +2081,8 @@
         renderMode: condition.renderMode,
         stageTheme: condition.stageTheme,
         objectStyle: condition.objectStyle,
+        colorChangeMode: condition.colorChangeMode,
+        colorChangeColor: condition.colorChangeColor,
         launcherColor: condition.launcherColor,
         targetColor: condition.targetColor,
         contextColor: condition.contextColor,
@@ -2721,6 +2755,8 @@
           "renderMode",
           "stageTheme",
           "objectStyle",
+          "colorChangeMode",
+          "colorChangeColor",
           "launcherColor",
           "targetColor",
           "contextColor",
