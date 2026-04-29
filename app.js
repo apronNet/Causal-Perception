@@ -16,10 +16,8 @@
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
-  const matrixButton = document.getElementById("matrixButton");
   const downloadLink = document.getElementById("downloadLink");
   const metadataLink = document.getElementById("metadataLink");
-  const matrixLink = document.getElementById("matrixLink");
   const statusText = document.getElementById("statusText");
   const stageOverlay = document.querySelector(".stage-overlay");
   const scenarioBadge = document.getElementById("scenarioBadge");
@@ -27,9 +25,6 @@
   const literatureBlurb = document.getElementById("literatureBlurb");
   const presetSummary = document.getElementById("presetSummary");
   const presetNote = document.getElementById("presetNote");
-  const matrixPreset = document.getElementById("matrixPreset");
-  const matrixGuide = document.getElementById("matrixGuide");
-  const matrixSummary = document.getElementById("matrixSummary");
   const videoPanel = document.getElementById("videoPanel");
   const exportMeta = document.getElementById("exportMeta");
   const exportedVideo = document.getElementById("exportedVideo");
@@ -116,9 +111,7 @@
     outputFormat: "Video format preference.",
     fps: "Output frames per second.",
     videoBitrate: "Output video bitrate.",
-    fileLabel: "Export filename base.",
-    matrixPreset:
-      "Choose which variable changes."
+    fileLabel: "Export filename base."
   };
 
   const presets = {
@@ -573,7 +566,7 @@
       summary:
         "A launch/pass test event at the middle of the 0-100% overlap continuum.",
       note:
-        "Use the matrix builder for the full nine-step continuum; this preset is the quick midpoint check.",
+        "This is a quick midpoint check for the launch/pass continuum.",
       literature:
         "Kominsky and Wenig describe launch/pass tests with nine overlap levels from 0% launch to 100% pass in 12.5% steps.",
       values: {
@@ -662,32 +655,6 @@
     outputFormat: "lab",
     videoBitrate: 8
   };
-  const matrixGuides = {
-    delayOverlap:
-      "Build a delay-by-overlap grid to estimate the launch/pass/delayed-launch boundary before testing richer causal hypotheses.",
-    ohl7:
-      "Seven evenly spaced overlap levels for adaptation-style launch/pass psychometric functions.",
-    kominsky9:
-      "Nine 12.5% overlap steps for finer launch/pass boundary estimates.",
-    captureContext:
-      "Exports three full-overlap test rows: no context, single-object context, and nearby-launch context.",
-    captureDuration:
-      "Exports launch-context rows with 750, 500, 100, and 50 ms context windows around impact.",
-    captureTiming:
-      "Exports launch-context rows where the context is synchronized or starts 50, 100, or 200 ms early.",
-    captureDirection:
-      "Exports same- and opposite-direction launch-context rows plus matched single-object controls.",
-    direction:
-      "Vary motion direction and off-axis launch angle to probe direction-tuned causal routines.",
-    retinotopicTransfer:
-      "Create same-location and shifted-location adapt/test clips for retinotopic transfer checks.",
-    featureTransfer:
-      "Cross direction, speed, and color identity to separate feature-specific from feature-general adaptation.",
-    categoryCarveup:
-      "Compare launching, triggering, entraining, and continuous-motion controls as candidate causal categories.",
-    contextAdaptation:
-      "Pair adaptation-style ambiguous tests with no, launch, and pass context to test whether capture survives adaptation."
-  };
   const controls = {};
 
   controlIds.forEach((id) => {
@@ -698,7 +665,6 @@
   let selectedPresetKey = "canonical";
   let currentObjectUrl = null;
   let currentMetadataUrl = null;
-  let currentMatrixUrl = null;
   let previewHandle = null;
   let impactSoundTimer = null;
   let sharedAudioContext = null;
@@ -2100,7 +2066,7 @@
     };
   }
 
-  function buildConditionMatrix(kind, baseState) {
+  function buildConditionSet(kind, baseState) {
     const base = {
       ...baseState,
       renderMode: baseState.renderMode === "lab" ? "fixation" : baseState.renderMode,
@@ -2589,40 +2555,6 @@
     };
   }
 
-  function exportMatrix() {
-    const state = cloneState();
-    const matrix = buildConditionMatrix(matrixPreset.value, state);
-    const payload = {
-      generatedAt: new Date().toISOString(),
-      sourcePreset: activePresetKey ? getPreset(activePresetKey).label : "Custom stimulus",
-      family: matrix.family,
-      note: matrix.note,
-      guide: matrixGuides[matrixPreset.value] || "",
-      conditionCount: matrix.conditions.length,
-      conditions: matrix.conditions
-    };
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    const filename = `${sanitizeLabel(matrix.family)}-${timestamp}.json`;
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    if (currentMatrixUrl) {
-      URL.revokeObjectURL(currentMatrixUrl);
-    }
-    currentMatrixUrl = URL.createObjectURL(blob);
-    matrixLink.href = currentMatrixUrl;
-    matrixLink.download = filename;
-    matrixLink.textContent = `Download ${filename}`;
-    matrixLink.classList.remove("hidden");
-    matrixSummary.textContent =
-      `${matrix.family}: ${matrix.conditions.length} condition rows. ` +
-      "Download the JSON and use it as a condition table.";
-  }
-
-  function updateMatrixGuide() {
-    matrixGuide.textContent =
-      matrixGuides[matrixPreset.value] ||
-      "Choose a condition family to see which stimulus settings the JSON table will contain.";
-  }
-
   async function exportVideo() {
     if (isExporting) {
       return;
@@ -2842,11 +2774,6 @@
     deletePresetButton.addEventListener("click", deleteSelectedPreset);
     exportButton.addEventListener("click", exportVideo);
     metadataButton.addEventListener("click", exportParameters);
-    matrixButton.addEventListener("click", exportMatrix);
-    matrixPreset.addEventListener("change", () => {
-      updateMatrixGuide();
-      matrixSummary.textContent = "Ready to build this condition table.";
-    });
 
     window.addEventListener("resize", () => {
       drawFrame(cloneState(), 0, ctx);
@@ -2874,6 +2801,5 @@
   addParameterHelp();
   enhanceRangePrecision();
   bindControls();
-  updateMatrixGuide();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();

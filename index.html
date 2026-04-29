@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Causal Launching Studio</title>
-    <link rel="stylesheet" href="styles.css?v=20260429-clean-presets" />
+    <title>Launching Video Maker</title>
+    <link rel="stylesheet" href="styles.css?v=20260429-launching-video-maker" />
   </head>
   <body>
     <div class="page-shell">
       <header class="topbar">
         <div class="title-block">
-          <h1>Causal Launching Studio</h1>
+          <h1>Launching Video Maker</h1>
         </div>
       </header>
 
@@ -339,32 +339,6 @@
             </article>
           </div>
 
-          <section class="matrix-panel">
-            <div class="section-heading">
-              <h2>Condition set</h2>
-              <button id="matrixButton" class="secondary-button" type="button">Build condition JSON</button>
-            </div>
-            <div class="matrix-controls">
-              <label class="field">
-                <span>Condition family</span>
-                <select id="matrixPreset">
-                  <option value="captureContext">Context type comparison</option>
-                  <option value="captureDuration">Context duration comparison</option>
-                  <option value="captureTiming">Timing offset comparison</option>
-                  <option value="captureDirection">Direction comparison</option>
-                  <option value="kominsky9">9-step overlap continuum</option>
-                </select>
-              </label>
-              <div>
-                <p id="matrixGuide" class="microcopy matrix-guide">
-                  Creates a downloadable JSON table of settings for several related stimuli. It does not make videos.
-                </p>
-                <p id="matrixSummary" class="microcopy">Pick a family, then build the condition table.</p>
-              </div>
-            </div>
-            <a id="matrixLink" class="download-link hidden" download>Download condition JSON</a>
-          </section>
-
           <section class="video-panel hidden" id="videoPanel">
             <div class="section-heading">
               <h2>Export preview</h2>
@@ -382,6 +356,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260429-clean-presets"></script>
+    <script src="app.js?v=20260429-launching-video-maker"></script>
   </body>
 </html>
