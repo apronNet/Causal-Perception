@@ -76,50 +76,6 @@
     "fileLabel"
   ];
 
-  const parameterHelp = {
-    presetNameInput: "Name saved settings.",
-    durationMs: "Total clip length.",
-    leadInMs: "Pause before motion starts.",
-    launcherSpeed: "First-object speed.",
-    launcherAccel: "First-object acceleration.",
-    targetSpeedRatio: "Second-object speed ratio.",
-    targetAccel: "Second-object acceleration.",
-    launcherBehavior: "What the first object does after contact.",
-    targetAngle: "Second-object direction.",
-    delayMs: "Wait before the second object moves.",
-    gapPx: "Contact gap or overlap.",
-    markerMode: "Optional distance marker.",
-    ballRadius: "Object size.",
-    occluderEnabled: "Add a tunnel occluder.",
-    occluderWidth: "Tunnel width.",
-    contactOcclusionMode: "Which object appears in front.",
-    contextMode: "Nearby event type.",
-    contextDurationMs: "Context visibility window.",
-    contextOffsetMs: "Context timing offset.",
-    contextDirection: "Context motion direction.",
-    contextYOffset: "Distance between main and context rows.",
-    renderMode: "Preview/export display style.",
-    stageTheme: "Background luminance.",
-    objectStyle: "Flat or shaded objects.",
-    groupingMode: "Draws a grouping box.",
-    colorChangeMode: "Sudden color switch at contact.",
-    colorChangeColor: "Post-contact color.",
-    launcherColor: "First-object color.",
-    targetColor: "Second-object color.",
-    contextColor: "Context-object color.",
-    pxPerDva: "Pixels per visual degree.",
-    fixationDva: "Fixation size.",
-    stimulusXOffset: "Horizontal stimulus shift.",
-    stimulusYOffset: "Vertical stimulus shift.",
-    soundEnabled: "Add impact sound.",
-    soundType: "Impact sound type.",
-    soundVolume: "Impact sound volume.",
-    outputFormat: "Video format preference.",
-    fps: "Output frames per second.",
-    videoBitrate: "Output video bitrate.",
-    fileLabel: "Export filename base."
-  };
-
   const presets = {
     canonical: {
       label: "Clear launch (0% overlap)",
@@ -846,25 +802,6 @@
     });
   }
 
-  function addParameterHelp() {
-    Object.entries(parameterHelp).forEach(([id, text]) => {
-      const control = document.getElementById(id);
-      const field = control?.closest(".field");
-      if (!control || !field || field.querySelector(".field-help")) {
-        return;
-      }
-
-      const help = document.createElement("p");
-      help.className = "field-help";
-      help.id = `${id}Help`;
-      help.textContent = text;
-      field.appendChild(help);
-
-      const describedBy = control.getAttribute("aria-describedby");
-      control.setAttribute("aria-describedby", describedBy ? `${describedBy} ${help.id}` : help.id);
-    });
-  }
-
   function getPreset(presetKey) {
     return presets[presetKey] || presets.canonical;
   }
@@ -1004,10 +941,18 @@
     activePresetKey = existingKey;
     selectedPresetKey = existingKey;
     presetSelect.value = existingKey;
-    presetSummary.textContent = preset.summary;
-    presetNote.textContent = preset.note;
-    literatureBlurb.textContent = preset.literature;
-    scenarioBadge.textContent = preset.label;
+    if (presetSummary) {
+      presetSummary.textContent = preset.summary;
+    }
+    if (presetNote) {
+      presetNote.textContent = preset.note;
+    }
+    if (literatureBlurb) {
+      literatureBlurb.textContent = preset.literature;
+    }
+    if (scenarioBadge) {
+      scenarioBadge.textContent = preset.label;
+    }
     statusText.textContent = "Preset saved.";
     syncPresetActions();
   }
@@ -1233,6 +1178,10 @@
   }
 
   function updateStandards(state) {
+    if (!relationMetric || !categoryMetric || !captureMetric || !timingMetric) {
+      return;
+    }
+
     const standards = getStandards(state);
     relationMetric.textContent = standards.relation;
     categoryMetric.textContent = standards.category;
@@ -1244,11 +1193,21 @@
     const state = cloneState();
     const copy = activePresetKey ? getPreset(activePresetKey) : getDynamicCopy(state);
     const queuedPreset = getPreset(selectedPresetKey);
-    presetSummary.textContent = queuedPreset.summary;
-    presetNote.textContent = copy.note;
-    literatureBlurb.textContent = copy.literature;
-    scenarioBadge.textContent = copy.label;
-    stageOverlay.classList.toggle("hidden", state.renderMode !== "lab");
+    if (presetSummary) {
+      presetSummary.textContent = queuedPreset.summary;
+    }
+    if (presetNote) {
+      presetNote.textContent = copy.note;
+    }
+    if (literatureBlurb) {
+      literatureBlurb.textContent = copy.literature;
+    }
+    if (scenarioBadge) {
+      scenarioBadge.textContent = copy.label;
+    }
+    if (stageOverlay) {
+      stageOverlay.classList.toggle("hidden", state.renderMode !== "lab");
+    }
 
     const standards = getStandards(state);
     const spatialTag =
@@ -1258,7 +1217,9 @@
           ? `${standards.overlapPercent}% overlap`
           : "contact";
     const occlusionTag = state.occluderEnabled ? " + tunnel occluder" : "";
-    timingBadge.textContent = `${spatialTag} + ${Math.round(state.delayMs)} ms delay${occlusionTag}`;
+    if (timingBadge) {
+      timingBadge.textContent = `${spatialTag} + ${Math.round(state.delayMs)} ms delay${occlusionTag}`;
+    }
     updateStandards(state);
   }
 
@@ -2848,7 +2809,9 @@
     presetSelect.addEventListener("change", () => {
       selectedPresetKey = presetSelect.value;
       const preset = getPreset(selectedPresetKey);
-      presetSummary.textContent = preset.summary;
+      if (presetSummary) {
+        presetSummary.textContent = preset.summary;
+      }
       presetNameInput.value = isCustomPresetKey(selectedPresetKey) ? preset.label : "";
       syncPresetActions();
       statusText.textContent = "Preset queued. Click Apply.";
@@ -2888,7 +2851,6 @@
   loadCustomPresets();
   populatePresetMenu();
   initializeRanges();
-  addParameterHelp();
   enhanceRangePrecision();
   bindControls();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
