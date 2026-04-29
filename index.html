@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260429-header-balance" />
+    <link rel="stylesheet" href="styles.css?v=20260429-occlusion-tooltips" />
   </head>
   <body>
     <div class="page-shell">
@@ -101,6 +101,15 @@
                 <input id="gapPx" data-format="overlap" min="-56" max="0" step="1" type="range" />
                 <output data-for="gapPx"></output>
               </label>
+              <label class="field">
+                <span>Original front</span>
+                <select id="contactOcclusionMode">
+                  <option value="target-front">Second object front</option>
+                  <option value="launcher-front">First object front</option>
+                  <option value="alternate">Alternate</option>
+                  <option value="none">Draw first then second</option>
+                </select>
+              </label>
               <label class="field hidden-control">
                 <span>Marker</span>
                 <select id="markerMode">
@@ -130,15 +139,6 @@
                 <span>Occluder</span>
                 <input id="occluderWidth" data-format="intPx" min="70" max="260" step="5" type="range" />
                 <output data-for="occluderWidth"></output>
-              </label>
-              <label class="field hidden-control">
-                <span>Overlap order</span>
-                <select id="contactOcclusionMode">
-                  <option value="target-front">Target front</option>
-                  <option value="launcher-front">Launcher front</option>
-                  <option value="alternate">Alternate</option>
-                  <option value="none">None</option>
-                </select>
               </label>
               <label class="field">
                 <span>Context</span>
@@ -202,6 +202,15 @@
                 <span>Context overlap</span>
                 <input id="contextGapPx" data-format="overlap" min="-56" max="0" step="1" type="range" />
                 <output data-for="contextGapPx"></output>
+              </label>
+              <label class="field">
+                <span>Context front</span>
+                <select id="contextContactOcclusionMode">
+                  <option value="target-front">Second object front</option>
+                  <option value="launcher-front">First object front</option>
+                  <option value="alternate">Alternate</option>
+                  <option value="none">Draw first then second</option>
+                </select>
               </label>
               <label class="field">
                 <span>Context target ratio</span>

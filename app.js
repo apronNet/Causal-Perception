@@ -63,6 +63,7 @@
     "contextLauncherBehavior",
     "contextDelayMs",
     "contextGapPx",
+    "contextContactOcclusionMode",
     "contextTargetSpeedRatio",
     "contextTargetAccel",
     "contextTargetAngle",
@@ -93,61 +94,62 @@
   ];
 
   const parameterHelp = {
-    presetSelect: "Load a standard case or saved preset.",
-    presetNameInput: "Name current settings before saving.",
-    durationMs: "Total movie length.",
-    leadInMs: "Time before contact.",
-    launcherSpeed: "First disc speed before contact.",
-    launcherAccel: "First disc acceleration before contact.",
-    targetSpeedRatio: "Second disc speed relative to the first.",
-    targetAccel: "Second disc acceleration after contact.",
-    launcherBehavior: "Whether the first disc stops or continues.",
-    targetAngle: "Second disc motion direction.",
-    delayMs: "Pause between contact and second-disc motion.",
-    gapPx: "Contact relation: 0 touches, negative values overlap.",
-    markerMode: "Optional marker for gap controls.",
-    ballRadius: "Disc radius in pixels.",
-    occluderEnabled: "Show a tunnel occluder.",
-    occluderWidth: "Width of the occluding strip.",
-    contactOcclusionMode: "Which disc appears in front at overlap.",
-    contextMode: "Nearby event shown with the test event.",
-    contextDurationMs: "How long context is visible.",
-    contextOffsetMs: "How early the context starts.",
-    contextDirection: "Context motion direction.",
-    contextYOffset: "Vertical separation between rows.",
-    contextLeadInMs: "Context time before contact.",
-    contextLauncherSpeed: "Context first-disc speed.",
-    contextLauncherAccel: "Context first-disc acceleration.",
-    contextLauncherBehavior: "Context first disc after contact.",
-    contextDelayMs: "Context pause after contact.",
-    contextGapPx: "Context contact or overlap.",
-    contextTargetSpeedRatio: "Context second-disc speed ratio.",
-    contextTargetAccel: "Context second-disc acceleration.",
-    contextTargetAngle: "Context second-disc direction.",
-    renderMode: "Preview labels, clean movie, or fixation.",
-    stageTheme: "Background luminance.",
-    objectStyle: "Flat discs or shaded balls.",
-    groupingMode: "Draw boxes to group rows.",
-    contactGuideMode: "Draw contact alignment guides.",
-    colorChangeMode: "Switch color at contact.",
-    colorChangeColor: "Color used for the switch.",
-    launcherColor: "First disc color.",
-    targetColor: "Second disc color.",
-    contextColor: "Context first-disc color.",
-    contextTargetColor: "Context second-disc color.",
-    groupingOriginalColor: "Box color for the test row.",
-    groupingContextColor: "Box color for the context row.",
-    pxPerDva: "Pixels per visual degree for metadata.",
-    fixationDva: "Fixation size in visual degrees.",
-    stimulusXOffset: "Horizontal stimulus shift.",
-    stimulusYOffset: "Vertical stimulus shift.",
-    soundEnabled: "Add contact-locked sound if supported.",
-    soundType: "Impact sound type.",
-    soundVolume: "Impact sound level.",
-    outputFormat: "Requested browser video format.",
-    fps: "Preview and export frames per second.",
-    videoBitrate: "Higher values reduce compression.",
-    fileLabel: "Base filename for exports."
+    presetSelect: "Loads a prepared case or a saved local preset. Applying it replaces the current values, so save your own version first if needed.",
+    presetNameInput: "Name the current settings before saving them as a browser-local preset. The name is only for finding the setting later.",
+    durationMs: "Total clip length. It should cover the approach, contact, launched motion, and any context event without cutting off motion.",
+    leadInMs: "Still time before the first object moves. Increase it when participants need a stable starting display before the launch begins.",
+    launcherSpeed: "Speed of the first object before contact, in pixels per second. Faster approach usually makes the impact look sharper and more forceful.",
+    launcherAccel: "Change in first-object speed before contact. Positive acceleration makes the approach speed up; negative acceleration makes it slow down.",
+    targetSpeedRatio: "Second-object speed relative to the first object's impact speed. Values above 1 can look more like triggering than simple launching.",
+    targetAccel: "Change in second-object speed after onset. Use it to test whether post-contact acceleration affects the perceived causal relation.",
+    launcherBehavior: "What the first object does after contact. Stopping supports launching; passing through supports non-causal pass or slip displays.",
+    targetAngle: "Direction of second-object motion after contact. Zero is straight right; nonzero angles test whether launch direction changes the impression.",
+    delayMs: "Time between contact and second-object motion. Short delays favor immediate launching; longer delays make the event look less directly causal.",
+    gapPx: "Distance between objects at contact. Zero means touching, negative values overlap, and positive values leave a visible spatial gap.",
+    markerMode: "Adds a small contact marker for gap displays. Use it only when testing whether an added spatial cue changes causal reports.",
+    ballRadius: "Disc radius in pixels. Larger discs make the same pixel gap or overlap look smaller as a proportion of object size.",
+    occluderEnabled: "Adds an occluding tunnel around the contact region. This supports hidden-contact or pass-behind displays where overlap is partly unseen.",
+    occluderWidth: "Width of the tunnel occluder. Wider occluders hide more motion near contact and make amodal completion more likely.",
+    contactOcclusionMode: "Draw order for overlapping original-row discs. Choose whether the first or second object appears in front when their edges overlap.",
+    contextMode: "Nearby context event shown with the original row. A launch context tests causal capture; a single object controls for motion alone.",
+    contextDurationMs: "How long the context event is visible around its contact. Short windows isolate contact information; longer windows show more approach.",
+    contextOffsetMs: "Timing of the context event relative to the original row. Negative values make context happen earlier; positive values make it later.",
+    contextDirection: "Direction of context motion relative to the original row. Opposite direction mirrors the context and separates direction from timing.",
+    contextYOffset: "Vertical distance between original and context rows. Increase it when the two rows look crowded or grouping boxes overlap visually.",
+    contextLeadInMs: "Still time before context motion begins. This lets the context row start independently from the original row.",
+    contextLauncherSpeed: "Speed of the context first object before contact. Match it to the original row for comparison, or vary it as an inducer.",
+    contextLauncherAccel: "Change in context first-object speed before contact. Positive values speed up the approach; negative values slow it down.",
+    contextLauncherBehavior: "What the context first object does after contact. Use stop for launch-like context, pass for noncausal context, or entrain for shared motion.",
+    contextDelayMs: "Time between context contact and context target motion. Larger values make the context event less immediately causal.",
+    contextGapPx: "Distance between context objects at contact. Zero touches, negative values overlap, and positive values create a context gap.",
+    contextContactOcclusionMode: "Draw order for overlapping context-row discs. This is separate from the original row, so the two events can occlude differently.",
+    contextTargetSpeedRatio: "Context second-object speed relative to the context first object's impact speed. Use it to match or contrast the original launch.",
+    contextTargetAccel: "Change in context second-object speed after onset. This varies whether the context target looks pushed, triggered, or self-moving.",
+    contextTargetAngle: "Direction of context second-object motion. Changing it tests whether context capture depends on matching the original motion direction.",
+    renderMode: "Preview/export display mode. Clean stimulus is for final videos; lab preview keeps design aids visible while you tune parameters.",
+    stageTheme: "Background luminance of the stimulus field. Choose it for object contrast and keep it fixed across conditions unless luminance is tested.",
+    objectStyle: "Rendering style for the balls. Flat discs are easier to control experimentally; shaded balls look more pictorial.",
+    groupingMode: "Solid boxes around the original row, context row, or both. Use this to test whether perceptual grouping changes causal capture.",
+    contactGuideMode: "Vertical guide at contact. Useful for checking alignment during design, but usually off in final participant-facing stimuli.",
+    colorChangeMode: "Sudden color change at contact. Use this to ask whether a feature change competes with or supports the launch impression.",
+    colorChangeColor: "Color applied during the sudden contact-locked switch. Keep contrast comparable if color is not the main manipulation.",
+    launcherColor: "Color of the original-row first object. Use fixed colors across conditions unless object identity or feature change is being tested.",
+    targetColor: "Color of the original-row second object. Matching colors support object similarity; contrasting colors emphasize distinct objects.",
+    contextColor: "Color of the context-row first object. Match or contrast it with the original row depending on the grouping manipulation.",
+    contextTargetColor: "Color of the context-row second object. Use it to keep context identity controlled separately from original-row identity.",
+    groupingOriginalColor: "Line color for the original-row grouping box. Choose a visible but non-dominant color so the box does not become the main cue.",
+    groupingContextColor: "Line color for the context-row grouping box. Matching box colors can group rows; different colors can separate them.",
+    pxPerDva: "Pixels per degree of visual angle for metadata and PsychoPy reporting. Set this from viewing distance and monitor size when known.",
+    fixationDva: "Fixation mark diameter in degrees of visual angle. It only matters when fixation mode is selected.",
+    stimulusXOffset: "Horizontal shift of the whole stimulus. Use it to center the exported movie in a PsychoPy window or monitor layout.",
+    stimulusYOffset: "Vertical shift of the whole stimulus. This moves both rows together without changing their separation.",
+    soundEnabled: "Adds a brief sound at contact when the browser export supports audio. Keep it off unless audio timing is part of the design.",
+    soundType: "Shape of the contact sound. Click is sharp, thud is softer, and tone is less impact-like.",
+    soundVolume: "Relative volume of the contact sound. Keep it fixed across conditions unless sound strength is explicitly manipulated.",
+    outputFormat: "Preferred video encoding format. PsychoPy usually works well with MP4/H.264, but the browser may fall back depending on support.",
+    fps: "Frames per second for preview quantization and exported video. Low FPS makes motion stepwise; high FPS gives smoother temporal sampling.",
+    videoBitrate: "Export bitrate in Mbps. Higher values preserve cleaner ball edges and motion but produce larger files.",
+    fileLabel: "Base filename for the video, JSON metadata, and PsychoPy CSV. Use condition names that stay readable in experiment folders."
   };
 
   const presets = {
@@ -682,6 +684,7 @@
     contextLauncherBehavior: "stop",
     contextDelayMs: 0,
     contextGapPx: 0,
+    contextContactOcclusionMode: "target-front",
     contextTargetSpeedRatio: 1,
     contextTargetAccel: 0,
     contextTargetAngle: 0,
@@ -780,6 +783,7 @@
       contextLauncherBehavior: controls.contextLauncherBehavior.value,
       contextDelayMs: Number(controls.contextDelayMs.value),
       contextGapPx: Number(controls.contextGapPx.value),
+      contextContactOcclusionMode: controls.contextContactOcclusionMode.value,
       contextTargetSpeedRatio: Number(controls.contextTargetSpeedRatio.value),
       contextTargetAccel: Number(controls.contextTargetAccel.value),
       contextTargetAngle: Number(controls.contextTargetAngle.value),
@@ -1186,6 +1190,8 @@
       contextLauncherBehavior: values.contextLauncherBehavior ?? stimulusDefaults.contextLauncherBehavior,
       contextDelayMs: values.contextDelayMs ?? stimulusDefaults.contextDelayMs,
       contextGapPx: values.contextGapPx ?? stimulusDefaults.contextGapPx,
+      contextContactOcclusionMode:
+        values.contextContactOcclusionMode ?? values.contactOcclusionMode ?? stimulusDefaults.contextContactOcclusionMode,
       contextTargetSpeedRatio: values.contextTargetSpeedRatio ?? values.targetSpeedRatio ?? stimulusDefaults.contextTargetSpeedRatio,
       contextTargetAccel: values.contextTargetAccel ?? values.targetAccel ?? stimulusDefaults.contextTargetAccel,
       contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle
@@ -1946,23 +1952,24 @@
     }
 
     const contextEvent = getDirectedEventState(contextState, adjustedTime, laneY, directionSign);
-    drawObject(
+    drawObjectPair(
       drawCtx,
       state,
-      contextEvent.launcherX,
-      contextEvent.launcherY,
+      contextEvent,
+      {
+        x: contextEvent.launcherX,
+        y: contextEvent.launcherY,
+        fill: palette.context.fill,
+        outline: palette.context.outline
+      },
+      {
+        x: contextEvent.targetX,
+        y: contextEvent.targetY,
+        fill: palette.contextTarget.fill,
+        outline: palette.contextTarget.outline
+      },
       state.ballRadius,
-      palette.context.fill,
-      palette.context.outline
-    );
-    drawObject(
-      drawCtx,
-      state,
-      contextEvent.targetX,
-      contextEvent.targetY,
-      state.ballRadius,
-      palette.contextTarget.fill,
-      palette.contextTarget.outline
+      state.contextContactOcclusionMode
     );
   }
 
@@ -1994,6 +2001,33 @@
     return { left, right };
   }
 
+  function getOverlapDrawOrder(eventState, launcher, target, radius, occlusionMode) {
+    const overlapDistance = Math.hypot(target.x - launcher.x, target.y - launcher.y);
+    const isOverlapping = overlapDistance < radius * 2;
+    let drawOrder = [launcher, target];
+
+    if (isOverlapping) {
+      if (occlusionMode === "launcher-front") {
+        drawOrder = [target, launcher];
+      } else if (occlusionMode === "alternate") {
+        const phase = Math.floor(Math.max(0, eventState.time - eventState.geometry.targetStartTime) / 80);
+        drawOrder = phase % 2 === 0 ? [target, launcher] : [launcher, target];
+      }
+    }
+
+    if (occlusionMode === "none") {
+      drawOrder = [launcher, target];
+    }
+
+    return drawOrder;
+  }
+
+  function drawObjectPair(drawCtx, state, eventState, launcher, target, radius, occlusionMode) {
+    getOverlapDrawOrder(eventState, launcher, target, radius, occlusionMode).forEach((object) => {
+      drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
+    });
+  }
+
   function drawOpenEvent(drawCtx, state, eventState) {
     const palette = getPaletteAtTime(state, eventState);
     const radius = state.ballRadius;
@@ -2009,27 +2043,7 @@
       fill: palette.target.fill,
       outline: palette.target.outline
     };
-    const overlapDistance = Math.hypot(target.x - launcher.x, target.y - launcher.y);
-    const isAfterContact = eventState.time >= eventState.geometry.targetStartTime;
-    const isOverlapping = overlapDistance < radius * 2;
-    let drawOrder = [launcher, target];
-
-    if (isAfterContact && isOverlapping) {
-      if (state.contactOcclusionMode === "launcher-front") {
-        drawOrder = [target, launcher];
-      } else if (state.contactOcclusionMode === "alternate") {
-        const phase = Math.floor((eventState.time - eventState.geometry.targetStartTime) / 80);
-        drawOrder = phase % 2 === 0 ? [target, launcher] : [launcher, target];
-      }
-    }
-
-    if (state.contactOcclusionMode === "none") {
-      drawOrder = [launcher, target];
-    }
-
-    drawOrder.forEach((object) => {
-      drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
-    });
+    drawObjectPair(drawCtx, state, eventState, launcher, target, radius, state.contactOcclusionMode);
   }
 
   function drawOccludedEvent(drawCtx, state, eventState, occluderBounds) {
@@ -2404,6 +2418,7 @@
       overlapPercent: standards.overlapPercent,
       impactMs: standards.impactMs,
       targetOnsetMs: standards.targetOnsetMs,
+      contactOcclusionMode: state.contactOcclusionMode,
       contextMode: state.contextMode,
       contextDurationMs: state.contextDurationMs,
       contextOffsetMs: state.contextOffsetMs,
@@ -2415,6 +2430,7 @@
       contextLauncherBehavior: state.contextLauncherBehavior,
       contextDelayMs: state.contextDelayMs,
       contextGapPx: state.contextGapPx,
+      contextContactOcclusionMode: state.contextContactOcclusionMode,
       contextTargetSpeedRatio: state.contextTargetSpeedRatio,
       contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
       contextTargetAngleDegrees: state.contextTargetAngle,
@@ -2468,6 +2484,7 @@
         contextLauncherBehavior: state.contextLauncherBehavior,
         contextDelayMs: state.contextDelayMs,
         contextGapPx: state.contextGapPx,
+        contextContactOcclusionMode: state.contextContactOcclusionMode,
         contextTargetSpeedRatio: state.contextTargetSpeedRatio,
         contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
         contextTargetAngleDegrees: state.contextTargetAngle,
@@ -2605,6 +2622,7 @@
         contextLauncherBehavior: condition.contextLauncherBehavior,
         contextDelayMs: condition.contextDelayMs,
         contextGapPx: condition.contextGapPx,
+        contextContactOcclusionMode: condition.contextContactOcclusionMode,
         contextTargetSpeedRatio: condition.contextTargetSpeedRatio,
         contextTargetAccelerationPxPerSec2: condition.contextTargetAccel,
         contextTargetAngleDegrees: condition.contextTargetAngle,
@@ -2649,6 +2667,7 @@
       launcherAccel: 0,
       targetAccel: 0,
       contactOcclusionMode: "target-front",
+      contextContactOcclusionMode: "target-front",
       stimulusXOffset: 0,
       stimulusYOffset: 0,
       soundEnabled: false

@@ -221,14 +221,14 @@ h3 {
 .parameter-tooltip {
   position: fixed;
   z-index: 30;
-  max-width: min(310px, calc(100vw - 24px));
+  max-width: min(420px, calc(100vw - 24px));
   padding: 8px 10px;
   border: 2px solid var(--line);
   background: var(--ink);
   color: var(--paper);
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.25;
+  font-size: 0.63rem;
+  font-weight: 600;
+  line-height: 1.32;
   pointer-events: none;
 }
 
