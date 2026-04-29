@@ -200,7 +200,8 @@ h3 {
 }
 
 .hidden-control,
-.hidden-control-panel {
+.hidden-control-panel,
+.context-dependent-control.is-retracted {
   display: none;
 }
 

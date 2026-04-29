@@ -719,6 +719,7 @@
   controlIds.forEach((id) => {
     controls[id] = document.getElementById(id);
   });
+  const contextDependentControls = Array.from(document.querySelectorAll(".context-dependent-control"));
 
   let activePresetKey = "canonical";
   let selectedPresetKey = "canonical";
@@ -977,6 +978,17 @@
     });
   }
 
+  function syncContextControlVisibility() {
+    const contextIsOff = controls.contextMode.value === "none";
+    contextDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", contextIsOff);
+    });
+
+    if (contextIsOff) {
+      hideParameterTooltip();
+    }
+  }
+
   function getPreset(presetKey) {
     return presets[presetKey] || presets.canonical;
   }
@@ -1176,6 +1188,7 @@
         control.value = value;
       }
     });
+    syncContextControlVisibility();
     updateOutputs();
     refreshText();
     drawFrame(cloneState(), 0, ctx);
@@ -3296,6 +3309,7 @@
       if (id === "contextMode" || id === "contextDirection") {
         control.addEventListener("change", () => {
           activePresetKey = null;
+          syncContextControlVisibility();
           updateOutputs();
           refreshText();
           statusText.textContent = "Ready.";
