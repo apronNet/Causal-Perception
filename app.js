@@ -96,7 +96,7 @@
     contextDurationMs: "Context visibility window.",
     contextOffsetMs: "Context timing offset.",
     contextDirection: "Context motion direction.",
-    contextYOffset: "Vertical context distance.",
+    contextYOffset: "Distance between main and context rows.",
     renderMode: "Preview/export display style.",
     stageTheme: "Background luminance.",
     objectStyle: "Flat or shaded objects.",
