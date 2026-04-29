@@ -77,6 +77,49 @@
     "fileLabel"
   ];
 
+  const parameterHelp = {
+    presetSelect: "Loads a literature-grounded condition. Press Apply to copy it into the controls.",
+    presetNameInput: "Names the current control settings before saving them as a browser-local preset.",
+    durationMs: "Total clip length. Keep this long enough to show approach, contact, and post-contact motion.",
+    leadInMs: "Time before the launcher starts moving. Use it to give fixation and baseline frames before motion.",
+    launcherSpeed: "Initial speed of the first object. Faster motion shortens approach time and can change apparent causality.",
+    launcherAccel: "Acceleration of the first object before contact. Zero gives constant-speed motion.",
+    targetSpeedRatio: "Target speed as a proportion of the launcher impact speed. Higher values move toward triggering.",
+    targetAccel: "Acceleration of the second object after onset. Zero gives constant-speed post-contact motion.",
+    launcherBehavior: "Defines the event kind after contact: launch, pass/slip, or entraining/push.",
+    targetAngle: "Direction of target motion after onset. Zero is straight horizontal motion.",
+    delayMs: "Time between launcher stop/contact and target onset. Larger delays weaken direct launching.",
+    gapPx: "Spatial relation at contact. Zero is edge contact; negative values create overlap.",
+    markerMode: "Optional spatial marker for distal-launching controls. Hidden in the main capture workflow.",
+    ballRadius: "Object size in pixels. This also sets the scale for overlap percentage.",
+    occluderEnabled: "Adds a tunnel-like occluder for hidden-launch or amodal-capture displays.",
+    occluderWidth: "Width of the tunnel occluder. Wider values hide more of the central event.",
+    contactOcclusionMode: "Controls which object is drawn in front when the two discs overlap.",
+    contextMode: "Adds the lower contextual event: none, a nearby launch, or a single moving object.",
+    contextDurationMs: "How long the context is visible around impact. Short windows test brief capture cues.",
+    contextOffsetMs: "Temporal offset of the context event. Zero is synchronized with the test event.",
+    contextDirection: "Direction of the context event relative to the test event.",
+    contextYOffset: "Vertical distance between the judged test event and the context event.",
+    renderMode: "Lab preview shows guides; clean modes are for participant-facing exports.",
+    stageTheme: "Background luminance for preview and export.",
+    objectStyle: "Flat discs are standard; shaded balls are mainly for demonstrations.",
+    launcherColor: "Color of the first object in the judged event.",
+    targetColor: "Color of the second object in the judged event.",
+    contextColor: "Color of the contextual launcher.",
+    pxPerDva: "Pixel-to-visual-angle conversion used in JSON metadata.",
+    fixationDva: "Fixation mark diameter in degrees of visual angle.",
+    stimulusXOffset: "Horizontal shift of the whole judged event relative to center.",
+    stimulusYOffset: "Vertical shift of the whole judged event relative to center.",
+    soundEnabled: "Adds an impact-locked sound when the browser supports audio recording.",
+    soundType: "Selects the impact sound timbre.",
+    soundVolume: "Volume of the optional impact sound.",
+    outputFormat: "Preferred video container/codec. Browser support determines the final format.",
+    fps: "Frames per second for the exported video.",
+    videoBitrate: "Video bitrate in Mbps. Higher values preserve cleaner edges but create larger files.",
+    fileLabel: "Base filename used for the exported video and JSON sidecar.",
+    matrixPreset: "Builds a JSON condition family for systematic stimulus sets."
+  };
+
   const presets = {
     canonical: {
       label: "S&N 0% launch",
@@ -136,6 +179,38 @@
         contextYOffset: 112,
         fps: 60,
         fileLabel: "sn-100-overlap-pass"
+      }
+    },
+    causalCaptureScenario: {
+      label: "Causal capture scenario",
+      summary:
+        "A full-overlap test event is judged while a synchronized nearby launch supplies the causal context.",
+      note:
+        "Use this as the quick demo condition: the upper event is the ambiguous test, and the lower event is the inducer.",
+      literature:
+        "This recreates Scholl and Nakayama's causal-capture logic: the same 100% overlap event looks mostly like a pass alone, but looks causal when paired with a synchronized nearby launch.",
+      values: {
+        durationMs: 1400,
+        leadInMs: 240,
+        launcherSpeed: 760,
+        targetSpeedRatio: 1,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: -56,
+        markerMode: "none",
+        ballRadius: 30,
+        occluderEnabled: false,
+        occluderWidth: 150,
+        contextMode: "launch",
+        contextDurationMs: 750,
+        contextOffsetMs: 0,
+        contextDirection: "same",
+        contextYOffset: 120,
+        renderMode: "fixation",
+        stageTheme: "dark",
+        fps: 60,
+        fileLabel: "causal-capture-scenario"
       }
     },
     delayed: {
@@ -556,6 +631,7 @@
   const primaryPresetKeys = [
     "canonical",
     "snPassBaseline",
+    "causalCaptureScenario",
     "capture",
     "snSingleContext",
     "captureBrief50",
@@ -791,6 +867,25 @@
       fineInput.addEventListener("change", () => {
         fineInput.value = range.value;
       });
+    });
+  }
+
+  function addParameterHelp() {
+    Object.entries(parameterHelp).forEach(([id, text]) => {
+      const control = document.getElementById(id);
+      const field = control?.closest(".field");
+      if (!control || !field || field.querySelector(".field-help")) {
+        return;
+      }
+
+      const help = document.createElement("p");
+      help.className = "field-help";
+      help.id = `${id}Help`;
+      help.textContent = text;
+      field.appendChild(help);
+
+      const describedBy = control.getAttribute("aria-describedby");
+      control.setAttribute("aria-describedby", describedBy ? `${describedBy} ${help.id}` : help.id);
     });
   }
 
@@ -2745,6 +2840,7 @@
   loadCustomPresets();
   populatePresetMenu();
   initializeRanges();
+  addParameterHelp();
   enhanceRangePrecision();
   bindControls();
   updateMatrixGuide();
