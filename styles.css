@@ -39,18 +39,18 @@ body {
 .page-shell {
   position: relative;
   z-index: 1;
-  width: min(1840px, calc(100vw - 28px));
+  width: min(1420px, calc(100vw - 28px));
   margin: 0 auto;
-  padding: 14px 0 24px;
+  padding: 12px 0 22px;
 }
 
 .topbar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 12px;
-  padding: 12px 0 10px;
+  gap: 20px;
+  margin-bottom: 14px;
+  padding: 10px 0;
   border-top: 4px solid var(--line);
   border-bottom: 2px solid var(--line);
 }
@@ -72,13 +72,13 @@ h3 {
 }
 
 h1 {
-  max-width: 11ch;
-  font-size: clamp(2.2rem, 4.8vw, 4.9rem);
-  line-height: 0.88;
+  max-width: none;
+  font-size: clamp(2.15rem, 4vw, 4rem);
+  line-height: 0.9;
 }
 
 .michotte-card {
-  width: 164px;
+  width: 150px;
   margin: 0;
   text-align: center;
 }
@@ -86,7 +86,7 @@ h1 {
 .michotte-card img {
   display: block;
   width: 100%;
-  height: 112px;
+  height: 96px;
   object-fit: cover;
   border: 2px solid var(--line);
   filter: grayscale(1);
@@ -130,8 +130,9 @@ h3 {
 
 .app-grid {
   display: grid;
-  grid-template-columns: minmax(340px, 390px) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(320px, 365px) minmax(720px, 940px);
+  gap: 16px;
+  justify-content: center;
   align-items: start;
 }
 
@@ -155,7 +156,7 @@ h3 {
 }
 
 .panel-block {
-  padding: 12px;
+  padding: 11px;
   border-bottom: 2px solid var(--line);
   background: var(--paper);
 }
@@ -183,7 +184,7 @@ h3 {
 .control-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 9px;
 }
 
 .field {
@@ -350,7 +351,9 @@ button:disabled {
 }
 
 .stage-panel {
-  padding: 12px;
+  padding: 10px;
+  width: 100%;
+  max-width: 940px;
 }
 
 .preview-bar {
@@ -358,18 +361,18 @@ button:disabled {
   grid-template-columns: 1fr auto;
   gap: 12px;
   align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
+  margin-bottom: 9px;
+  padding-bottom: 9px;
   border-bottom: 2px solid var(--line);
 }
 
 .preview-button {
-  min-width: 180px;
-  min-height: 50px;
+  min-width: 154px;
+  min-height: 44px;
   background: var(--accent);
   border-color: var(--accent);
   color: white;
-  font-size: 1.05rem;
+  font-size: 0.96rem;
 }
 
 .stage-frame {
