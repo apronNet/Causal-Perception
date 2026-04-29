@@ -33,11 +33,7 @@ body {
 body {
   font-family: "Helvetica Neue", Helvetica, "Nimbus Sans", "Arial", sans-serif;
   color: var(--ink);
-  background:
-    linear-gradient(rgba(17, 17, 15, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(17, 17, 15, 0.035) 1px, transparent 1px),
-    var(--bg);
-  background-size: 24px 24px;
+  background: var(--bg);
 }
 
 .page-shell {
@@ -193,9 +189,12 @@ h3 {
 .field-help {
   grid-column: 1 / -1;
   margin: 0;
-  color: var(--muted);
-  font-size: 0.76rem;
-  line-height: 1.3;
+  border-left: 3px solid var(--accent);
+  padding: 7px 8px;
+  background: var(--paper-soft);
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.35;
 }
 
 input[type="text"],

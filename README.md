@@ -13,7 +13,7 @@ No installation is needed. The app runs entirely in the browser, and generated v
 ## Visitor path
 
 1. Open the hosted app.
-2. Pick `Causal capture scenario` and press `Apply`.
+2. Pick `Causal capture demo` and press `Apply`.
 3. Press `Play` to inspect the clip.
 4. Switch to `Clean stimulus` or `Clean stimulus with fixation` before exporting participant-facing clips.
 5. Press `Export` for a video and `Export JSON` for the parameter record.
@@ -22,7 +22,7 @@ No installation is needed. The app runs entirely in the browser, and generated v
 
 - previews launching clips in a browser canvas
 - exposes the spatiotemporal parameters that matter for these papers: overlap, stop/continue/entrain behavior, delay, context type, context duration, context timing, direction, and separation
-- includes literature-grounded presets for the 0% launch reference, 100% pass baseline, a visitor-facing causal capture scenario, synchronized causal capture, single-object control, 50 ms context window, 200 ms asynchronous control, opposite-direction capture, COGS 50% overlap, and COGS entraining
+- includes literature-grounded presets for clear launch, pass baseline, causal capture, single-object control, brief context, asynchronous context, opposite-direction context, overlap midpoint, and entraining/push conditions
 - reports overlap percentage, event category, capture-window status, and approach/onset timing for the current stimulus
 - supports lab-preview, clean-stimulus, and clean-stimulus-with-fixation rendering modes
 - adds exact numeric entry beside each slider, so pilot values can be typed rather than approximated by dragging
@@ -54,7 +54,7 @@ Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ## How to use it
 
-1. Start from the closest preset. Use S&N 100% pass for the isolated full-overlap baseline and S&N capture for the synchronized launch-context condition.
+1. Start from the closest preset. Use `Pass baseline (100% overlap)` for the isolated full-overlap baseline and `Causal capture demo` for the synchronized launch-context condition.
 2. Tune event-structure variables first: speed, delay, overlap, and whether the launcher stops, continues, or entrains the target.
 3. Add context only when it is part of the hypothesis: nearby launch, single moving object, context window, timing, direction, and vertical separation.
 4. Check the standards cards after each change. They summarize spatial relation, event category, capture timing, and approach/onset timing for the current stimulus.

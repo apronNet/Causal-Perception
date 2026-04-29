@@ -122,7 +122,7 @@
 
   const presets = {
     canonical: {
-      label: "S&N 0% launch",
+      label: "Clear launch (0% overlap)",
       summary:
         "Reference event from Scholl and Nakayama: 0% overlap, no context, and a direct launch.",
       note:
@@ -152,7 +152,7 @@
       }
     },
     snPassBaseline: {
-      label: "S&N 100% pass",
+      label: "Pass baseline (100% overlap)",
       summary:
         "The judged event has 100% overlap and no context; Scholl and Nakayama report mostly pass percepts.",
       note:
@@ -182,7 +182,7 @@
       }
     },
     causalCaptureScenario: {
-      label: "Causal capture scenario",
+      label: "Causal capture demo",
       summary:
         "A full-overlap test event is judged while a synchronized nearby launch supplies the causal context.",
       note:
@@ -214,7 +214,7 @@
       }
     },
     delayed: {
-      label: "Delayed launch",
+      label: "Delayed launch control",
       summary:
         "Delay the target after contact to weaken the causal impression while keeping the rest of the event canonical.",
       note:
@@ -243,7 +243,7 @@
       }
     },
     gapped: {
-      label: "Spatial gap",
+      label: "Gap control",
       summary:
         "Stop the launcher short of the target. Gap displays often weaken causal appearance, though speed and wording matter.",
       note:
@@ -272,7 +272,7 @@
       }
     },
     capture: {
-      label: "S&N capture",
+      label: "Capture: nearby launch",
       summary:
         "The same 100% overlap test is paired with a synchronized nearby launch context.",
       note:
@@ -302,7 +302,7 @@
       }
     },
     snSingleContext: {
-      label: "S&N single control",
+      label: "Control: single moving object",
       summary:
         "The 100% overlap test is paired with one moving context disc, not a launch.",
       note:
@@ -332,7 +332,7 @@
       }
     },
     captureBrief50: {
-      label: "S&N 50 ms window",
+      label: "Capture with 50 ms context",
       summary:
         "Only the impact-centered part of the launch context is shown.",
       note:
@@ -362,7 +362,7 @@
       }
     },
     captureAsync200: {
-      label: "S&N 200 ms async",
+      label: "Control: context 200 ms early",
       summary:
         "The launch context occurs 200 ms before the full-overlap test event.",
       note:
@@ -392,7 +392,7 @@
       }
     },
     captureOpposite: {
-      label: "S&N opposite direction",
+      label: "Control: opposite-direction context",
       summary:
         "The context remains a launch, but its motion direction is reversed.",
       note:
@@ -422,7 +422,7 @@
       }
     },
     occludedCapture: {
-      label: "Occluded hidden launch",
+      label: "Hidden launch with occluder",
       summary:
         "A tunnel occluder makes the main event ambiguous between a pass-through and a hidden launch. A nearby launch context biases the hidden-launch reading.",
       note:
@@ -480,7 +480,7 @@
       }
     },
     ohlAmbiguous: {
-      label: "175 ms ambiguous test",
+      label: "Ambiguous test (50% overlap)",
       summary:
         "A fast 50% overlap display matching the launch/pass continuum used in recent visual-adaptation work.",
       note:
@@ -509,7 +509,7 @@
       }
     },
     triggering: {
-      label: "Triggering-like launch",
+      label: "Triggering event",
       summary:
         "The target moves faster than the launcher after contact, producing a triggering-style causal event.",
       note:
@@ -538,7 +538,7 @@
       }
     },
     entraining: {
-      label: "COGS entraining",
+      label: "Entraining / push event",
       summary:
         "The launcher continues with the target after contact, producing the push/entrain event family.",
       note:
@@ -568,7 +568,7 @@
       }
     },
     cogsOverlap50: {
-      label: "COGS 50% overlap",
+      label: "Overlap midpoint (50%)",
       summary:
         "A launch/pass test event at the middle of the 0-100% overlap continuum.",
       note:
@@ -598,7 +598,7 @@
       }
     },
     bridgedGap: {
-      label: "Distal launch with bridge",
+      label: "Distal launch with bridge marker",
       summary:
         "A spatial gap display with a bridge marker, after Young and Falmier's distance-marker manipulation.",
       note:
@@ -1399,15 +1399,6 @@
     drawCtx.restore();
   }
 
-  function drawTrack(drawCtx, y) {
-    drawCtx.strokeStyle = "rgba(237, 244, 244, 0.18)";
-    drawCtx.lineWidth = 2;
-    drawCtx.beginPath();
-    drawCtx.moveTo(78, y + 42);
-    drawCtx.lineTo(STAGE_WIDTH - 78, y + 42);
-    drawCtx.stroke();
-  }
-
   function drawSpatialMarker(drawCtx, state, eventState) {
     if (state.markerMode === "none" || state.gapPx <= 0) {
       return;
@@ -1542,10 +1533,6 @@
 
     if (contextWindowMs < 740 && Math.abs(adjustedTime - mainEvent.geometry.stopTime) > contextWindowMs / 2) {
       return;
-    }
-
-    if (state.renderMode === "lab") {
-      drawTrack(drawCtx, laneY);
     }
 
     if (state.contextMode === "single") {
@@ -1719,20 +1706,9 @@
     }
     prepareFrameContext(drawCtx);
     drawCtx.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
-    const theme = drawStageBackground(drawCtx, state);
-
-    if (state.renderMode === "lab") {
-      drawCtx.fillStyle = theme[1];
-      for (let i = 0; i < 10; i += 1) {
-        const y = 84 + i * 44;
-        drawCtx.fillRect(0, y, STAGE_WIDTH, 1);
-      }
-    }
+    drawStageBackground(drawCtx, state);
 
     const laneY = getMainLaneY(state);
-    if (state.renderMode === "lab") {
-      drawTrack(drawCtx, laneY);
-    }
 
     const eventState = getMainEventState(state, t, laneY);
     drawContextEvent(drawCtx, state, t, eventState);
