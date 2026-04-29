@@ -145,7 +145,7 @@
     soundType: "Impact sound type.",
     soundVolume: "Impact sound level.",
     outputFormat: "Requested browser video format.",
-    fps: "Frames per second.",
+    fps: "Preview and export frames per second.",
     videoBitrate: "Higher values reduce compression.",
     fileLabel: "Base filename for exports."
   };
@@ -2204,13 +2204,22 @@
     }
   }
 
+  function getPreviewFrameTime(elapsed, state) {
+    const fps = Math.max(1, Math.round(Number(state.fps) || 60));
+    const frameDuration = 1000 / fps;
+    if (elapsed >= state.durationMs) {
+      return state.durationMs;
+    }
+    return Math.min(Math.floor(elapsed / frameDuration) * frameDuration, state.durationMs);
+  }
+
   function tickPreview(now) {
     const state = cloneState();
     if (previewStart === 0) {
       previewStart = now;
     }
     const elapsed = now - previewStart;
-    drawFrame(state, Math.min(elapsed, state.durationMs), ctx);
+    drawFrame(state, getPreviewFrameTime(elapsed, state), ctx);
 
     if (elapsed < state.durationMs) {
       previewHandle = requestAnimationFrame(tickPreview);
