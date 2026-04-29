@@ -57,6 +57,15 @@
     "contextOffsetMs",
     "contextDirection",
     "contextYOffset",
+    "contextLeadInMs",
+    "contextLauncherSpeed",
+    "contextLauncherAccel",
+    "contextLauncherBehavior",
+    "contextDelayMs",
+    "contextGapPx",
+    "contextTargetSpeedRatio",
+    "contextTargetAccel",
+    "contextTargetAngle",
     "renderMode",
     "stageTheme",
     "objectStyle",
@@ -67,6 +76,7 @@
     "launcherColor",
     "targetColor",
     "contextColor",
+    "contextTargetColor",
     "groupingOriginalColor",
     "groupingContextColor",
     "pxPerDva",
@@ -81,6 +91,64 @@
     "videoBitrate",
     "fileLabel"
   ];
+
+  const parameterHelp = {
+    presetSelect: "Load a standard case or saved preset.",
+    presetNameInput: "Name current settings before saving.",
+    durationMs: "Total movie length.",
+    leadInMs: "Time before contact.",
+    launcherSpeed: "First disc speed before contact.",
+    launcherAccel: "First disc acceleration before contact.",
+    targetSpeedRatio: "Second disc speed relative to the first.",
+    targetAccel: "Second disc acceleration after contact.",
+    launcherBehavior: "Whether the first disc stops or continues.",
+    targetAngle: "Second disc motion direction.",
+    delayMs: "Pause between contact and second-disc motion.",
+    gapPx: "Contact relation: 0 touches, negative values overlap.",
+    markerMode: "Optional marker for gap controls.",
+    ballRadius: "Disc radius in pixels.",
+    occluderEnabled: "Show a tunnel occluder.",
+    occluderWidth: "Width of the occluding strip.",
+    contactOcclusionMode: "Which disc appears in front at overlap.",
+    contextMode: "Nearby event shown with the test event.",
+    contextDurationMs: "How long context is visible.",
+    contextOffsetMs: "How early the context starts.",
+    contextDirection: "Context motion direction.",
+    contextYOffset: "Vertical separation between rows.",
+    contextLeadInMs: "Context time before contact.",
+    contextLauncherSpeed: "Context first-disc speed.",
+    contextLauncherAccel: "Context first-disc acceleration.",
+    contextLauncherBehavior: "Context first disc after contact.",
+    contextDelayMs: "Context pause after contact.",
+    contextGapPx: "Context contact or overlap.",
+    contextTargetSpeedRatio: "Context second-disc speed ratio.",
+    contextTargetAccel: "Context second-disc acceleration.",
+    contextTargetAngle: "Context second-disc direction.",
+    renderMode: "Preview labels, clean movie, or fixation.",
+    stageTheme: "Background luminance.",
+    objectStyle: "Flat discs or shaded balls.",
+    groupingMode: "Draw boxes to group rows.",
+    contactGuideMode: "Draw contact alignment guides.",
+    colorChangeMode: "Switch color at contact.",
+    colorChangeColor: "Color used for the switch.",
+    launcherColor: "First disc color.",
+    targetColor: "Second disc color.",
+    contextColor: "Context first-disc color.",
+    contextTargetColor: "Context second-disc color.",
+    groupingOriginalColor: "Box color for the test row.",
+    groupingContextColor: "Box color for the context row.",
+    pxPerDva: "Pixels per visual degree for metadata.",
+    fixationDva: "Fixation size in visual degrees.",
+    stimulusXOffset: "Horizontal stimulus shift.",
+    stimulusYOffset: "Vertical stimulus shift.",
+    soundEnabled: "Add contact-locked sound if supported.",
+    soundType: "Impact sound type.",
+    soundVolume: "Impact sound level.",
+    outputFormat: "Requested browser video format.",
+    fps: "Frames per second.",
+    videoBitrate: "Higher values reduce compression.",
+    fileLabel: "Base filename for exports."
+  };
 
   const presets = {
     canonical: {
@@ -608,6 +676,15 @@
     launcherAccel: 0,
     targetAccel: 0,
     contextDurationMs: 750,
+    contextLeadInMs: 200,
+    contextLauncherSpeed: 860,
+    contextLauncherAccel: 0,
+    contextLauncherBehavior: "stop",
+    contextDelayMs: 0,
+    contextGapPx: 0,
+    contextTargetSpeedRatio: 1,
+    contextTargetAccel: 0,
+    contextTargetAngle: 0,
     contactOcclusionMode: "target-front"
   };
   const presentationDefaults = {
@@ -621,6 +698,7 @@
     launcherColor: "#e53935",
     targetColor: "#27c35a",
     contextColor: "#e53935",
+    contextTargetColor: "#27c35a",
     groupingOriginalColor: "#e05a5a",
     groupingContextColor: "#d8a51b",
     pxPerDva: 40,
@@ -647,6 +725,7 @@
   let previewHandle = null;
   let impactSoundTimer = null;
   let sharedAudioContext = null;
+  let parameterTooltip = null;
   let previewStart = 0;
   let isExporting = false;
   let customPresetKeys = [];
@@ -695,6 +774,15 @@
       contextOffsetMs: Number(controls.contextOffsetMs.value),
       contextDirection: controls.contextDirection.value,
       contextYOffset: Number(controls.contextYOffset.value),
+      contextLeadInMs: Number(controls.contextLeadInMs.value),
+      contextLauncherSpeed: Number(controls.contextLauncherSpeed.value),
+      contextLauncherAccel: Number(controls.contextLauncherAccel.value),
+      contextLauncherBehavior: controls.contextLauncherBehavior.value,
+      contextDelayMs: Number(controls.contextDelayMs.value),
+      contextGapPx: Number(controls.contextGapPx.value),
+      contextTargetSpeedRatio: Number(controls.contextTargetSpeedRatio.value),
+      contextTargetAccel: Number(controls.contextTargetAccel.value),
+      contextTargetAngle: Number(controls.contextTargetAngle.value),
       renderMode: controls.renderMode.value,
       stageTheme: controls.stageTheme.value,
       objectStyle: controls.objectStyle.value,
@@ -705,6 +793,7 @@
       launcherColor: controls.launcherColor.value,
       targetColor: controls.targetColor.value,
       contextColor: controls.contextColor.value,
+      contextTargetColor: controls.contextTargetColor.value,
       groupingOriginalColor: controls.groupingOriginalColor.value,
       groupingContextColor: controls.groupingContextColor.value,
       pxPerDva: Number(controls.pxPerDva.value),
@@ -816,6 +905,71 @@
       fineInput.addEventListener("change", () => {
         fineInput.value = range.value;
       });
+    });
+  }
+
+  function getParameterTooltip() {
+    if (!parameterTooltip) {
+      parameterTooltip = document.createElement("div");
+      parameterTooltip.className = "parameter-tooltip hidden";
+      parameterTooltip.setAttribute("role", "status");
+      document.body.appendChild(parameterTooltip);
+    }
+    return parameterTooltip;
+  }
+
+  function hideParameterTooltip() {
+    if (parameterTooltip) {
+      parameterTooltip.classList.add("hidden");
+    }
+  }
+
+  function showParameterTooltip(field, text) {
+    const tooltip = getParameterTooltip();
+    const margin = 12;
+    tooltip.textContent = text;
+    tooltip.classList.remove("hidden");
+
+    const fieldRect = field.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const left = clamp(fieldRect.left, margin, window.innerWidth - tooltipRect.width - margin);
+    const below = fieldRect.bottom + 8;
+    const top =
+      below + tooltipRect.height <= window.innerHeight - margin
+        ? below
+        : Math.max(margin, fieldRect.top - tooltipRect.height - 8);
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function bindParameterHelp() {
+    Object.entries(parameterHelp).forEach(([id, text]) => {
+      const control = document.getElementById(id);
+      const field = control?.closest(".field");
+      if (!field || field.dataset.helpBound === "true") {
+        return;
+      }
+
+      field.classList.add("help-field");
+      field.dataset.helpBound = "true";
+      field.dataset.helpText = text;
+      field.addEventListener("mouseenter", () => showParameterTooltip(field, text));
+      field.addEventListener("mouseleave", hideParameterTooltip);
+      field.addEventListener("focusin", () => showParameterTooltip(field, text));
+      field.addEventListener("focusout", (event) => {
+        if (!field.contains(event.relatedTarget)) {
+          hideParameterTooltip();
+        }
+      });
+    });
+
+    window.addEventListener("scroll", hideParameterTooltip, true);
+    window.addEventListener("resize", hideParameterTooltip);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        hideParameterTooltip();
+      }
     });
   }
 
@@ -1023,6 +1177,21 @@
     drawFrame(cloneState(), 0, ctx);
   }
 
+  function withContextMotionDefaults(values) {
+    return {
+      ...values,
+      contextLeadInMs: values.contextLeadInMs ?? values.leadInMs ?? stimulusDefaults.contextLeadInMs,
+      contextLauncherSpeed: values.contextLauncherSpeed ?? values.launcherSpeed ?? stimulusDefaults.contextLauncherSpeed,
+      contextLauncherAccel: values.contextLauncherAccel ?? values.launcherAccel ?? stimulusDefaults.contextLauncherAccel,
+      contextLauncherBehavior: values.contextLauncherBehavior ?? stimulusDefaults.contextLauncherBehavior,
+      contextDelayMs: values.contextDelayMs ?? stimulusDefaults.contextDelayMs,
+      contextGapPx: values.contextGapPx ?? stimulusDefaults.contextGapPx,
+      contextTargetSpeedRatio: values.contextTargetSpeedRatio ?? values.targetSpeedRatio ?? stimulusDefaults.contextTargetSpeedRatio,
+      contextTargetAccel: values.contextTargetAccel ?? values.targetAccel ?? stimulusDefaults.contextTargetAccel,
+      contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle
+    };
+  }
+
   function applyPreset(presetKey) {
     const preset = getPreset(presetKey);
     activePresetKey = presetKey;
@@ -1030,7 +1199,7 @@
     presetSelect.value = presetKey;
     presetNameInput.value = isCustomPresetKey(presetKey) ? preset.label : "";
     syncPresetActions();
-    setControls({ ...stimulusDefaults, ...preset.values });
+    setControls({ ...stimulusDefaults, ...withContextMotionDefaults(preset.values) });
   }
 
   function getDynamicCopy(state) {
@@ -1240,10 +1409,6 @@
     updateStandards(state);
   }
 
-  function lerp(a, b, t) {
-    return a + (b - a) * t;
-  }
-
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
@@ -1277,6 +1442,7 @@
     const launcher = normalizeHexColor(state.launcherColor, "#e53935");
     const target = normalizeHexColor(state.targetColor, "#27c35a");
     const context = normalizeHexColor(state.contextColor, "#e53935");
+    const contextTarget = normalizeHexColor(state.contextTargetColor, "#27c35a");
     return {
       launcher: {
         fill: launcher,
@@ -1289,6 +1455,10 @@
       context: {
         fill: context,
         outline: shadeHexColor(context, -0.5)
+      },
+      contextTarget: {
+        fill: contextTarget,
+        outline: shadeHexColor(contextTarget, -0.46)
       }
     };
   }
@@ -1483,7 +1653,8 @@
 
     const adjustedTime = time - state.contextOffsetMs;
     const contextWindowMs = Number(state.contextDurationMs) || 750;
-    return contextWindowMs >= 740 || Math.abs(adjustedTime - mainGeometry.stopTime) <= contextWindowMs / 2;
+    const contextGeometry = getGeometry(getContextMotionState(state), mainGeometry.laneY + state.contextYOffset);
+    return contextWindowMs >= 740 || Math.abs(adjustedTime - contextGeometry.stopTime) <= contextWindowMs / 2;
   }
 
   function drawGroupingBoxes(drawCtx, state, eventState) {
@@ -1497,12 +1668,18 @@
       state.groupingMode === "both" &&
       isContextEventVisible(state, eventState.time, eventState.geometry) &&
       rowGap > 0;
-    const maxHalfHeight = groupedRowsAreClose ? Math.max(radius * 1.5, rowGap / 2 - 8) : radius * 2.3;
+    const maxHalfHeight = groupedRowsAreClose ? Math.max(10, rowGap / 2 - 8) : radius * 2.3;
     const boxHalfHeight = Math.min(radius * 2.3, maxHalfHeight);
+    const contextState = getContextMotionState(state);
+    const contextLaneY = eventState.geometry.laneY + state.contextYOffset;
+    const contextGeometry = getGeometry(contextState, contextLaneY);
 
-    const drawBox = (label, laneY, color, fallback) => {
-      const left = Math.max(20, eventState.geometry.launcherStartX - radius * 1.8);
-      const right = Math.min(STAGE_WIDTH - 20, eventState.geometry.targetBaseX + radius * 7.2);
+    const drawBox = (label, geometry, directionSign, color, fallback) => {
+      const launcherStartX = directionSign === 1 ? geometry.launcherStartX : STAGE_WIDTH - geometry.launcherStartX;
+      const targetBaseX = directionSign === 1 ? geometry.targetBaseX : STAGE_WIDTH - geometry.targetBaseX;
+      const left = Math.max(20, Math.min(launcherStartX, targetBaseX) - radius * 1.8);
+      const right = Math.min(STAGE_WIDTH - 20, Math.max(launcherStartX, targetBaseX) + radius * 7.2);
+      const laneY = geometry.laneY;
       const top = laneY - boxHalfHeight;
       const height = boxHalfHeight * 2;
       const strokeColor = hexToRgba(color, state.stageTheme === "light" ? 0.86 : 0.9, fallback);
@@ -1511,7 +1688,8 @@
       drawCtx.save();
       drawCtx.strokeStyle = strokeColor;
       drawCtx.fillStyle = fillColor;
-      drawCtx.lineWidth = 3;
+      drawCtx.lineWidth = 2.5;
+      drawCtx.setLineDash([]);
       drawCtx.beginPath();
       drawCtx.roundRect(left, top, right - left, height, 16);
       drawCtx.fill();
@@ -1526,14 +1704,20 @@
     };
 
     if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original set", eventState.geometry.laneY, state.groupingOriginalColor, "#e05a5a");
+      drawBox("Original set", eventState.geometry, 1, state.groupingOriginalColor, "#e05a5a");
     }
 
     if (
       isContextEventVisible(state, eventState.time, eventState.geometry) &&
       (state.groupingMode === "context" || state.groupingMode === "both")
     ) {
-      drawBox("Context set", eventState.geometry.laneY + state.contextYOffset, state.groupingContextColor, "#d8a51b");
+      drawBox(
+        "Context set",
+        contextGeometry,
+        eventState.geometry.contextDirectionSign,
+        state.groupingContextColor,
+        "#d8a51b"
+      );
     }
   }
 
@@ -1554,20 +1738,22 @@
       });
     }
     if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
+      const contextState = getContextMotionState(state);
+      const contextGeometry = getGeometry(contextState, eventState.geometry.laneY + state.contextYOffset);
       lanes.push({
-        laneY: eventState.geometry.laneY + state.contextYOffset,
+        laneY: contextGeometry.laneY,
         x:
           eventState.geometry.contextDirectionSign === 1
-            ? eventState.geometry.targetBaseX
-            : STAGE_WIDTH - eventState.geometry.targetBaseX,
+            ? contextGeometry.targetBaseX
+            : STAGE_WIDTH - contextGeometry.targetBaseX,
         color: state.groupingContextColor,
         fallback: "#d8a51b"
       });
     }
 
     drawCtx.save();
-    drawCtx.lineWidth = 2;
-    drawCtx.setLineDash([8, 9]);
+    drawCtx.lineWidth = 1.6;
+    drawCtx.setLineDash([]);
     lanes.forEach((lane) => {
       drawCtx.strokeStyle = hexToRgba(lane.color, state.stageTheme === "light" ? 0.62 : 0.72, lane.fallback);
       drawCtx.beginPath();
@@ -1655,6 +1841,92 @@
     };
   }
 
+  function getContextMotionState(state) {
+    return {
+      ...state,
+      leadInMs: state.contextLeadInMs,
+      launcherSpeed: state.contextLauncherSpeed,
+      launcherAccel: state.contextLauncherAccel,
+      launcherBehavior: state.contextMode === "pass" ? "continue" : state.contextLauncherBehavior,
+      delayMs: state.contextDelayMs,
+      gapPx: state.contextGapPx,
+      targetSpeedRatio: state.contextTargetSpeedRatio,
+      targetAccel: state.contextTargetAccel,
+      targetAngle: state.contextTargetAngle
+    };
+  }
+
+  function orientEventX(x, directionSign) {
+    return directionSign === 1 ? x : STAGE_WIDTH - x;
+  }
+
+  function getDirectedEventState(eventState, t, laneY, directionSign) {
+    const geometry = getGeometry(eventState, laneY);
+    const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
+    const approachDistance = Math.min(
+      geometry.launcherDistance,
+      displacementAt(approachElapsed, eventState.launcherSpeed, eventState.launcherAccel)
+    );
+    let launcherX = orientEventX(geometry.launcherStartX + approachDistance, directionSign);
+    let launcherY = laneY;
+    let targetX = orientEventX(geometry.targetBaseX, directionSign);
+    let targetY = laneY;
+
+    if (eventState.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
+      const targetElapsed = t - geometry.targetStartTime;
+      const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, eventState.targetAccel);
+      targetX += directionSign * Math.cos(geometry.angleRad) * moveDistance;
+      targetY += Math.sin(geometry.angleRad) * moveDistance;
+    }
+
+    if (eventState.launcherBehavior === "continue" && t >= geometry.stopTime) {
+      const elapsed = t - geometry.stopTime;
+      const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, eventState.launcherAccel);
+      launcherX = orientEventX(geometry.launcherStopX, directionSign) + directionSign * Math.cos(geometry.angleRad) * moveDistance;
+      launcherY = laneY + Math.sin(geometry.angleRad) * moveDistance;
+    }
+
+    if (eventState.launcherBehavior === "entrain" && t >= geometry.targetStartTime) {
+      const separation = geometry.radius * 2;
+      launcherX = targetX - directionSign * Math.cos(geometry.angleRad) * separation;
+      launcherY = targetY - Math.sin(geometry.angleRad) * separation;
+    }
+
+    return {
+      geometry,
+      time: t,
+      launcherX,
+      launcherY,
+      targetX,
+      targetY
+    };
+  }
+
+  function getDirectedSingleEventState(eventState, t, laneY, directionSign) {
+    const geometry = getGeometry(eventState, laneY);
+    const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
+    const approachDistance = Math.min(
+      geometry.launcherDistance,
+      displacementAt(approachElapsed, eventState.launcherSpeed, eventState.launcherAccel)
+    );
+    let singleX = orientEventX(geometry.launcherStartX + approachDistance, directionSign);
+    let singleY = laneY;
+
+    if (t > geometry.stopTime) {
+      const elapsed = t - geometry.stopTime;
+      const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, eventState.launcherAccel);
+      singleX = orientEventX(geometry.launcherStopX, directionSign) + directionSign * Math.cos(geometry.angleRad) * moveDistance;
+      singleY = laneY + Math.sin(geometry.angleRad) * moveDistance;
+    }
+
+    return {
+      geometry,
+      time: t,
+      singleX,
+      singleY
+    };
+  }
+
   function drawContextEvent(drawCtx, state, t, mainEvent) {
     if (!isContextEventVisible(state, t, mainEvent.geometry)) {
       return;
@@ -1663,61 +1935,35 @@
     const palette = getPalette(state);
     const laneY = mainEvent.geometry.laneY + state.contextYOffset;
     const directionSign = mainEvent.geometry.contextDirectionSign;
-    const contextRadius = state.ballRadius * 0.92;
-    const targetBaseX = directionSign === 1 ? mainEvent.geometry.targetBaseX : STAGE_WIDTH - mainEvent.geometry.targetBaseX;
-    const launcherStartX = directionSign === 1 ? 92 : STAGE_WIDTH - 92;
     const adjustedTime = t - state.contextOffsetMs;
+    const contextState = getContextMotionState(state);
+
     if (state.contextMode === "single") {
-      const impactX = targetBaseX;
-      let singleX = launcherStartX;
-
-      if (adjustedTime >= state.leadInMs && adjustedTime <= mainEvent.geometry.stopTime) {
-        const progress = clamp(
-          (adjustedTime - state.leadInMs) / Math.max(1, mainEvent.geometry.travelMs),
-          0,
-          1
-        );
-        singleX = lerp(launcherStartX, impactX, progress);
-      } else if (adjustedTime > mainEvent.geometry.stopTime) {
-        const elapsed = adjustedTime - mainEvent.geometry.stopTime;
-        singleX =
-          impactX + directionSign * displacementAt(elapsed, mainEvent.geometry.launcherImpactSpeed, state.launcherAccel);
-      }
-
-      const singlePalette = adjustedTime < mainEvent.geometry.stopTime ? palette.context : palette.target;
-      drawObject(drawCtx, state, singleX, laneY, contextRadius, singlePalette.fill, singlePalette.outline);
+      const singleEvent = getDirectedSingleEventState(contextState, adjustedTime, laneY, directionSign);
+      const singlePalette = adjustedTime < singleEvent.geometry.stopTime ? palette.context : palette.contextTarget;
+      drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, state.ballRadius, singlePalette.fill, singlePalette.outline);
       return;
     }
 
-    const launcherStopX =
-      state.contextMode === "pass" ? targetBaseX : targetBaseX - directionSign * contextRadius * 2;
-    const distance = Math.abs(launcherStopX - launcherStartX);
-    const travelMs = Math.max(1, mainEvent.geometry.travelMs);
-    const contextImpactSpeed = distance / (travelMs / 1000);
-    const approachElapsed = clamp(adjustedTime - state.leadInMs, 0, travelMs);
-    const approachDistance = distance * (approachElapsed / travelMs);
-    let launcherX = launcherStartX + directionSign * approachDistance;
-
-    if (state.contextMode === "pass") {
-      if (adjustedTime >= mainEvent.geometry.stopTime) {
-        const elapsed = adjustedTime - mainEvent.geometry.stopTime;
-        launcherX =
-          launcherStopX + directionSign * displacementAt(elapsed, contextImpactSpeed, state.launcherAccel);
-      }
-      drawObject(drawCtx, state, targetBaseX, laneY, contextRadius, palette.target.fill, palette.target.outline);
-      drawObject(drawCtx, state, launcherX, laneY, contextRadius, palette.context.fill, palette.context.outline);
-      return;
-    }
-
-    let targetX = targetBaseX;
-    if (adjustedTime >= mainEvent.geometry.stopTime) {
-      const elapsed = adjustedTime - mainEvent.geometry.stopTime;
-      const distanceMoved = displacementAt(elapsed, contextImpactSpeed, state.targetAccel);
-      targetX += directionSign * distanceMoved;
-    }
-
-    drawObject(drawCtx, state, launcherX, laneY, contextRadius, palette.context.fill, palette.context.outline);
-    drawObject(drawCtx, state, targetX, laneY, contextRadius, palette.target.fill, palette.target.outline);
+    const contextEvent = getDirectedEventState(contextState, adjustedTime, laneY, directionSign);
+    drawObject(
+      drawCtx,
+      state,
+      contextEvent.launcherX,
+      contextEvent.launcherY,
+      state.ballRadius,
+      palette.context.fill,
+      palette.context.outline
+    );
+    drawObject(
+      drawCtx,
+      state,
+      contextEvent.targetX,
+      contextEvent.targetY,
+      state.ballRadius,
+      palette.contextTarget.fill,
+      palette.contextTarget.outline
+    );
   }
 
   function drawOccluder(drawCtx, state, laneY) {
@@ -2154,12 +2400,22 @@
       contextOffsetMs: state.contextOffsetMs,
       contextDirection: state.contextDirection,
       contextSeparationPx: state.contextYOffset,
+      contextLeadInMs: state.contextLeadInMs,
+      contextLauncherSpeedPxPerSec: state.contextLauncherSpeed,
+      contextLauncherAccelerationPxPerSec2: state.contextLauncherAccel,
+      contextLauncherBehavior: state.contextLauncherBehavior,
+      contextDelayMs: state.contextDelayMs,
+      contextGapPx: state.contextGapPx,
+      contextTargetSpeedRatio: state.contextTargetSpeedRatio,
+      contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
+      contextTargetAngleDegrees: state.contextTargetAngle,
       groupingMode: state.groupingMode,
       contactGuideMode: state.contactGuideMode,
       colorChangeMode: state.colorChangeMode,
       launcherColor: state.launcherColor,
       targetColor: state.targetColor,
       contextColor: state.contextColor,
+      contextTargetColor: state.contextTargetColor,
       groupingOriginalColor: state.groupingOriginalColor,
       groupingContextColor: state.groupingContextColor
     };
@@ -2197,6 +2453,15 @@
         contextOffsetMs: state.contextOffsetMs,
         contextDirection: state.contextDirection,
         contextYOffsetPx: state.contextYOffset,
+        contextLeadInMs: state.contextLeadInMs,
+        contextLauncherSpeedPxPerSec: state.contextLauncherSpeed,
+        contextLauncherAccelerationPxPerSec2: state.contextLauncherAccel,
+        contextLauncherBehavior: state.contextLauncherBehavior,
+        contextDelayMs: state.contextDelayMs,
+        contextGapPx: state.contextGapPx,
+        contextTargetSpeedRatio: state.contextTargetSpeedRatio,
+        contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
+        contextTargetAngleDegrees: state.contextTargetAngle,
         renderMode: state.renderMode,
         stageTheme: state.stageTheme,
         objectStyle: state.objectStyle,
@@ -2207,6 +2472,7 @@
         launcherColor: state.launcherColor,
         targetColor: state.targetColor,
         contextColor: state.contextColor,
+        contextTargetColor: state.contextTargetColor,
         groupingOriginalColor: state.groupingOriginalColor,
         groupingContextColor: state.groupingContextColor,
         pxPerDva: state.pxPerDva,
@@ -2324,6 +2590,15 @@
         contextOffsetMs: condition.contextOffsetMs,
         contextDirection: condition.contextDirection,
         contextYOffsetPx: condition.contextYOffset,
+        contextLeadInMs: condition.contextLeadInMs,
+        contextLauncherSpeedPxPerSec: condition.contextLauncherSpeed,
+        contextLauncherAccelerationPxPerSec2: condition.contextLauncherAccel,
+        contextLauncherBehavior: condition.contextLauncherBehavior,
+        contextDelayMs: condition.contextDelayMs,
+        contextGapPx: condition.contextGapPx,
+        contextTargetSpeedRatio: condition.contextTargetSpeedRatio,
+        contextTargetAccelerationPxPerSec2: condition.contextTargetAccel,
+        contextTargetAngleDegrees: condition.contextTargetAngle,
         renderMode: condition.renderMode,
         stageTheme: condition.stageTheme,
         objectStyle: condition.objectStyle,
@@ -2334,6 +2609,7 @@
         launcherColor: condition.launcherColor,
         targetColor: condition.targetColor,
         contextColor: condition.contextColor,
+        contextTargetColor: condition.contextTargetColor,
         groupingOriginalColor: condition.groupingOriginalColor,
         groupingContextColor: condition.groupingContextColor,
         pxPerDva: condition.pxPerDva,
@@ -3014,6 +3290,7 @@
           "launcherColor",
           "targetColor",
           "contextColor",
+          "contextTargetColor",
           "groupingOriginalColor",
           "groupingContextColor",
           "pxPerDva",
@@ -3094,6 +3371,7 @@
   populatePresetMenu();
   initializeRanges();
   enhanceRangePrecision();
+  bindParameterHelp();
   bindControls();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();

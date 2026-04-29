@@ -206,6 +206,26 @@ h3 {
   letter-spacing: 0.055em;
 }
 
+.help-field > span {
+  cursor: help;
+  text-decoration: underline dotted rgba(27, 26, 23, 0.35) 1px;
+  text-underline-offset: 3px;
+}
+
+.parameter-tooltip {
+  position: fixed;
+  z-index: 30;
+  max-width: min(310px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border: 2px solid var(--line);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  pointer-events: none;
+}
+
 .field output {
   min-height: 1.15em;
   color: var(--accent-dark);
@@ -457,6 +477,10 @@ canvas {
 }
 
 .page-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
   margin-top: 18px;
   padding: 12px 0 0;
   border-top: 2px solid var(--line);
@@ -465,6 +489,20 @@ canvas {
 .page-footer p {
   margin: 0;
   font-size: 0.82rem;
+}
+
+.page-footer small {
+  max-width: 320px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.page-footer code {
+  font-family: inherit;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .hidden {
@@ -532,6 +570,15 @@ canvas {
   .stage-overlay {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .page-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .page-footer small {
+    max-width: none;
+    text-align: left;
   }
 
   .range-pair {
