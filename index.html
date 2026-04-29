@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Causal Launching Studio</title>
-    <link rel="stylesheet" href="styles.css?v=20260429-parameter-help" />
+    <link rel="stylesheet" href="styles.css?v=20260429-condition-set" />
   </head>
   <body>
     <div class="page-shell">
@@ -339,51 +339,14 @@
             </article>
           </div>
 
-          <section class="howto-panel" aria-label="How to use Causal Launching Studio">
-            <div class="section-heading">
-              <h2>Run</h2>
-              <span class="microcopy">4 steps</span>
-            </div>
-            <div class="howto-grid">
-              <article class="howto-card">
-                <span class="step-number">1</span>
-                <h3>Pick preset</h3>
-                <p>
-                  Choose a case. Click Apply.
-                </p>
-              </article>
-              <article class="howto-card">
-                <span class="step-number">2</span>
-                <h3>Tune motion</h3>
-                <p>
-                  Set speed, delay, overlap.
-                </p>
-              </article>
-              <article class="howto-card">
-                <span class="step-number">3</span>
-                <h3>Add context</h3>
-                <p>
-                  Use launch, single-object, timing, direction.
-                </p>
-              </article>
-              <article class="howto-card">
-                <span class="step-number">4</span>
-                <h3>Export clip</h3>
-                <p>
-                  Use clean or fixation mode. Save video and JSON.
-                </p>
-              </article>
-            </div>
-          </section>
-
           <section class="matrix-panel">
             <div class="section-heading">
-              <h2>Matrix</h2>
-              <button id="matrixButton" class="secondary-button" type="button">Build JSON</button>
+              <h2>Condition set</h2>
+              <button id="matrixButton" class="secondary-button" type="button">Build condition JSON</button>
             </div>
             <div class="matrix-controls">
               <label class="field">
-                <span>Design family</span>
+                <span>Condition family</span>
                 <select id="matrixPreset">
                   <option value="captureContext">Context type comparison</option>
                   <option value="captureDuration">Context duration comparison</option>
@@ -394,12 +357,12 @@
               </label>
               <div>
                 <p id="matrixGuide" class="microcopy matrix-guide">
-                  Build a delay-by-overlap grid to estimate the launch/pass/delayed-launch boundary.
+                  Creates a downloadable JSON table of settings for several related stimuli. It does not make videos.
                 </p>
-                <p id="matrixSummary" class="microcopy">No matrix built yet.</p>
+                <p id="matrixSummary" class="microcopy">Pick a family, then build the condition table.</p>
               </div>
             </div>
-            <a id="matrixLink" class="download-link hidden" download>Download matrix JSON</a>
+            <a id="matrixLink" class="download-link hidden" download>Download condition JSON</a>
           </section>
 
           <section class="video-panel hidden" id="videoPanel">
@@ -419,6 +382,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260429-parameter-help"></script>
+    <script src="app.js?v=20260429-condition-set"></script>
   </body>
 </html>

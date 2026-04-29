@@ -117,7 +117,8 @@
     fps: "Frames per second for the exported video.",
     videoBitrate: "Video bitrate in Mbps. Higher values preserve cleaner edges but create larger files.",
     fileLabel: "Base filename used for the exported video and JSON sidecar.",
-    matrixPreset: "Builds a JSON condition family for systematic stimulus sets."
+    matrixPreset:
+      "Choose which variable to vary. Build condition JSON exports a condition table; it does not render videos."
   };
 
   const presets = {
@@ -673,13 +674,13 @@
     kominsky9:
       "Nine 12.5% overlap steps for finer launch/pass boundary estimates.",
     captureContext:
-      "Compare the three Scholl/Nakayama Experiment 1 cases: no context, single moving object, and launch context.",
+      "Exports three full-overlap test rows: no context, single-object context, and nearby-launch context.",
     captureDuration:
-      "Show the launch context for 750, 500, 100, or 50 ms around impact, matching the duration manipulation.",
+      "Exports launch-context rows with 750, 500, 100, and 50 ms context windows around impact.",
     captureTiming:
-      "Shift the launch context 0, 50, 100, or 200 ms before the full-overlap test event.",
+      "Exports launch-context rows where the context is synchronized or starts 50, 100, or 200 ms early.",
     captureDirection:
-      "Cross launch versus single-object context with same versus opposite direction.",
+      "Exports same- and opposite-direction launch-context rows plus matched single-object controls.",
     direction:
       "Vary motion direction and off-axis launch angle to probe direction-tuned causal routines.",
     retinotopicTransfer:
@@ -2562,11 +2563,15 @@
     matrixLink.download = filename;
     matrixLink.textContent = `Download ${filename}`;
     matrixLink.classList.remove("hidden");
-    matrixSummary.textContent = `${matrix.family}: ${matrix.conditions.length} conditions.`;
+    matrixSummary.textContent =
+      `${matrix.family}: ${matrix.conditions.length} condition rows. ` +
+      "Download the JSON and use it as a condition table.";
   }
 
   function updateMatrixGuide() {
-    matrixGuide.textContent = matrixGuides[matrixPreset.value] || "Choose a condition family to see its literature role.";
+    matrixGuide.textContent =
+      matrixGuides[matrixPreset.value] ||
+      "Choose a condition family to see which stimulus settings the JSON table will contain.";
   }
 
   async function exportVideo() {
@@ -2791,7 +2796,7 @@
     matrixButton.addEventListener("click", exportMatrix);
     matrixPreset.addEventListener("change", () => {
       updateMatrixGuide();
-      matrixSummary.textContent = "Matrix queued. Click Build JSON.";
+      matrixSummary.textContent = "Ready to build this condition table.";
     });
 
     window.addEventListener("resize", () => {

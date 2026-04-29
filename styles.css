@@ -428,7 +428,6 @@ canvas {
 }
 
 .results-card,
-.howto-panel,
 .matrix-panel,
 .video-panel {
   background: var(--paper);
@@ -440,7 +439,6 @@ canvas {
 }
 
 .results-card h2,
-.howto-panel h2,
 .matrix-panel h2,
 .video-panel h2 {
   text-transform: uppercase;
@@ -453,57 +451,10 @@ canvas {
   line-height: 1.45;
 }
 
-.howto-panel,
 .matrix-panel,
 .video-panel {
   margin-top: 12px;
   padding: 16px;
-}
-
-.howto-panel {
-  border: 2px solid var(--line);
-}
-
-.howto-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-left: 1px solid var(--line);
-  border-top: 1px solid var(--line);
-}
-
-.howto-card {
-  position: relative;
-  min-height: 132px;
-  padding: 46px 12px 12px;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: var(--paper-soft);
-}
-
-.howto-card h3 {
-  margin: 0 0 8px;
-}
-
-.howto-card p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.42;
-}
-
-.step-number {
-  position: absolute;
-  top: 11px;
-  left: 11px;
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--line);
-  background: var(--accent);
-  color: white;
-  font-weight: 800;
-  font-size: 0.8rem;
 }
 
 .matrix-guide {
@@ -566,7 +517,6 @@ canvas {
   .topbar,
   .app-grid,
   .results-grid,
-  .howto-grid,
   .standards-panel {
     grid-template-columns: 1fr;
   }

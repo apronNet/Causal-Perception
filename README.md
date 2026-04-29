@@ -60,7 +60,7 @@ Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 4. Check the standards cards after each change. They summarize spatial relation, event category, capture timing, and approach/onset timing for the current stimulus.
 5. Switch to clean stimulus or fixation mode before exporting participant-facing videos. Keep lab preview for piloting and debugging.
 6. Export both the video and the JSON sidecar. The JSON records the exact stimulus parameters, format, bitrate, and frame rate.
-7. Use Build JSON in the Matrix panel when you need a preregisterable condition family rather than one hand-tuned clip.
+7. Use `Build condition JSON` in the `Condition set` panel when you need a downloadable table of related stimulus settings rather than one hand-tuned clip.
 
 ## Literature-guided next directions
 
