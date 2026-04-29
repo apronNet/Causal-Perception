@@ -209,6 +209,15 @@
                 </select>
               </label>
               <label class="field">
+                <span>Contact guide</span>
+                <select id="contactGuideMode">
+                  <option value="none">None</option>
+                  <option value="original">Original set</option>
+                  <option value="context">Context set</option>
+                  <option value="both">Both sets</option>
+                </select>
+              </label>
+              <label class="field">
                 <span>Sudden color</span>
                 <select id="colorChangeMode">
                   <option value="none">None</option>
@@ -232,6 +241,14 @@
               <label class="field color-field">
                 <span>Context</span>
                 <input id="contextColor" type="color" />
+              </label>
+              <label class="field color-field">
+                <span>Original box</span>
+                <input id="groupingOriginalColor" type="color" />
+              </label>
+              <label class="field color-field">
+                <span>Context box</span>
+                <input id="groupingContextColor" type="color" />
               </label>
               <label class="field hidden-control">
                 <span>px / degree</span>
@@ -352,6 +369,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260429-psychopy-export"></script>
+    <script src="app.js?v=20260429-video-notes-2"></script>
   </body>
 </html>

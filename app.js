@@ -61,11 +61,14 @@
     "stageTheme",
     "objectStyle",
     "groupingMode",
+    "contactGuideMode",
     "colorChangeMode",
     "colorChangeColor",
     "launcherColor",
     "targetColor",
     "contextColor",
+    "groupingOriginalColor",
+    "groupingContextColor",
     "pxPerDva",
     "fixationDva",
     "stimulusXOffset",
@@ -168,6 +171,10 @@
         contextYOffset: 120,
         renderMode: "stimulus",
         stageTheme: "dark",
+        groupingMode: "both",
+        contactGuideMode: "both",
+        groupingOriginalColor: "#e05a5a",
+        groupingContextColor: "#d8a51b",
         fps: 60,
         fileLabel: "causal-capture-scenario"
       }
@@ -608,11 +615,14 @@
     stageTheme: "dark",
     objectStyle: "flat",
     groupingMode: "none",
+    contactGuideMode: "none",
     colorChangeMode: "none",
     colorChangeColor: "#f2d94e",
     launcherColor: "#e53935",
     targetColor: "#27c35a",
     contextColor: "#e53935",
+    groupingOriginalColor: "#e05a5a",
+    groupingContextColor: "#d8a51b",
     pxPerDva: 40,
     fixationDva: 0.3,
     stimulusXOffset: 0,
@@ -689,11 +699,14 @@
       stageTheme: controls.stageTheme.value,
       objectStyle: controls.objectStyle.value,
       groupingMode: controls.groupingMode.value,
+      contactGuideMode: controls.contactGuideMode.value,
       colorChangeMode: controls.colorChangeMode.value,
       colorChangeColor: controls.colorChangeColor.value,
       launcherColor: controls.launcherColor.value,
       targetColor: controls.targetColor.value,
       contextColor: controls.contextColor.value,
+      groupingOriginalColor: controls.groupingOriginalColor.value,
+      groupingContextColor: controls.groupingContextColor.value,
       pxPerDva: Number(controls.pxPerDva.value),
       fixationDva: Number(controls.fixationDva.value),
       stimulusXOffset: Number(controls.stimulusXOffset.value),
@@ -1252,6 +1265,14 @@
     return `#${channel(0)}${channel(2)}${channel(4)}`;
   }
 
+  function hexToRgba(hex, alpha, fallback = "#f2d94e") {
+    const safeHex = normalizeHexColor(hex, fallback).slice(1);
+    const r = parseInt(safeHex.slice(0, 2), 16);
+    const g = parseInt(safeHex.slice(2, 4), 16);
+    const b = parseInt(safeHex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`;
+  }
+
   function getPalette(state) {
     const launcher = normalizeHexColor(state.launcherColor, "#e53935");
     const target = normalizeHexColor(state.targetColor, "#27c35a");
@@ -1470,18 +1491,27 @@
       return;
     }
 
-    const drawBox = (label, laneY) => {
-      const radius = state.ballRadius;
+    const radius = state.ballRadius;
+    const rowGap = Math.abs(state.contextYOffset);
+    const groupedRowsAreClose =
+      state.groupingMode === "both" &&
+      isContextEventVisible(state, eventState.time, eventState.geometry) &&
+      rowGap > 0;
+    const maxHalfHeight = groupedRowsAreClose ? Math.max(radius * 1.5, rowGap / 2 - 8) : radius * 2.3;
+    const boxHalfHeight = Math.min(radius * 2.3, maxHalfHeight);
+
+    const drawBox = (label, laneY, color, fallback) => {
       const left = Math.max(20, eventState.geometry.launcherStartX - radius * 1.8);
       const right = Math.min(STAGE_WIDTH - 20, eventState.geometry.targetBaseX + radius * 7.2);
-      const top = laneY - radius * 2.3;
-      const height = radius * 4.6;
+      const top = laneY - boxHalfHeight;
+      const height = boxHalfHeight * 2;
+      const strokeColor = hexToRgba(color, state.stageTheme === "light" ? 0.86 : 0.9, fallback);
+      const fillColor = hexToRgba(color, state.stageTheme === "light" ? 0.07 : 0.045, fallback);
 
       drawCtx.save();
-      drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(31, 90, 159, 0.78)" : "rgba(242, 217, 78, 0.9)";
-      drawCtx.fillStyle = state.stageTheme === "light" ? "rgba(31, 90, 159, 0.05)" : "rgba(242, 217, 78, 0.04)";
+      drawCtx.strokeStyle = strokeColor;
+      drawCtx.fillStyle = fillColor;
       drawCtx.lineWidth = 3;
-      drawCtx.setLineDash([12, 8]);
       drawCtx.beginPath();
       drawCtx.roundRect(left, top, right - left, height, 16);
       drawCtx.fill();
@@ -1489,22 +1519,63 @@
       if (state.renderMode === "lab") {
         drawCtx.setLineDash([]);
         drawCtx.font = '700 12px "Avenir Next", "Segoe UI", sans-serif';
-        drawCtx.fillStyle = state.stageTheme === "light" ? "rgba(31, 90, 159, 0.9)" : "rgba(242, 217, 78, 0.95)";
+        drawCtx.fillStyle = strokeColor;
         drawCtx.fillText(label, left + 12, top + 18);
       }
       drawCtx.restore();
     };
 
     if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original set", eventState.geometry.laneY);
+      drawBox("Original set", eventState.geometry.laneY, state.groupingOriginalColor, "#e05a5a");
     }
 
     if (
       isContextEventVisible(state, eventState.time, eventState.geometry) &&
       (state.groupingMode === "context" || state.groupingMode === "both")
     ) {
-      drawBox("Context set", eventState.geometry.laneY + state.contextYOffset);
+      drawBox("Context set", eventState.geometry.laneY + state.contextYOffset, state.groupingContextColor, "#d8a51b");
     }
+  }
+
+  function drawContactGuides(drawCtx, state, eventState) {
+    if (state.contactGuideMode === "none") {
+      return;
+    }
+
+    const radius = state.ballRadius;
+    const contextVisible = isContextEventVisible(state, eventState.time, eventState.geometry);
+    const lanes = [];
+    if (state.contactGuideMode === "original" || state.contactGuideMode === "both") {
+      lanes.push({
+        laneY: eventState.geometry.laneY,
+        x: eventState.geometry.targetBaseX,
+        color: state.groupingOriginalColor,
+        fallback: "#e05a5a"
+      });
+    }
+    if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
+      lanes.push({
+        laneY: eventState.geometry.laneY + state.contextYOffset,
+        x:
+          eventState.geometry.contextDirectionSign === 1
+            ? eventState.geometry.targetBaseX
+            : STAGE_WIDTH - eventState.geometry.targetBaseX,
+        color: state.groupingContextColor,
+        fallback: "#d8a51b"
+      });
+    }
+
+    drawCtx.save();
+    drawCtx.lineWidth = 2;
+    drawCtx.setLineDash([8, 9]);
+    lanes.forEach((lane) => {
+      drawCtx.strokeStyle = hexToRgba(lane.color, state.stageTheme === "light" ? 0.62 : 0.72, lane.fallback);
+      drawCtx.beginPath();
+      drawCtx.moveTo(lane.x, lane.laneY - radius * 2.9);
+      drawCtx.lineTo(lane.x, lane.laneY + radius * 2.9);
+      drawCtx.stroke();
+    });
+    drawCtx.restore();
   }
 
   function getGeometry(state, laneY) {
@@ -1773,6 +1844,7 @@
 
     const eventState = getMainEventState(state, t, laneY);
     drawGroupingBoxes(drawCtx, state, eventState);
+    drawContactGuides(drawCtx, state, eventState);
     drawContextEvent(drawCtx, state, t, eventState);
     drawSpatialMarker(drawCtx, state, eventState);
     const occluderBounds = drawOccluder(drawCtx, state, laneY);
@@ -2083,10 +2155,13 @@
       contextDirection: state.contextDirection,
       contextSeparationPx: state.contextYOffset,
       groupingMode: state.groupingMode,
+      contactGuideMode: state.contactGuideMode,
       colorChangeMode: state.colorChangeMode,
       launcherColor: state.launcherColor,
       targetColor: state.targetColor,
-      contextColor: state.contextColor
+      contextColor: state.contextColor,
+      groupingOriginalColor: state.groupingOriginalColor,
+      groupingContextColor: state.groupingContextColor
     };
     const columns = Object.keys(row);
     return `${columns.join(",")}\n${columns.map((column) => csvCell(row[column])).join(",")}\n`;
@@ -2126,11 +2201,14 @@
         stageTheme: state.stageTheme,
         objectStyle: state.objectStyle,
         groupingMode: state.groupingMode,
+        contactGuideMode: state.contactGuideMode,
         colorChangeMode: state.colorChangeMode,
         colorChangeColor: state.colorChangeColor,
         launcherColor: state.launcherColor,
         targetColor: state.targetColor,
         contextColor: state.contextColor,
+        groupingOriginalColor: state.groupingOriginalColor,
+        groupingContextColor: state.groupingContextColor,
         pxPerDva: state.pxPerDva,
         ballDiameterDva: standards.ballDiameterDva,
         gapDva: standards.gapDva,
@@ -2250,11 +2328,14 @@
         stageTheme: condition.stageTheme,
         objectStyle: condition.objectStyle,
         groupingMode: condition.groupingMode,
+        contactGuideMode: condition.contactGuideMode,
         colorChangeMode: condition.colorChangeMode,
         colorChangeColor: condition.colorChangeColor,
         launcherColor: condition.launcherColor,
         targetColor: condition.targetColor,
         contextColor: condition.contextColor,
+        groupingOriginalColor: condition.groupingOriginalColor,
+        groupingContextColor: condition.groupingContextColor,
         pxPerDva: condition.pxPerDva,
         fixationDva: condition.fixationDva,
         stimulusXOffsetPx: condition.stimulusXOffset,
@@ -2927,11 +3008,14 @@
           "stageTheme",
           "objectStyle",
           "groupingMode",
+          "contactGuideMode",
           "colorChangeMode",
           "colorChangeColor",
           "launcherColor",
           "targetColor",
           "contextColor",
+          "groupingOriginalColor",
+          "groupingContextColor",
           "pxPerDva",
           "fixationDva",
           "stimulusXOffset",
