@@ -6,6 +6,7 @@
   const MAX_PREVIEW_PIXEL_RATIO = 3;
   const EXPORT_SCALE = 2;
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
+  const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
@@ -78,47 +79,46 @@
   ];
 
   const parameterHelp = {
-    presetSelect: "Loads a literature-grounded condition. Press Apply to copy it into the controls.",
-    presetNameInput: "Names the current control settings before saving them as a browser-local preset.",
-    durationMs: "Total clip length. Keep this long enough to show approach, contact, and post-contact motion.",
-    leadInMs: "Time before the launcher starts moving. Use it to give fixation and baseline frames before motion.",
-    launcherSpeed: "Initial speed of the first object. Faster motion shortens approach time and can change apparent causality.",
-    launcherAccel: "Acceleration of the first object before contact. Zero gives constant-speed motion.",
-    targetSpeedRatio: "Target speed as a proportion of the launcher impact speed. Higher values move toward triggering.",
-    targetAccel: "Acceleration of the second object after onset. Zero gives constant-speed post-contact motion.",
-    launcherBehavior: "Defines the event kind after contact: launch, pass/slip, or entraining/push.",
-    targetAngle: "Direction of target motion after onset. Zero is straight horizontal motion.",
-    delayMs: "Time between launcher stop/contact and target onset. Larger delays weaken direct launching.",
-    gapPx: "Spatial relation at contact. Zero is edge contact; negative values create overlap.",
-    markerMode: "Optional spatial marker for distal-launching controls. Hidden in the main capture workflow.",
-    ballRadius: "Object size in pixels. This also sets the scale for overlap percentage.",
-    occluderEnabled: "Adds a tunnel-like occluder for hidden-launch or amodal-capture displays.",
-    occluderWidth: "Width of the tunnel occluder. Wider values hide more of the central event.",
-    contactOcclusionMode: "Controls which object is drawn in front when the two discs overlap.",
-    contextMode: "Adds the lower contextual event: none, a nearby launch, or a single moving object.",
-    contextDurationMs: "How long the context is visible around impact. Short windows test brief capture cues.",
-    contextOffsetMs: "Temporal offset of the context event. Zero is synchronized with the test event.",
-    contextDirection: "Direction of the context event relative to the test event.",
-    contextYOffset: "Vertical distance between the judged test event and the context event.",
-    renderMode: "Lab preview shows guides; clean modes are for participant-facing exports.",
-    stageTheme: "Background luminance for preview and export.",
-    objectStyle: "Flat discs are standard; shaded balls are mainly for demonstrations.",
-    launcherColor: "Color of the first object in the judged event.",
-    targetColor: "Color of the second object in the judged event.",
-    contextColor: "Color of the contextual launcher.",
-    pxPerDva: "Pixel-to-visual-angle conversion used in JSON metadata.",
-    fixationDva: "Fixation mark diameter in degrees of visual angle.",
-    stimulusXOffset: "Horizontal shift of the whole judged event relative to center.",
-    stimulusYOffset: "Vertical shift of the whole judged event relative to center.",
-    soundEnabled: "Adds an impact-locked sound when the browser supports audio recording.",
-    soundType: "Selects the impact sound timbre.",
-    soundVolume: "Volume of the optional impact sound.",
-    outputFormat: "Preferred video container/codec. Browser support determines the final format.",
-    fps: "Frames per second for the exported video.",
-    videoBitrate: "Video bitrate in Mbps. Higher values preserve cleaner edges but create larger files.",
-    fileLabel: "Base filename used for the exported video and JSON sidecar.",
+    presetNameInput: "Name saved settings.",
+    durationMs: "Total clip length.",
+    leadInMs: "Pause before motion starts.",
+    launcherSpeed: "First-object speed.",
+    launcherAccel: "First-object acceleration.",
+    targetSpeedRatio: "Second-object speed ratio.",
+    targetAccel: "Second-object acceleration.",
+    launcherBehavior: "What the first object does after contact.",
+    targetAngle: "Second-object direction.",
+    delayMs: "Wait before the second object moves.",
+    gapPx: "Contact gap or overlap.",
+    markerMode: "Optional distance marker.",
+    ballRadius: "Object size.",
+    occluderEnabled: "Add a tunnel occluder.",
+    occluderWidth: "Tunnel width.",
+    contactOcclusionMode: "Which object appears in front.",
+    contextMode: "Nearby event type.",
+    contextDurationMs: "Context visibility window.",
+    contextOffsetMs: "Context timing offset.",
+    contextDirection: "Context motion direction.",
+    contextYOffset: "Vertical context distance.",
+    renderMode: "Preview/export display style.",
+    stageTheme: "Background luminance.",
+    objectStyle: "Flat or shaded objects.",
+    launcherColor: "First-object color.",
+    targetColor: "Second-object color.",
+    contextColor: "Context-object color.",
+    pxPerDva: "Pixels per visual degree.",
+    fixationDva: "Fixation size.",
+    stimulusXOffset: "Horizontal stimulus shift.",
+    stimulusYOffset: "Vertical stimulus shift.",
+    soundEnabled: "Add impact sound.",
+    soundType: "Impact sound type.",
+    soundVolume: "Impact sound volume.",
+    outputFormat: "Video format preference.",
+    fps: "Output frames per second.",
+    videoBitrate: "Output video bitrate.",
+    fileLabel: "Export filename base.",
     matrixPreset:
-      "Choose which variable to vary. Build condition JSON exports a condition table; it does not render videos."
+      "Choose which variable changes."
   };
 
   const presets = {
@@ -208,7 +208,7 @@
         contextOffsetMs: 0,
         contextDirection: "same",
         contextYOffset: 120,
-        renderMode: "fixation",
+        renderMode: "stimulus",
         stageTheme: "dark",
         fps: 60,
         fileLabel: "causal-capture-scenario"
@@ -633,13 +633,9 @@
     "canonical",
     "snPassBaseline",
     "causalCaptureScenario",
-    "capture",
     "snSingleContext",
     "captureBrief50",
-    "captureAsync200",
-    "captureOpposite",
-    "cogsOverlap50",
-    "entraining"
+    "captureAsync200"
   ];
 
   const controlDefaults = presets.canonical.values;
@@ -650,7 +646,7 @@
     contactOcclusionMode: "target-front"
   };
   const presentationDefaults = {
-    renderMode: "lab",
+    renderMode: "stimulus",
     stageTheme: "dark",
     objectStyle: "flat",
     launcherColor: "#e53935",
@@ -709,6 +705,7 @@
   let previewStart = 0;
   let isExporting = false;
   let customPresetKeys = [];
+  let hiddenBuiltInPresetKeys = [];
 
   function resizePreviewCanvas() {
     const rect = canvas.getBoundingClientRect();
@@ -898,8 +895,16 @@
     return customPresetKeys.includes(presetKey);
   }
 
+  function isPrimaryPresetKey(presetKey) {
+    return primaryPresetKeys.includes(presetKey);
+  }
+
+  function getVisiblePrimaryPresetKeys() {
+    return primaryPresetKeys.filter((key) => presets[key] && !hiddenBuiltInPresetKeys.includes(key));
+  }
+
   function syncPresetActions() {
-    deletePresetButton.disabled = !isCustomPresetKey(selectedPresetKey);
+    deletePresetButton.disabled = !selectedPresetKey;
   }
 
   function makePresetOption(key, preset) {
@@ -911,12 +916,17 @@
 
   function populatePresetMenu() {
     presetSelect.innerHTML = "";
-    primaryPresetKeys
-      .filter((key) => presets[key] && !isCustomPresetKey(key))
-      .forEach((key) => {
-        const preset = presets[key];
-        presetSelect.appendChild(makePresetOption(key, preset));
-      });
+    let visiblePrimaryKeys = getVisiblePrimaryPresetKeys();
+    if (visiblePrimaryKeys.length === 0 && customPresetKeys.length === 0) {
+      hiddenBuiltInPresetKeys = [];
+      writeHiddenBuiltInPresets();
+      visiblePrimaryKeys = getVisiblePrimaryPresetKeys();
+    }
+
+    visiblePrimaryKeys.forEach((key) => {
+      const preset = presets[key];
+      presetSelect.appendChild(makePresetOption(key, preset));
+    });
 
     if (customPresetKeys.length > 0) {
       const savedGroup = document.createElement("optgroup");
@@ -938,6 +948,27 @@
     } catch (error) {
       return [];
     }
+  }
+
+  function readHiddenBuiltInPresets() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY) || "[]");
+      return Array.isArray(stored) ? stored.filter((key) => primaryPresetKeys.includes(key)) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function writeHiddenBuiltInPresets() {
+    try {
+      localStorage.setItem(HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY, JSON.stringify(hiddenBuiltInPresetKeys));
+    } catch (error) {
+      statusText.textContent = "Preset storage unavailable.";
+    }
+  }
+
+  function loadHiddenBuiltInPresets() {
+    hiddenBuiltInPresetKeys = readHiddenBuiltInPresets();
   }
 
   function writeCustomPresets() {
@@ -1004,8 +1035,25 @@
   }
 
   function deleteSelectedPreset() {
+    if (isPrimaryPresetKey(selectedPresetKey)) {
+      const visibleBuiltIns = getVisiblePrimaryPresetKeys();
+      const hasOtherPreset = visibleBuiltIns.length > 1 || customPresetKeys.length > 0;
+      if (!hasOtherPreset) {
+        statusText.textContent = "Keep at least one preset.";
+        return;
+      }
+
+      hiddenBuiltInPresetKeys = [...new Set([...hiddenBuiltInPresetKeys, selectedPresetKey])];
+      writeHiddenBuiltInPresets();
+      populatePresetMenu();
+      const nextPresetKey = presetSelect.value || getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical";
+      applyPreset(nextPresetKey);
+      statusText.textContent = "Preset hidden.";
+      return;
+    }
+
     if (!isCustomPresetKey(selectedPresetKey)) {
-      statusText.textContent = "Built-in preset.";
+      statusText.textContent = "Preset unavailable.";
       return;
     }
 
@@ -1013,7 +1061,8 @@
     customPresetKeys = customPresetKeys.filter((key) => key !== selectedPresetKey);
     writeCustomPresets();
     populatePresetMenu();
-    applyPreset("canonical");
+    const nextPresetKey = presetSelect.value || getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical";
+    applyPreset(nextPresetKey);
     statusText.textContent = "Preset removed.";
   }
 
@@ -2818,6 +2867,7 @@
     });
   }
 
+  loadHiddenBuiltInPresets();
   loadCustomPresets();
   populatePresetMenu();
   initializeRanges();
@@ -2825,5 +2875,5 @@
   enhanceRangePrecision();
   bindControls();
   updateMatrixGuide();
-  applyPreset("canonical");
+  applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();

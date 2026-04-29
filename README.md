@@ -54,8 +54,8 @@ Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ## How to use it
 
-1. Start from the closest preset. Use `Pass baseline (100% overlap)` for the isolated full-overlap baseline and `Causal capture demo` for the synchronized launch-context condition.
-2. Tune event-structure variables first: speed, delay, overlap, and whether the launcher stops, continues, or entrains the target.
+1. Start from one of the core presets. Use `Pass baseline (100% overlap)` for the isolated full-overlap baseline and `Causal capture demo` for the synchronized launch-context condition.
+2. Tune event-structure variables first: speed, acceleration, delay, overlap, and what the launcher does after contact.
 3. Add context only when it is part of the hypothesis: nearby launch, single moving object, context window, timing, direction, and vertical separation.
 4. Check the standards cards after each change. They summarize spatial relation, event category, capture timing, and approach/onset timing for the current stimulus.
 5. Switch to clean stimulus or fixation mode before exporting participant-facing videos. Keep lab preview for piloting and debugging.
