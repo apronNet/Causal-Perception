@@ -57,6 +57,7 @@
     "renderMode",
     "stageTheme",
     "objectStyle",
+    "groupingMode",
     "colorChangeMode",
     "colorChangeColor",
     "launcherColor",
@@ -100,6 +101,7 @@
     renderMode: "Preview/export display style.",
     stageTheme: "Background luminance.",
     objectStyle: "Flat or shaded objects.",
+    groupingMode: "Draws a grouping box.",
     colorChangeMode: "Sudden color switch at contact.",
     colorChangeColor: "Post-contact color.",
     launcherColor: "First-object color.",
@@ -646,6 +648,7 @@
     renderMode: "stimulus",
     stageTheme: "dark",
     objectStyle: "flat",
+    groupingMode: "none",
     colorChangeMode: "none",
     colorChangeColor: "#f2d94e",
     launcherColor: "#e53935",
@@ -725,6 +728,7 @@
       renderMode: controls.renderMode.value,
       stageTheme: controls.stageTheme.value,
       objectStyle: controls.objectStyle.value,
+      groupingMode: controls.groupingMode.value,
       colorChangeMode: controls.colorChangeMode.value,
       colorChangeColor: controls.colorChangeColor.value,
       launcherColor: controls.launcherColor.value,
@@ -1486,6 +1490,58 @@
     drawCtx.restore();
   }
 
+  function isContextEventVisible(state, time, mainGeometry) {
+    if (state.contextMode === "none") {
+      return false;
+    }
+
+    const adjustedTime = time - state.contextOffsetMs;
+    const contextWindowMs = Number(state.contextDurationMs) || 750;
+    return contextWindowMs >= 740 || Math.abs(adjustedTime - mainGeometry.stopTime) <= contextWindowMs / 2;
+  }
+
+  function drawGroupingBoxes(drawCtx, state, eventState) {
+    if (state.groupingMode === "none") {
+      return;
+    }
+
+    const drawBox = (label, laneY) => {
+      const radius = state.ballRadius;
+      const left = Math.max(20, eventState.geometry.launcherStartX - radius * 1.8);
+      const right = Math.min(STAGE_WIDTH - 20, eventState.geometry.targetBaseX + radius * 7.2);
+      const top = laneY - radius * 2.3;
+      const height = radius * 4.6;
+
+      drawCtx.save();
+      drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(31, 90, 159, 0.78)" : "rgba(242, 217, 78, 0.9)";
+      drawCtx.fillStyle = state.stageTheme === "light" ? "rgba(31, 90, 159, 0.05)" : "rgba(242, 217, 78, 0.04)";
+      drawCtx.lineWidth = 3;
+      drawCtx.setLineDash([12, 8]);
+      drawCtx.beginPath();
+      drawCtx.roundRect(left, top, right - left, height, 16);
+      drawCtx.fill();
+      drawCtx.stroke();
+      if (state.renderMode === "lab") {
+        drawCtx.setLineDash([]);
+        drawCtx.font = '700 12px "Avenir Next", "Segoe UI", sans-serif';
+        drawCtx.fillStyle = state.stageTheme === "light" ? "rgba(31, 90, 159, 0.9)" : "rgba(242, 217, 78, 0.95)";
+        drawCtx.fillText(label, left + 12, top + 18);
+      }
+      drawCtx.restore();
+    };
+
+    if (state.groupingMode === "original" || state.groupingMode === "both") {
+      drawBox("Original set", eventState.geometry.laneY);
+    }
+
+    if (
+      isContextEventVisible(state, eventState.time, eventState.geometry) &&
+      (state.groupingMode === "context" || state.groupingMode === "both")
+    ) {
+      drawBox("Context set", eventState.geometry.laneY + state.contextYOffset);
+    }
+  }
+
   function getGeometry(state, laneY) {
     const radius = state.ballRadius;
     const targetBaseX = (state.occluderEnabled ? STAGE_WIDTH * 0.62 : STAGE_WIDTH * 0.58) + state.stimulusXOffset;
@@ -1564,7 +1620,7 @@
   }
 
   function drawContextEvent(drawCtx, state, t, mainEvent) {
-    if (state.contextMode === "none") {
+    if (!isContextEventVisible(state, t, mainEvent.geometry)) {
       return;
     }
 
@@ -1575,12 +1631,6 @@
     const targetBaseX = directionSign === 1 ? mainEvent.geometry.targetBaseX : STAGE_WIDTH - mainEvent.geometry.targetBaseX;
     const launcherStartX = directionSign === 1 ? 92 : STAGE_WIDTH - 92;
     const adjustedTime = t - state.contextOffsetMs;
-    const contextWindowMs = Number(state.contextDurationMs) || 750;
-
-    if (contextWindowMs < 740 && Math.abs(adjustedTime - mainEvent.geometry.stopTime) > contextWindowMs / 2) {
-      return;
-    }
-
     if (state.contextMode === "single") {
       const impactX = targetBaseX;
       let singleX = launcherStartX;
@@ -1757,6 +1807,7 @@
     const laneY = getMainLaneY(state);
 
     const eventState = getMainEventState(state, t, laneY);
+    drawGroupingBoxes(drawCtx, state, eventState);
     drawContextEvent(drawCtx, state, t, eventState);
     drawSpatialMarker(drawCtx, state, eventState);
     const occluderBounds = drawOccluder(drawCtx, state, laneY);
@@ -1985,6 +2036,7 @@
         renderMode: state.renderMode,
         stageTheme: state.stageTheme,
         objectStyle: state.objectStyle,
+        groupingMode: state.groupingMode,
         colorChangeMode: state.colorChangeMode,
         colorChangeColor: state.colorChangeColor,
         launcherColor: state.launcherColor,
@@ -2081,6 +2133,7 @@
         renderMode: condition.renderMode,
         stageTheme: condition.stageTheme,
         objectStyle: condition.objectStyle,
+        groupingMode: condition.groupingMode,
         colorChangeMode: condition.colorChangeMode,
         colorChangeColor: condition.colorChangeColor,
         launcherColor: condition.launcherColor,
@@ -2755,6 +2808,7 @@
           "renderMode",
           "stageTheme",
           "objectStyle",
+          "groupingMode",
           "colorChangeMode",
           "colorChangeColor",
           "launcherColor",
