@@ -959,8 +959,12 @@
       field.classList.add("help-field");
       field.dataset.helpBound = "true";
       field.dataset.helpText = text;
+      field.addEventListener("pointerenter", () => showParameterTooltip(field, text));
+      field.addEventListener("pointerleave", hideParameterTooltip);
       field.addEventListener("mouseenter", () => showParameterTooltip(field, text));
       field.addEventListener("mouseleave", hideParameterTooltip);
+      field.addEventListener("mouseover", () => showParameterTooltip(field, text));
+      field.addEventListener("click", () => showParameterTooltip(field, text));
       field.addEventListener("focusin", () => showParameterTooltip(field, text));
       field.addEventListener("focusout", (event) => {
         if (!field.contains(event.relatedTarget)) {
