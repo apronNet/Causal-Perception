@@ -3440,6 +3440,17 @@
     statusText.textContent = `${manifest.conditions.length} PsychoPy rows ready.`;
   }
 
+  function describeExportReview(warnings, exportFormat) {
+    const notes = [];
+    if (warnings.length > 0) {
+      notes.push(warnings.length === 1 ? "read note above" : `read ${warnings.length} notes above`);
+    }
+    if (exportFormat.usedFallback) {
+      notes.push("format changed");
+    }
+    return notes.length === 0 ? "no notes" : notes.join("; ");
+  }
+
   function updateArtifactChecklist(state, filename, exportFormat) {
     if (!artifactChecklist) {
       return;
@@ -3456,10 +3467,7 @@
       artifactCsvStatus.textContent = "ready";
     }
     if (artifactWarnings) {
-      artifactWarnings.textContent = warnings.length === 0 ? "none" : `${warnings.length} warning${warnings.length === 1 ? "" : "s"}`;
-    }
-    if (exportFormat.usedFallback && artifactWarnings) {
-      artifactWarnings.textContent = artifactWarnings.textContent === "none" ? "format fallback" : `${artifactWarnings.textContent}, format fallback`;
+      artifactWarnings.textContent = describeExportReview(warnings, exportFormat);
     }
   }
 
