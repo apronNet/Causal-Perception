@@ -14,7 +14,7 @@
   const presetNameInput = document.getElementById("presetNameInput");
   const savePresetButton = document.getElementById("savePresetButton");
   const deletePresetButton = document.getElementById("deletePresetButton");
-  const showAdvancedControls = document.getElementById("showAdvancedControls");
+  const michotteLink = document.getElementById("michotteLink");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
@@ -126,7 +126,6 @@
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
     presetNameInput: "Changes: the name used when saving the current settings. Use for: making a reusable condition you can apply later.",
-    showAdvancedControls: "Changes: reveals less-common controls. Use for: sound, display calibration, target speed ratio, markers, ball size, and other parameters that are usually held fixed.",
     durationMs: "Changes: total video length. Use for: making sure the clip includes approach, contact, launched motion, and context without cutting anything off.",
     leadInMs: "Changes: still time before the first object moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of the first object before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
@@ -180,11 +179,11 @@
     soundEnabled: "Changes: adds a brief sound at contact if the browser supports audio export. Use only when sound is part of the design.",
     soundType: "Changes: contact sound shape. Click is sharp; thud is softer; tone is less impact-like.",
     soundVolume: "Changes: contact sound level. Keep fixed unless sound strength is a condition.",
-    outputFormat: "Changes: requested video format. PsychoPy usually works best with MP4/H.264, but browser support may force WebM.",
-    fps: "Changes: frames per second for preview stepping and exported video. Higher FPS is smoother; lower FPS is more visibly stepped.",
-    videoBitrate: "Changes: export compression quality. Higher bitrate gives cleaner edges and larger files.",
-    fileLabel: "Changes: base filename for video, JSON, and PsychoPy CSV. Use readable condition names for experiment folders.",
-    conditionSetSelect: "Changes: the condition-family manifest to export. The manifest is a plan: it names clips and stores parameters, but it does not render all videos automatically."
+    outputFormat: "Changes: requested movie container and codec preference for the exported file. PsychoPy usually accepts MP4/H.264 most easily, but Safari may provide MP4 while other browsers may fall back to WebM.",
+    fps: "Changes: the frame rate written into the exported movie and the saved PsychoPy CSV. The browser preview is close, but the exported file is the source of truth for timing checks.",
+    videoBitrate: "Changes: compression quality for the exported movie. Higher values preserve cleaner disc edges and grouping lines, at the cost of larger stimulus files.",
+    fileLabel: "Changes: the base filename used for the movie, JSON metadata, and PsychoPy CSV. Stable filenames make PsychoPy condition tables easier to audit.",
+    conditionSetSelect: "Changes: which multi-condition manifest is exported for later batch stimulus generation and PsychoPy condition-table setup."
   };
 
   const presets = {
@@ -996,7 +995,7 @@
   }
 
   function formatParameterTooltipText(text) {
-    return text.replace(/\s+Use for:/, "\nUse:");
+    return text.split(/\s+Use for:/)[0];
   }
 
   function showParameterTooltip(field, text) {
@@ -1031,9 +1030,6 @@
       field.dataset.helpText = text;
       field.addEventListener("pointerenter", () => showParameterTooltip(field, text));
       field.addEventListener("pointerleave", hideParameterTooltip);
-      field.addEventListener("mouseenter", () => showParameterTooltip(field, text));
-      field.addEventListener("mouseleave", hideParameterTooltip);
-      field.addEventListener("mouseover", () => showParameterTooltip(field, text));
       field.addEventListener("click", () => showParameterTooltip(field, text));
       field.addEventListener("focusin", () => showParameterTooltip(field, text));
       field.addEventListener("focusout", (event) => {
@@ -1052,6 +1048,28 @@
     });
   }
 
+  function bindMichotteBlink() {
+    if (!michotteLink) {
+      return;
+    }
+
+    const blink = () => {
+      michotteLink.classList.remove("is-blinking");
+      void michotteLink.offsetWidth;
+      michotteLink.classList.add("is-blinking");
+      window.setTimeout(() => {
+        michotteLink.classList.remove("is-blinking");
+      }, 420);
+    };
+
+    michotteLink.addEventListener("pointerdown", blink);
+    michotteLink.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        blink();
+      }
+    });
+  }
+
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
     contextDependentControls.forEach((field) => {
@@ -1063,11 +1081,6 @@
     } else if (controls.customStartEnabled.checked && controls.customStartAlignStartsVertical.checked) {
       enforceCustomStartConstraints();
     }
-  }
-
-  function syncAdvancedControlVisibility() {
-    document.body.classList.toggle("show-advanced", Boolean(showAdvancedControls?.checked));
-    hideParameterTooltip();
   }
 
   function writeCoordinateControl(xId, yId, x, y) {
@@ -1530,12 +1543,11 @@
     };
   }
 
-  function updateStandards(state) {
+  function updateStandards(state, standards = getStandards(state)) {
     if (!relationMetric || !categoryMetric || !captureMetric || !timingMetric) {
       return;
     }
 
-    const standards = getStandards(state);
     relationMetric.textContent = standards.relation;
     categoryMetric.textContent = standards.category;
     captureMetric.textContent = standards.capture;
@@ -1667,7 +1679,7 @@
     }
     refreshSummary(state, copy, standards);
     renderExperimentWarnings(state);
-    updateStandards(state);
+    updateStandards(state, standards);
   }
 
   function clamp(value, min, max) {
@@ -3057,7 +3069,7 @@
         targetAngleDegrees: state.targetAngle,
         contactDelayMs: state.delayMs,
         spatialGapPx: Math.max(0, state.gapPx),
-        overlapPercent: getStandards(state).overlapPercent,
+        overlapPercent: standards.overlapPercent,
         markerMode: state.markerMode,
         ballRadiusPx: state.ballRadius,
         occluderEnabled: state.occluderEnabled,
@@ -4159,6 +4171,8 @@
         control.addEventListener("change", () => {
           activePresetKey = null;
           if (control.checked) {
+            controls.customStartKeepRowsHorizontal.checked = true;
+            controls.customStartAlignStartsVertical.checked = true;
             initializeCustomStartPositions();
             enforceCustomStartConstraints();
           }
@@ -4236,11 +4250,6 @@
       });
     });
 
-    showAdvancedControls?.addEventListener("change", () => {
-      syncAdvancedControlVisibility();
-      statusText.textContent = showAdvancedControls.checked ? "Advanced controls shown." : "Ready.";
-    });
-
     presetSelect.addEventListener("change", () => {
       selectedPresetKey = presetSelect.value;
       const preset = getPreset(selectedPresetKey);
@@ -4291,8 +4300,8 @@
   initializeRanges();
   enhanceRangePrecision();
   bindParameterHelp();
+  bindMichotteBlink();
   bindControls();
   bindStartDragging();
-  syncAdvancedControlVisibility();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();

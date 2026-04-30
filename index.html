@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260430-experiment-export" />
+    <link rel="stylesheet" href="styles.css?v=20260430-regrouped-controls" />
   </head>
   <body>
     <div class="page-shell">
@@ -12,22 +12,29 @@
         <div class="title-block">
           <h1>Launching Video Maker</h1>
         </div>
-        <figure class="michotte-card" aria-label="Albert Michotte portrait">
-          <img src="assets/albert-michotte.jpeg" alt="Albert Michotte" />
-          <figcaption>
+        <a
+          id="michotteLink"
+          class="michotte-card"
+          href="https://en.wikipedia.org/wiki/Albert_Michotte"
+          rel="noopener noreferrer"
+          target="_blank"
+          aria-label="Albert Michotte on Wikipedia"
+        >
+          <span class="michotte-photo-wrap">
+            <img src="assets/albert-michotte.jpeg" alt="Albert Michotte" decoding="async" />
+          </span>
+          <span class="michotte-caption">
             <strong>Albert Michotte</strong>
             <span>13 Oct 1881 - 2 Jun 1965</span>
-          </figcaption>
-        </figure>
+          </span>
+        </a>
       </header>
 
       <main class="app-grid">
         <aside class="controls-panel">
-          <section class="panel-block">
-            <div class="section-heading">
-              <h2>01 Preset</h2>
-              <button id="applyPresetButton" class="secondary-button" type="button">Apply</button>
-            </div>
+          <details class="panel-block collapsible-panel" open>
+            <summary><h2>01 Presets</h2></summary>
+            <div class="panel-content">
             <label class="field">
               <span>Scenario</span>
               <select id="presetSelect"></select>
@@ -40,109 +47,16 @@
               <button id="savePresetButton" class="secondary-button" type="button">Save</button>
               <button id="deletePresetButton" class="secondary-button" type="button">Remove</button>
             </div>
-            <label class="field checkbox-field advanced-toggle">
-              <input id="showAdvancedControls" type="checkbox" />
-              <span>Show advanced controls</span>
-            </label>
+            <button id="applyPresetButton" class="secondary-button full-button" type="button">Apply preset</button>
             <p id="presetSummary" class="microcopy hidden"></p>
-          </section>
+            </div>
+          </details>
 
           <section class="panel-block">
             <div class="section-heading">
-              <h2>02 Event</h2>
+              <h2>02 Context</h2>
             </div>
             <div class="control-grid">
-              <label class="field">
-                <span>Duration</span>
-                <input id="durationMs" data-format="int" min="300" max="6000" step="50" type="range" />
-                <output data-for="durationMs"></output>
-              </label>
-              <label class="field">
-                <span>Lead-in</span>
-                <input id="leadInMs" data-format="int" min="0" max="1200" step="10" type="range" />
-                <output data-for="leadInMs"></output>
-              </label>
-              <label class="field">
-                <span>Speed</span>
-                <input id="launcherSpeed" data-format="float1" min="120" max="5000" step="1" type="range" />
-                <output data-for="launcherSpeed"></output>
-              </label>
-              <label class="field">
-                <span>Acceleration</span>
-                <input id="launcherAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
-                <output data-for="launcherAccel"></output>
-              </label>
-              <label class="field hidden-control">
-                <span>Target ratio</span>
-                <input id="targetSpeedRatio" data-format="float2" min="0.4" max="1.8" step="0.05" type="range" />
-                <output data-for="targetSpeedRatio"></output>
-              </label>
-              <label class="field hidden-control">
-                <span>Target accel.</span>
-                <input id="targetAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
-                <output data-for="targetAccel"></output>
-              </label>
-              <label class="field">
-                <span>After contact</span>
-                <select id="launcherBehavior">
-                  <option value="stop">Stops: launching</option>
-                  <option value="continue">Continues: pass/slip</option>
-                  <option value="entrain">Continues with target: entraining</option>
-                </select>
-              </label>
-              <label class="field hidden-control">
-                <span>Target angle</span>
-                <input id="targetAngle" data-format="degrees" min="-75" max="75" step="1" type="range" />
-                <output data-for="targetAngle"></output>
-              </label>
-              <label class="field">
-                <span>Delay</span>
-                <input id="delayMs" data-format="ms" min="0" max="300" step="5" type="range" />
-                <output data-for="delayMs"></output>
-              </label>
-              <label class="field">
-                <span>Overlap / gap</span>
-                <input id="gapPx" data-format="overlap" min="-56" max="80" step="1" type="range" />
-                <output data-for="gapPx"></output>
-              </label>
-              <label class="field">
-                <span>Front object</span>
-                <select id="contactOcclusionMode">
-                  <option value="target-front">Second object front</option>
-                  <option value="launcher-front">First object front</option>
-                  <option value="alternate">Alternate</option>
-                </select>
-              </label>
-              <label class="field hidden-control">
-                <span>Marker</span>
-                <select id="markerMode">
-                  <option value="none">None</option>
-                  <option value="bridge">Bridge across gap</option>
-                  <option value="stop">Stop marker</option>
-                  <option value="start">Start marker</option>
-                  <option value="both">Stop and start markers</option>
-                </select>
-              </label>
-              <label class="field hidden-control">
-                <span>Radius</span>
-                <input id="ballRadius" data-format="intPx" min="18" max="44" step="1" type="range" />
-                <output data-for="ballRadius"></output>
-              </label>
-            </div>
-          </section>
-
-          <section class="panel-block">
-            <h2>03 Context</h2>
-            <div class="control-grid">
-              <label class="field checkbox-field hidden-control">
-                <input id="occluderEnabled" type="checkbox" />
-                <span>Tunnel occluder</span>
-              </label>
-              <label class="field hidden-control">
-                <span>Occluder</span>
-                <input id="occluderWidth" data-format="intPx" min="70" max="260" step="5" type="range" />
-                <output data-for="occluderWidth"></output>
-              </label>
               <label class="field">
                 <span>context (add another set of balls)</span>
                 <select id="contextMode">
@@ -169,28 +83,79 @@
                   <option value="opposite">Opposite direction</option>
                 </select>
               </label>
-              <label class="field context-dependent-control">
-                <span>Vertical distance</span>
-                <input id="contextYOffset" data-format="intPx" min="40" max="260" step="1" type="range" />
-                <output data-for="contextYOffset"></output>
+            </div>
+          </section>
+
+          <section class="panel-block">
+            <div class="section-heading">
+              <h2>03 Movement</h2>
+            </div>
+            <div class="control-grid">
+              <label class="field">
+                <span>Duration</span>
+                <input id="durationMs" data-format="int" min="300" max="6000" step="50" type="range" />
+                <output data-for="durationMs"></output>
+              </label>
+              <label class="field">
+                <span>Lead-in</span>
+                <input id="leadInMs" data-format="int" min="0" max="1200" step="10" type="range" />
+                <output data-for="leadInMs"></output>
+              </label>
+              <label class="field">
+                <span>Speed</span>
+                <input id="launcherSpeed" data-format="float1" min="120" max="5000" step="1" type="range" />
+                <output data-for="launcherSpeed"></output>
+              </label>
+              <label class="field">
+                <span>Acceleration</span>
+                <input id="launcherAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
+                <output data-for="launcherAccel"></output>
+              </label>
+              <label class="field">
+                <span>After contact</span>
+                <select id="launcherBehavior">
+                  <option value="stop">Stops: launching</option>
+                  <option value="continue">Continues: pass/slip</option>
+                  <option value="entrain">Continues with target: entraining</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Delay</span>
+                <input id="delayMs" data-format="ms" min="0" max="300" step="5" type="range" />
+                <output data-for="delayMs"></output>
+              </label>
+              <label class="field">
+                <span>Target ratio</span>
+                <input id="targetSpeedRatio" data-format="float2" min="0.4" max="1.8" step="0.05" type="range" />
+                <output data-for="targetSpeedRatio"></output>
+              </label>
+              <label class="field">
+                <span>Target accel.</span>
+                <input id="targetAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
+                <output data-for="targetAccel"></output>
+              </label>
+              <label class="field">
+                <span>Target angle</span>
+                <input id="targetAngle" data-format="degrees" min="-75" max="75" step="1" type="range" />
+                <output data-for="targetAngle"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Lead-in</span>
+                <span>Context lead-in</span>
                 <input id="contextLeadInMs" data-format="int" min="0" max="1200" step="10" type="range" />
                 <output data-for="contextLeadInMs"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Speed</span>
+                <span>Context speed</span>
                 <input id="contextLauncherSpeed" data-format="float1" min="120" max="5000" step="1" type="range" />
                 <output data-for="contextLauncherSpeed"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Acceleration</span>
+                <span>Context accel.</span>
                 <input id="contextLauncherAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
                 <output data-for="contextLauncherAccel"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>After contact</span>
+                <span>Context after contact</span>
                 <select id="contextLauncherBehavior">
                   <option value="stop">Stops: launching</option>
                   <option value="continue">Continues: pass/slip</option>
@@ -198,35 +163,22 @@
                 </select>
               </label>
               <label class="field context-dependent-control">
-                <span>Delay</span>
+                <span>Context delay</span>
                 <input id="contextDelayMs" data-format="ms" min="0" max="300" step="5" type="range" />
                 <output data-for="contextDelayMs"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Overlap / gap</span>
-                <input id="contextGapPx" data-format="overlap" min="-56" max="80" step="1" type="range" />
-                <output data-for="contextGapPx"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Front object</span>
-                <select id="contextContactOcclusionMode">
-                  <option value="target-front">Second object front</option>
-                  <option value="launcher-front">First object front</option>
-                  <option value="alternate">Alternate</option>
-                </select>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Target ratio</span>
+                <span>Context target ratio</span>
                 <input id="contextTargetSpeedRatio" data-format="float2" min="0.4" max="1.8" step="0.05" type="range" />
                 <output data-for="contextTargetSpeedRatio"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Target accel.</span>
+                <span>Context target accel.</span>
                 <input id="contextTargetAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
                 <output data-for="contextTargetAccel"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Target angle</span>
+                <span>Context target angle</span>
                 <input id="contextTargetAngle" data-format="degrees" min="-75" max="75" step="1" type="range" />
                 <output data-for="contextTargetAngle"></output>
               </label>
@@ -234,7 +186,102 @@
           </section>
 
           <section class="panel-block">
-            <h2>04 Display</h2>
+            <div class="section-heading">
+              <h2>04 Position</h2>
+            </div>
+            <div class="control-grid">
+              <label class="field">
+                <span>Overlap / gap</span>
+                <input id="gapPx" data-format="overlap" min="-56" max="80" step="1" type="range" />
+                <output data-for="gapPx"></output>
+              </label>
+              <label class="field">
+                <span>Front object</span>
+                <select id="contactOcclusionMode">
+                  <option value="target-front">Second object front</option>
+                  <option value="launcher-front">First object front</option>
+                  <option value="alternate">Alternate</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Radius</span>
+                <input id="ballRadius" data-format="intPx" min="18" max="44" step="1" type="range" />
+                <output data-for="ballRadius"></output>
+              </label>
+              <label class="field">
+                <span>Marker</span>
+                <select id="markerMode">
+                  <option value="none">None</option>
+                  <option value="bridge">Bridge across gap</option>
+                  <option value="stop">Stop marker</option>
+                  <option value="start">Start marker</option>
+                  <option value="both">Stop and start markers</option>
+                </select>
+              </label>
+              <label class="field checkbox-field">
+                <input id="occluderEnabled" type="checkbox" />
+                <span>Tunnel occluder</span>
+              </label>
+              <label class="field">
+                <span>Occluder</span>
+                <input id="occluderWidth" data-format="intPx" min="70" max="260" step="5" type="range" />
+                <output data-for="occluderWidth"></output>
+              </label>
+              <label class="field context-dependent-control">
+                <span>Vertical distance</span>
+                <input id="contextYOffset" data-format="intPx" min="40" max="260" step="1" type="range" />
+                <output data-for="contextYOffset"></output>
+              </label>
+              <label class="field context-dependent-control">
+                <span>Context overlap / gap</span>
+                <input id="contextGapPx" data-format="overlap" min="-56" max="80" step="1" type="range" />
+                <output data-for="contextGapPx"></output>
+              </label>
+              <label class="field context-dependent-control">
+                <span>Context front object</span>
+                <select id="contextContactOcclusionMode">
+                  <option value="target-front">Second object front</option>
+                  <option value="launcher-front">First object front</option>
+                  <option value="alternate">Alternate</option>
+                </select>
+              </label>
+              <label class="field checkbox-field">
+                <input id="customStartEnabled" type="checkbox" />
+                <span>Drag start positions</span>
+              </label>
+              <label class="field checkbox-field custom-start-dependent-control is-retracted">
+                <input id="customStartKeepRowsHorizontal" type="checkbox" />
+                <span>Keep each set horizontal</span>
+              </label>
+              <label class="field checkbox-field custom-start-dependent-control is-retracted">
+                <input id="customStartAlignStartsVertical" type="checkbox" />
+                <span>Align starting balls vertically</span>
+              </label>
+              <label class="field">
+                <span>X offset</span>
+                <input id="stimulusXOffset" data-format="signedPx" min="-80" max="160" step="5" type="range" />
+                <output data-for="stimulusXOffset"></output>
+              </label>
+              <label class="field">
+                <span>Y offset</span>
+                <input id="stimulusYOffset" data-format="signedPx" min="-130" max="130" step="5" type="range" />
+                <output data-for="stimulusYOffset"></output>
+              </label>
+              <input id="originalLauncherStartX" type="hidden" />
+              <input id="originalLauncherStartY" type="hidden" />
+              <input id="originalTargetStartX" type="hidden" />
+              <input id="originalTargetStartY" type="hidden" />
+              <input id="contextLauncherStartX" type="hidden" />
+              <input id="contextLauncherStartY" type="hidden" />
+              <input id="contextTargetStartX" type="hidden" />
+              <input id="contextTargetStartY" type="hidden" />
+            </div>
+          </section>
+
+          <section class="panel-block">
+            <div class="section-heading">
+              <h2>05 Color</h2>
+            </div>
             <div class="control-grid">
               <label class="field">
                 <span>Mode</span>
@@ -252,7 +299,7 @@
                   <option value="light">Light</option>
                 </select>
               </label>
-              <label class="field hidden-control">
+              <label class="field">
                 <span>Style</span>
                 <select id="objectStyle">
                   <option value="flat">Simple discs</option>
@@ -277,18 +324,6 @@
                   <option value="both">Both sets</option>
                 </select>
               </label>
-              <label class="field checkbox-field">
-                <input id="customStartEnabled" type="checkbox" />
-                <span>Drag start positions</span>
-              </label>
-              <label class="field checkbox-field custom-start-dependent-control is-retracted">
-                <input id="customStartKeepRowsHorizontal" type="checkbox" />
-                <span>Keep each set horizontal</span>
-              </label>
-              <label class="field checkbox-field custom-start-dependent-control is-retracted">
-                <input id="customStartAlignStartsVertical" type="checkbox" />
-                <span>Align starting balls vertically</span>
-              </label>
               <label class="field">
                 <span>Sudden color change</span>
                 <select id="colorChangeMode">
@@ -310,11 +345,11 @@
                 <span>Target</span>
                 <input id="targetColor" type="color" />
               </label>
-              <label class="field color-field">
+              <label class="field color-field context-dependent-control">
                 <span>Context launcher</span>
                 <input id="contextColor" type="color" />
               </label>
-              <label class="field color-field">
+              <label class="field color-field context-dependent-control">
                 <span>Context target</span>
                 <input id="contextTargetColor" type="color" />
               </label>
@@ -326,68 +361,12 @@
                 <span>Context box</span>
                 <input id="groupingContextColor" type="color" />
               </label>
-              <label class="field hidden-control">
-                <span>px / degree</span>
-                <input id="pxPerDva" data-format="pxPerDva" min="20" max="120" step="1" type="range" />
-                <output data-for="pxPerDva"></output>
-              </label>
-              <label class="field hidden-control">
-                <span>Fixation</span>
-                <input id="fixationDva" data-format="dva" min="0.1" max="1.5" step="0.1" type="range" />
-                <output data-for="fixationDva"></output>
-              </label>
-              <label class="field hidden-control">
-                <span>X offset</span>
-                <input id="stimulusXOffset" data-format="signedPx" min="-80" max="160" step="5" type="range" />
-                <output data-for="stimulusXOffset"></output>
-              </label>
-              <label class="field hidden-control">
-                <span>Y offset</span>
-                <input id="stimulusYOffset" data-format="signedPx" min="-130" max="130" step="5" type="range" />
-                <output data-for="stimulusYOffset"></output>
-              </label>
-              <input id="originalLauncherStartX" type="hidden" />
-              <input id="originalLauncherStartY" type="hidden" />
-              <input id="originalTargetStartX" type="hidden" />
-              <input id="originalTargetStartY" type="hidden" />
-              <input id="contextLauncherStartX" type="hidden" />
-              <input id="contextLauncherStartY" type="hidden" />
-              <input id="contextTargetStartX" type="hidden" />
-              <input id="contextTargetStartY" type="hidden" />
             </div>
           </section>
 
-          <section class="panel-block hidden-control-panel">
-            <h2>05 Sound</h2>
-            <div class="control-grid">
-              <label class="field checkbox-field">
-                <input id="soundEnabled" type="checkbox" />
-                <span>Impact sound</span>
-              </label>
-              <label class="field">
-                <span>Type</span>
-                <select id="soundType">
-                  <option value="click">Click</option>
-                  <option value="thud">Soft thud</option>
-                  <option value="tone">Brief tone</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Volume</span>
-                <input id="soundVolume" data-format="percent" min="0" max="1" step="0.05" type="range" />
-                <output data-for="soundVolume"></output>
-              </label>
-            </div>
-            <p class="microcopy">
-              Contact-locked. Exported if supported.
-            </p>
-          </section>
-
-          <section class="panel-block">
-            <div class="section-heading">
-              <h2>05 Export</h2>
-              <button id="exportButton" class="accent-button" type="button">Export</button>
-            </div>
+          <details class="panel-block collapsible-panel psychopy-panel" open>
+            <summary><h2>06 PsychoPy / Export</h2></summary>
+            <div class="panel-content">
             <div class="control-grid">
               <label class="field">
                 <span>Format</span>
@@ -413,15 +392,40 @@
                 <span>Filename</span>
                 <input id="fileLabel" maxlength="48" type="text" />
               </label>
+              <label class="field">
+                <span>px / degree</span>
+                <input id="pxPerDva" data-format="pxPerDva" min="20" max="120" step="1" type="range" />
+                <output data-for="pxPerDva"></output>
+              </label>
+              <label class="field">
+                <span>Fixation</span>
+                <input id="fixationDva" data-format="dva" min="0.1" max="1.5" step="0.1" type="range" />
+                <output data-for="fixationDva"></output>
+              </label>
+              <label class="field checkbox-field">
+                <input id="soundEnabled" type="checkbox" />
+                <span>Impact sound</span>
+              </label>
+              <label class="field">
+                <span>Type</span>
+                <select id="soundType">
+                  <option value="click">Click</option>
+                  <option value="thud">Soft thud</option>
+                  <option value="tone">Brief tone</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Volume</span>
+                <input id="soundVolume" data-format="percent" min="0" max="1" step="0.05" type="range" />
+                <output data-for="soundVolume"></output>
+              </label>
             </div>
             <p id="statusText" class="status-text" aria-live="polite">Ready.</p>
+            <button id="exportButton" class="accent-button full-button" type="button">Export video</button>
             <a id="downloadLink" class="download-link hidden" download>Download video</a>
             <button id="metadataButton" class="secondary-button full-button" type="button">Export JSON</button>
             <a id="metadataLink" class="download-link hidden" download>Download latest JSON</a>
             <button id="psychopyButton" class="secondary-button full-button" type="button">Export PsychoPy CSV</button>
-            <p class="microcopy psychopy-copy">
-              CSV is the PsychoPy conditions file. Use <code>$movieFile</code> in MovieStim.
-            </p>
             <a id="psychopyLink" class="download-link hidden" download>Download PsychoPy CSV</a>
             <div class="condition-set-box">
               <label class="field">
@@ -444,11 +448,11 @@
                 <button id="conditionJsonButton" class="secondary-button" type="button">Set JSON</button>
                 <button id="conditionCsvButton" class="secondary-button" type="button">Set CSV</button>
               </div>
-              <p class="microcopy">Manifest only. Use it to name videos and drive a PsychoPy loop.</p>
               <a id="conditionJsonLink" class="download-link hidden" download>Download set JSON</a>
               <a id="conditionCsvLink" class="download-link hidden" download>Download set CSV</a>
             </div>
-          </section>
+            </div>
+          </details>
         </aside>
 
         <section class="stage-panel">
@@ -495,6 +499,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260430-experiment-export"></script>
+    <script src="app.js?v=20260430-regrouped-controls"></script>
   </body>
 </html>
