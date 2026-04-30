@@ -222,15 +222,20 @@ h3 {
 .parameter-tooltip {
   position: fixed;
   z-index: 30;
-  max-width: min(420px, calc(100vw - 24px));
-  padding: 8px 10px;
+  max-width: min(380px, calc(100vw - 24px));
+  padding: 9px 10px;
   border: 2px solid var(--line);
   background: var(--ink);
   color: var(--paper);
   font-size: 0.63rem;
-  font-weight: 600;
-  line-height: 1.32;
+  font-weight: 560;
+  line-height: 1.36;
   pointer-events: none;
+  white-space: pre-line;
+}
+
+.parameter-tooltip::first-line {
+  font-weight: 820;
 }
 
 .field output {
