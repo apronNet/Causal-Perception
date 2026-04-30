@@ -12,22 +12,25 @@
         <div class="title-block">
           <h1>Launching Video Maker</h1>
         </div>
-        <a
-          id="michotteLink"
-          class="michotte-card"
-          href="https://en.wikipedia.org/wiki/Albert_Michotte"
-          rel="noopener noreferrer"
-          target="_blank"
-          aria-label="Albert Michotte on Wikipedia"
-        >
-          <span class="michotte-photo-wrap">
-            <img src="assets/albert-michotte.jpeg" alt="Albert Michotte" decoding="async" />
-          </span>
+        <div id="michotteCard" class="michotte-card">
+          <button id="michotteBlinkButton" class="michotte-photo-button" type="button" aria-label="Albert Michotte portrait">
+            <span class="michotte-photo-wrap">
+              <img src="assets/albert-michotte.jpeg" alt="Albert Michotte" decoding="async" />
+            </span>
+          </button>
           <span class="michotte-caption">
-            <strong>Albert Michotte</strong>
+            <a
+              id="michotteLink"
+              class="michotte-name-link"
+              href="https://en.wikipedia.org/wiki/Albert_Michotte"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <strong>Albert Michotte</strong>
+            </a>
             <span>13 Oct 1881 - 2 Jun 1965</span>
           </span>
-        </a>
+        </div>
       </header>
 
       <main class="app-grid">

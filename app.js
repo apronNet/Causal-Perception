@@ -14,7 +14,8 @@
   const presetNameInput = document.getElementById("presetNameInput");
   const savePresetButton = document.getElementById("savePresetButton");
   const deletePresetButton = document.getElementById("deletePresetButton");
-  const michotteLink = document.getElementById("michotteLink");
+  const michotteCard = document.getElementById("michotteCard");
+  const michotteBlinkButton = document.getElementById("michotteBlinkButton");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
@@ -1056,25 +1057,20 @@
   }
 
   function bindMichotteBlink() {
-    if (!michotteLink) {
+    if (!michotteCard || !michotteBlinkButton) {
       return;
     }
 
     const blink = () => {
-      michotteLink.classList.remove("is-blinking");
-      void michotteLink.offsetWidth;
-      michotteLink.classList.add("is-blinking");
+      michotteCard.classList.remove("is-blinking");
+      void michotteCard.offsetWidth;
+      michotteCard.classList.add("is-blinking");
       window.setTimeout(() => {
-        michotteLink.classList.remove("is-blinking");
+        michotteCard.classList.remove("is-blinking");
       }, 420);
     };
 
-    michotteLink.addEventListener("pointerdown", blink);
-    michotteLink.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        blink();
-      }
-    });
+    michotteBlinkButton.addEventListener("click", blink);
   }
 
   function syncContextControlVisibility() {

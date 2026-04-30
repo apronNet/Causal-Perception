@@ -88,7 +88,19 @@ h1 {
   margin: 0;
   color: inherit;
   text-align: left;
-  text-decoration: none;
+}
+
+.michotte-photo-button {
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.michotte-photo-button:hover {
+  background: transparent;
 }
 
 .michotte-photo-wrap {
@@ -150,7 +162,19 @@ h1 {
   letter-spacing: 0.04em;
 }
 
-.michotte-card span {
+.michotte-name-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.michotte-name-link:hover {
+  color: var(--accent-dark);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.michotte-caption > span {
   color: var(--muted);
 }
 
