@@ -141,7 +141,8 @@
     targetAngle: "Changes: direction of the second object's motion after contact. Use for: straight launch versus angled launch.",
     delayMs: "Changes: time between contact and second-object motion. Short delays look more directly causal; long delays look less like immediate launching.",
     gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
-    markerMode: "Changes: optional marker drawn in the gap. Use for: testing whether an added spatial cue changes responses to gap displays.",
+    markerMode:
+      "Changes: optional cue drawn only when Overlap / Gap is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
     ballRadius: "Changes: object size. Use for: scaling the balls while keeping the same motion logic.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
@@ -1630,8 +1631,8 @@
     if (state.groupingMode !== "none") {
       warnings.push("Grouping boxes are visible to participants. Keep only if grouping is tested.");
     }
-    if (state.markerMode !== "none") {
-      warnings.push("Gap marker is visible to participants. Keep only if marker cues are tested.");
+    if (state.markerMode !== "none" && state.gapPx > 0) {
+      warnings.push("Marker is on: the exported video will show a visible gap cue. Set Marker to None unless this cue is part of the condition.");
     }
     if (state.soundEnabled) {
       warnings.push("Audio export depends on browser encoding. Check the saved movie in PsychoPy.");
