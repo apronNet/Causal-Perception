@@ -49,10 +49,13 @@
                 <span>Save as</span>
                 <input id="presetNameInput" maxlength="48" placeholder="Preset name" type="text" />
               </label>
-              <button id="savePresetButton" class="secondary-button" type="button">Save</button>
+              <button id="savePresetButton" class="secondary-button" type="button">Save local</button>
               <button id="deletePresetButton" class="secondary-button" type="button">Remove</button>
             </div>
             <button id="applyPresetButton" class="secondary-button full-button" type="button">Apply preset</button>
+            <button id="exportPresetButton" class="secondary-button full-button" type="button">Export preset JSON</button>
+            <a id="presetJsonLink" class="download-link hidden" download>Download preset JSON</a>
+            <p class="microcopy preset-storage-note">Shared presets load from shared-presets.json. Local saves stay on this browser.</p>
             <p id="presetSummary" class="microcopy hidden"></p>
             </div>
           </details>

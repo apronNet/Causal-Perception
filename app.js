@@ -1,4 +1,4 @@
-(function () {
+(async function () {
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d");
   const STAGE_WIDTH = 960;
@@ -8,6 +8,7 @@
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
+  const SHARED_PRESETS_URL = "shared-presets.json";
   const MICHOTTE_BLINK_CLIP = "assets/albert-michotte-blink.gif";
   const MICHOTTE_BLINK_DELAY_MS = 500;
   const MICHOTTE_BLINK_DURATION_MS = 540;
@@ -17,6 +18,7 @@
   const presetNameInput = document.getElementById("presetNameInput");
   const savePresetButton = document.getElementById("savePresetButton");
   const deletePresetButton = document.getElementById("deletePresetButton");
+  const exportPresetButton = document.getElementById("exportPresetButton");
   const michotteCard = document.getElementById("michotteCard");
   const michotteBlinkButton = document.getElementById("michotteBlinkButton");
   const michotteBlinkClip = document.getElementById("michotteBlinkClip");
@@ -32,6 +34,7 @@
   const psychopyLink = document.getElementById("psychopyLink");
   const conditionJsonLink = document.getElementById("conditionJsonLink");
   const conditionCsvLink = document.getElementById("conditionCsvLink");
+  const presetJsonLink = document.getElementById("presetJsonLink");
   const statusText = document.getElementById("statusText");
   const stageOverlay = document.querySelector(".stage-overlay");
   const scenarioBadge = document.getElementById("scenarioBadge");
@@ -135,7 +138,7 @@
 
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
-    presetNameInput: "Changes: the name used when saving the current settings. Use for: making a reusable condition you can apply later.",
+    presetNameInput: "Changes: the name used when saving the current settings. Browser saves are local; shared presets must be added to shared-presets.json.",
     durationMs: "Changes: total video length. Use for: making sure the clip includes approach, contact, launched motion, and context without cutting anything off.",
     leadInMs: "Changes: still time before the first object moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of the first object before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
@@ -193,7 +196,7 @@
     outputFormat: "Changes: requested movie container and codec preference for the exported file. PsychoPy usually accepts MP4/H.264 most easily, but Safari may provide MP4 while other browsers may fall back to WebM.",
     fps: "Changes: the frame rate written into the exported movie and the saved PsychoPy CSV. The browser preview is close, but the exported file is the source of truth for timing checks.",
     videoBitrate: "Changes: compression quality for the exported movie. Higher values preserve cleaner disc edges and grouping lines, at the cost of larger stimulus files.",
-    fileLabel: "Changes: the base filename used for the movie, JSON metadata, and PsychoPy CSV. Stable filenames make PsychoPy condition tables easier to audit.",
+    fileLabel: "Changes: the base filename. Exports add timing, speed, gap, context, and month/day tags automatically.",
     conditionSetSelect: "Changes: which multi-condition manifest is exported for later batch stimulus generation and PsychoPy condition-table setup."
   };
 
@@ -785,6 +788,7 @@
   let currentPsychopyUrl = null;
   let currentConditionJsonUrl = null;
   let currentConditionCsvUrl = null;
+  let currentPresetJsonUrl = null;
   let previewHandle = null;
   let impactSoundTimer = null;
   let sharedAudioContext = null;
@@ -793,6 +797,7 @@
   let isExporting = false;
   let startDragTarget = null;
   let customStartPositionsInitialized = false;
+  let sharedPresetKeys = [];
   let customPresetKeys = [];
   let hiddenBuiltInPresetKeys = [];
 
@@ -1169,6 +1174,10 @@
     return customPresetKeys.includes(presetKey);
   }
 
+  function isSharedPresetKey(presetKey) {
+    return sharedPresetKeys.includes(presetKey);
+  }
+
   function isPrimaryPresetKey(presetKey) {
     return primaryPresetKeys.includes(presetKey);
   }
@@ -1178,7 +1187,7 @@
   }
 
   function syncPresetActions() {
-    deletePresetButton.disabled = !selectedPresetKey;
+    deletePresetButton.disabled = !selectedPresetKey || isSharedPresetKey(selectedPresetKey);
   }
 
   function makePresetOption(key, preset) {
@@ -1191,20 +1200,37 @@
   function populatePresetMenu() {
     presetSelect.innerHTML = "";
     let visiblePrimaryKeys = getVisiblePrimaryPresetKeys();
-    if (visiblePrimaryKeys.length === 0 && customPresetKeys.length === 0) {
+    if (visiblePrimaryKeys.length === 0 && sharedPresetKeys.length === 0 && customPresetKeys.length === 0) {
       hiddenBuiltInPresetKeys = [];
       writeHiddenBuiltInPresets();
       visiblePrimaryKeys = getVisiblePrimaryPresetKeys();
     }
 
-    visiblePrimaryKeys.forEach((key) => {
-      const preset = presets[key];
-      presetSelect.appendChild(makePresetOption(key, preset));
-    });
+    if (visiblePrimaryKeys.length > 0) {
+      const standardGroup = document.createElement("optgroup");
+      standardGroup.label = "Standard";
+      visiblePrimaryKeys.forEach((key) => {
+        const preset = presets[key];
+        standardGroup.appendChild(makePresetOption(key, preset));
+      });
+      presetSelect.appendChild(standardGroup);
+    }
+
+    if (sharedPresetKeys.length > 0) {
+      const sharedGroup = document.createElement("optgroup");
+      sharedGroup.label = "Shared across visitors";
+      sharedPresetKeys.forEach((key) => {
+        const preset = getPreset(key);
+        if (preset) {
+          sharedGroup.appendChild(makePresetOption(key, preset));
+        }
+      });
+      presetSelect.appendChild(sharedGroup);
+    }
 
     if (customPresetKeys.length > 0) {
       const savedGroup = document.createElement("optgroup");
-      savedGroup.label = "Saved";
+      savedGroup.label = "Saved in this browser";
       customPresetKeys.forEach((key) => {
         const preset = getPreset(key);
         if (preset) {
@@ -1274,6 +1300,54 @@
     });
   }
 
+  function getUniquePresetKey(baseKey, existingKeys = []) {
+    let key = baseKey;
+    let suffix = 2;
+    while (presets[key] || existingKeys.includes(key)) {
+      key = `${baseKey}-${suffix}`;
+      suffix += 1;
+    }
+    return key;
+  }
+
+  function normalizeSharedPreset(rawPreset) {
+    if (!rawPreset || !rawPreset.label || !rawPreset.values) {
+      return null;
+    }
+    const rawKey = sanitizeLabel(rawPreset.key || rawPreset.label);
+    const baseKey = rawKey.startsWith("shared-") ? rawKey : `shared-${rawKey}`;
+    const key = getUniquePresetKey(baseKey, sharedPresetKeys);
+    return {
+      key,
+      label: rawPreset.label,
+      summary: rawPreset.summary || "Shared preset loaded with the web app.",
+      note: rawPreset.note || "Loaded from shared-presets.json for every visitor.",
+      literature: rawPreset.literature || "Shared lab preset.",
+      values: rawPreset.values
+    };
+  }
+
+  async function loadSharedPresets() {
+    try {
+      const response = await fetch(SHARED_PRESETS_URL, { cache: "no-store" });
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json();
+      const sharedPresets = Array.isArray(payload) ? payload : Array.isArray(payload.presets) ? payload.presets : [];
+      sharedPresets.forEach((rawPreset) => {
+        const preset = normalizeSharedPreset(rawPreset);
+        if (!preset) {
+          return;
+        }
+        presets[preset.key] = preset;
+        sharedPresetKeys.push(preset.key);
+      });
+    } catch (error) {
+      // The app still works without the shared file, e.g. when opened directly from disk.
+    }
+  }
+
   function saveCurrentPreset() {
     const rawName = (presetNameInput.value || controls.fileLabel.value || "Custom preset").trim();
     const label = rawName || "Custom preset";
@@ -1286,7 +1360,7 @@
       key: existingKey,
       label,
       summary: "Saved local preset.",
-      note: "Saved in this browser.",
+      note: "Saved in this browser. Export preset JSON to add it to shared-presets.json.",
       literature: "Custom preset saved from the current controls.",
       values: state
     };
@@ -1312,8 +1386,40 @@
     if (scenarioBadge) {
       scenarioBadge.textContent = preset.label;
     }
-    statusText.textContent = "Preset saved.";
+    statusText.textContent = "Local preset saved.";
     syncPresetActions();
+  }
+
+  function buildPresetExportRecord() {
+    const state = cloneState();
+    const label = (presetNameInput.value || state.fileLabel || getConditionName() || "Custom preset").trim();
+    return {
+      key: sanitizeLabel(label),
+      label,
+      summary: "Shared preset.",
+      note: "Add this object to shared-presets.json to make it visible for every visitor.",
+      literature: "Shared lab preset exported from the current controls.",
+      values: state
+    };
+  }
+
+  function exportCurrentPresetJson() {
+    if (!presetJsonLink) {
+      return;
+    }
+    const preset = buildPresetExportRecord();
+    const payload = `${JSON.stringify(preset, null, 2)}\n`;
+    const blob = new Blob([payload], { type: "application/json" });
+    if (currentPresetJsonUrl) {
+      URL.revokeObjectURL(currentPresetJsonUrl);
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    currentPresetJsonUrl = objectUrl;
+    presetJsonLink.href = objectUrl;
+    presetJsonLink.download = `${sanitizeLabel(preset.label)}-shared-preset.json`;
+    presetJsonLink.textContent = "Download preset JSON";
+    presetJsonLink.classList.remove("hidden");
+    statusText.textContent = "Preset JSON ready.";
   }
 
   function deleteSelectedPreset() {
@@ -1335,7 +1441,7 @@
     }
 
     if (!isCustomPresetKey(selectedPresetKey)) {
-      statusText.textContent = "Preset unavailable.";
+      statusText.textContent = isSharedPresetKey(selectedPresetKey) ? "Shared presets live in shared-presets.json." : "Preset unavailable.";
       return;
     }
 
@@ -2888,6 +2994,86 @@
       .replace(/^-+|-+$/g, "") || "causal-launching";
   }
 
+  function pad2(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  function getMonthDayTimestamp(date = new Date()) {
+    return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(
+      date.getMinutes()
+    )}${pad2(date.getSeconds())}`;
+  }
+
+  function compactNumber(value, decimals = 0) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      return "0";
+    }
+    return Number(number.toFixed(decimals)).toString().replace("-", "m").replace(".", "p");
+  }
+
+  function getGapFilenamePartFrom(gapPx, radius) {
+    if (gapPx < 0) {
+      const overlap = clamp((-gapPx / Math.max(1, radius * 2)) * 100, 0, 100);
+      return `ov${compactNumber(overlap)}pct`;
+    }
+    if (gapPx > 0) {
+      return `gap${compactNumber(gapPx)}px`;
+    }
+    return "contact";
+  }
+
+  function getGapFilenamePart(state) {
+    return getGapFilenamePartFrom(state.gapPx, state.ballRadius);
+  }
+
+  function getContextFilenamePart(state) {
+    if (state.contextMode === "none") {
+      return "ctxnone";
+    }
+    const timing =
+      state.contextOffsetMs === 0
+        ? "sync"
+        : state.contextOffsetMs < 0
+          ? `early${compactNumber(Math.abs(state.contextOffsetMs))}ms`
+          : `late${compactNumber(state.contextOffsetMs)}ms`;
+    const windowTag = state.contextDurationMs === 750 ? "" : `-win${compactNumber(state.contextDurationMs)}ms`;
+    return [
+      `ctx${sanitizeLabel(state.contextMode)}`,
+      timing,
+      `cv${compactNumber(state.contextLauncherSpeed)}pxs`,
+      `cdelay${compactNumber(state.contextDelayMs)}ms`,
+      `c${getGapFilenamePartFrom(state.contextGapPx, state.ballRadius)}`,
+      `cratio${compactNumber(state.contextTargetSpeedRatio * 100)}pct`
+    ].join("-") + windowTag;
+  }
+
+  function getExportFilenameBase(state) {
+    const parts = [
+      sanitizeLabel(state.fileLabel),
+      `dur${compactNumber(state.durationMs)}ms`,
+      `fps${compactNumber(state.fps)}`,
+      `v${compactNumber(state.launcherSpeed)}pxs`,
+      `delay${compactNumber(state.delayMs)}ms`,
+      getGapFilenamePart(state),
+      `r${compactNumber(state.ballRadius)}px`,
+      `ratio${compactNumber(state.targetSpeedRatio * 100)}pct`,
+      `after${sanitizeLabel(state.launcherBehavior)}`,
+      getContextFilenamePart(state)
+    ];
+    if (state.launcherAccel !== 0 || state.targetAccel !== 0) {
+      parts.push(`accel${compactNumber(state.launcherAccel)}-${compactNumber(state.targetAccel)}`);
+    }
+    if (state.occluderEnabled) {
+      parts.push(`occ${compactNumber(state.occluderWidth)}px`);
+    }
+    return sanitizeLabel(parts.join("-"));
+  }
+
+  function getExportMovieFilename(state, extension, date = new Date()) {
+    return `${getExportFilenameBase(state)}-${getMonthDayTimestamp(date)}.${extension}`;
+  }
+
   function getMimeCandidates(state) {
     const mp4 = state.soundEnabled
       ? ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4"]
@@ -3487,10 +3673,9 @@
 
   function exportParameters() {
     const state = cloneState();
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    const filename = `${sanitizeLabel(state.fileLabel)}-${timestamp}.json`;
     const exportFormat = chooseExportFormat(state);
-    const movieFilename = filename.replace(/\.json$/, `.${exportFormat.extension}`);
+    const movieFilename = getExportMovieFilename(state, exportFormat.extension);
+    const filename = movieFilename.replace(/\.(webm|mp4)$/i, ".json");
     setMetadataDownload(buildMetadata(state, movieFilename, exportFormat), filename);
     setPsychopyDownload(buildPsychopyCsv(state, movieFilename, exportFormat), getPsychopyCsvName(movieFilename));
     statusText.textContent = "JSON and PsychoPy CSV ready.";
@@ -3499,7 +3684,7 @@
   function exportPsychopyCsv() {
     const state = cloneState();
     const exportFormat = chooseExportFormat(state);
-    const filename = `${sanitizeLabel(state.fileLabel)}.${exportFormat.extension}`;
+    const filename = getExportMovieFilename(state, exportFormat.extension);
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), getPsychopyCsvName(filename));
     statusText.textContent = "PsychoPy CSV ready.";
   }
@@ -4161,11 +4346,13 @@
 
     const frameDuration = 1000 / state.fps;
     const totalFrames = getExportFrameCount(state);
+    const exportStartTime = performance.now();
     for (let frame = 0; frame < totalFrames; frame += 1) {
       const time = Math.min(frame * frameDuration, state.durationMs);
       drawFrame(state, time, exportCtx);
       statusText.textContent = `Exporting frame ${frame + 1} of ${totalFrames}…`;
-      await new Promise((resolve) => window.setTimeout(resolve, frameDuration));
+      const nextFrameTime = exportStartTime + (frame + 1) * frameDuration;
+      await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, nextFrameTime - performance.now())));
     }
 
     recorder.stop();
@@ -4180,8 +4367,7 @@
     }
     currentObjectUrl = URL.createObjectURL(blob);
 
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    const filename = `${sanitizeLabel(state.fileLabel)}-${timestamp}.${exportFormat.extension}`;
+    const filename = getExportMovieFilename(state, exportFormat.extension);
     const metadataFilename = filename.replace(/\.(webm|mp4)$/, ".json");
     const psychopyFilename = getPsychopyCsvName(filename);
     downloadLink.href = currentObjectUrl;
@@ -4338,6 +4524,7 @@
     previewButton.addEventListener("click", playPreview);
     savePresetButton.addEventListener("click", saveCurrentPreset);
     deletePresetButton.addEventListener("click", deleteSelectedPreset);
+    exportPresetButton?.addEventListener("click", exportCurrentPresetJson);
     exportButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -4371,6 +4558,7 @@
   }
 
   loadHiddenBuiltInPresets();
+  await loadSharedPresets();
   loadCustomPresets();
   populatePresetMenu();
   initializeRanges();

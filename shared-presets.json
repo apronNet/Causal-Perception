@@ -1,0 +1,35 @@
+[
+  {
+    "key": "fast-clean-launch",
+    "label": "Shared: fast clean launch",
+    "summary": "A shared lab preset committed with the app, visible to every visitor.",
+    "note": "This preset is loaded from shared-presets.json rather than browser local storage.",
+    "literature": "Clear contact launch condition, useful as a fast timing check.",
+    "values": {
+      "durationMs": 900,
+      "leadInMs": 120,
+      "launcherSpeed": 1200,
+      "launcherAccel": 0,
+      "targetSpeedRatio": 1,
+      "targetAccel": 0,
+      "launcherBehavior": "stop",
+      "targetAngle": 0,
+      "delayMs": 0,
+      "gapPx": 0,
+      "markerMode": "none",
+      "ballRadius": 28,
+      "occluderEnabled": false,
+      "occluderWidth": 150,
+      "contactOcclusionMode": "target-front",
+      "contextMode": "none",
+      "contextDurationMs": 750,
+      "contextOffsetMs": 0,
+      "contextDirection": "same",
+      "contextYOffset": 112,
+      "renderMode": "stimulus",
+      "stageTheme": "dark",
+      "fps": 60,
+      "fileLabel": "shared-fast-clean-launch"
+    }
+  }
+]

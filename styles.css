@@ -285,7 +285,7 @@ h3 {
 
 .preset-save-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 70px 86px;
+  grid-template-columns: minmax(0, 1fr) 92px 86px;
   gap: 6px;
   align-items: end;
   margin-top: 8px;
@@ -294,6 +294,10 @@ h3 {
 .preset-panel .panel-content {
   display: grid;
   gap: 8px;
+}
+
+.preset-storage-note {
+  margin: 0;
 }
 
 .control-grid {
