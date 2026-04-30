@@ -1570,7 +1570,10 @@
       single: "single object",
       pass: "pass context"
     };
-    const timing = state.contextOffsetMs === 0 ? "sync" : `${Math.abs(state.contextOffsetMs)} ms early`;
+    const timing =
+      state.contextOffsetMs === 0
+        ? "sync"
+        : `${Math.abs(state.contextOffsetMs)} ms ${state.contextOffsetMs < 0 ? "early" : "late"}`;
     return `${labels[state.contextMode] || state.contextMode}, ${timing}`;
   }
 
