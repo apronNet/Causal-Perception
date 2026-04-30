@@ -248,6 +248,20 @@ h3 {
   content: "-";
 }
 
+.psychopy-panel > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, auto) auto auto auto;
+  align-items: center;
+}
+
+.psychopy-panel > summary::after {
+  justify-self: end;
+}
+
+.psychopy-panel > summary h2 {
+  white-space: nowrap;
+}
+
 .panel-content {
   padding: 7px;
 }
@@ -473,8 +487,31 @@ button:disabled {
   min-width: 144px;
 }
 
-#exportButton.full-button {
-  justify-self: stretch;
+.summary-export-button {
+  min-height: 28px;
+  min-width: 112px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.export-summary-status {
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--accent-dark);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-download-link {
+  min-height: 28px;
+  margin-top: 0;
+  padding: 5px 8px;
+  white-space: nowrap;
 }
 
 .stage-panel {
@@ -741,6 +778,20 @@ canvas.start-drag-enabled:active {
 
 .hidden {
   display: none;
+}
+
+@media (max-width: 720px) {
+  .psychopy-panel > summary {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .export-summary-status {
+    display: none;
+  }
+
+  .summary-export-button {
+    min-width: 0;
+  }
 }
 
 @media (max-width: 1020px) {

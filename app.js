@@ -4174,7 +4174,8 @@
     const psychopyFilename = getPsychopyCsvName(filename);
     downloadLink.href = currentObjectUrl;
     downloadLink.download = filename;
-    downloadLink.textContent = `Download ${filename}`;
+    downloadLink.textContent = "Download video";
+    downloadLink.title = filename;
     downloadLink.classList.remove("hidden");
     setMetadataDownload(buildMetadata(state, filename, exportFormat), metadataFilename);
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
@@ -4187,7 +4188,7 @@
     }x${exportFormat.height} - ${
       exportFormat.extension.toUpperCase()
     } - ${mimeType}`;
-    statusText.textContent = "Export finished. PsychoPy files ready.";
+    statusText.textContent = "Export ready.";
 
     const autoDownload = document.createElement("a");
     autoDownload.href = currentObjectUrl;
@@ -4325,7 +4326,14 @@
     previewButton.addEventListener("click", playPreview);
     savePresetButton.addEventListener("click", saveCurrentPreset);
     deletePresetButton.addEventListener("click", deleteSelectedPreset);
-    exportButton.addEventListener("click", exportVideo);
+    exportButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      exportVideo();
+    });
+    downloadLink.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
     metadataButton.addEventListener("click", exportParameters);
     psychopyButton.addEventListener("click", exportPsychopyCsv);
     conditionJsonButton?.addEventListener("click", exportConditionSetJson);
