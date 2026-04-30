@@ -1067,7 +1067,7 @@
       michotteCard.classList.add("is-blinking");
       window.setTimeout(() => {
         michotteCard.classList.remove("is-blinking");
-      }, 420);
+      }, 700);
     };
 
     michotteBlinkButton.addEventListener("click", blink);
