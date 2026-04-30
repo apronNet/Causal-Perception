@@ -8,6 +8,9 @@
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
+  const MICHOTTE_BLINK_CLIP = "assets/albert-michotte-blink.gif";
+  const MICHOTTE_BLINK_DELAY_MS = 500;
+  const MICHOTTE_BLINK_DURATION_MS = 540;
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
@@ -16,6 +19,7 @@
   const deletePresetButton = document.getElementById("deletePresetButton");
   const michotteCard = document.getElementById("michotteCard");
   const michotteBlinkButton = document.getElementById("michotteBlinkButton");
+  const michotteBlinkClip = document.getElementById("michotteBlinkClip");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
@@ -1057,17 +1061,26 @@
   }
 
   function bindMichotteBlink() {
-    if (!michotteCard || !michotteBlinkButton) {
+    if (!michotteCard || !michotteBlinkButton || !michotteBlinkClip) {
       return;
     }
 
+    let delayTimer = 0;
+    let hideTimer = 0;
     const blink = () => {
-      michotteCard.classList.remove("is-blinking");
-      void michotteCard.offsetWidth;
-      michotteCard.classList.add("is-blinking");
-      window.setTimeout(() => {
-        michotteCard.classList.remove("is-blinking");
-      }, 700);
+      window.clearTimeout(delayTimer);
+      window.clearTimeout(hideTimer);
+      michotteCard.classList.remove("is-playing-blink");
+      michotteBlinkClip.removeAttribute("src");
+
+      delayTimer = window.setTimeout(() => {
+        michotteBlinkClip.src = `${MICHOTTE_BLINK_CLIP}?t=${Date.now()}`;
+        michotteCard.classList.add("is-playing-blink");
+        hideTimer = window.setTimeout(() => {
+          michotteCard.classList.remove("is-playing-blink");
+          michotteBlinkClip.removeAttribute("src");
+        }, MICHOTTE_BLINK_DURATION_MS);
+      }, MICHOTTE_BLINK_DELAY_MS);
     };
 
     michotteBlinkButton.addEventListener("click", blink);
