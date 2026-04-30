@@ -72,6 +72,15 @@
     "objectStyle",
     "groupingMode",
     "contactGuideMode",
+    "customStartEnabled",
+    "originalLauncherStartX",
+    "originalLauncherStartY",
+    "originalTargetStartX",
+    "originalTargetStartY",
+    "contextLauncherStartX",
+    "contextLauncherStartY",
+    "contextTargetStartX",
+    "contextTargetStartY",
     "colorChangeMode",
     "colorChangeColor",
     "launcherColor",
@@ -131,6 +140,7 @@
     objectStyle: "Rendering style for the balls. Flat discs are easier to control experimentally; shaded balls look more pictorial.",
     groupingMode: "Solid boxes around the original row, context row, or both. Use this to test whether perceptual grouping changes causal capture.",
     contactGuideMode: "Vertical guide at contact. Useful for checking alignment during design, but usually off in final participant-facing stimuli.",
+    customStartEnabled: "Enables drag editing on the preview. Drag the start-position rings to place each ball before motion begins; exports use the saved positions but not the rings.",
     colorChangeMode: "Sudden color change at contact. Use this to ask whether a feature change competes with or supports the launch impression.",
     colorChangeColor: "Color applied during the sudden contact-locked switch. Keep contrast comparable if color is not the main manipulation.",
     launcherColor: "Color of the original-row first object. Use fixed colors across conditions unless object identity or feature change is being tested.",
@@ -704,6 +714,15 @@
     contextTargetColor: "#27c35a",
     groupingOriginalColor: "#e05a5a",
     groupingContextColor: "#d8a51b",
+    customStartEnabled: false,
+    originalLauncherStartX: 92,
+    originalLauncherStartY: STAGE_HEIGHT / 2,
+    originalTargetStartX: STAGE_WIDTH * 0.58,
+    originalTargetStartY: STAGE_HEIGHT / 2,
+    contextLauncherStartX: 92,
+    contextLauncherStartY: STAGE_HEIGHT / 2 + 120,
+    contextTargetStartX: STAGE_WIDTH * 0.58,
+    contextTargetStartY: STAGE_HEIGHT / 2 + 120,
     pxPerDva: 40,
     fixationDva: 0.3,
     stimulusXOffset: 0,
@@ -732,6 +751,8 @@
   let parameterTooltip = null;
   let previewStart = 0;
   let isExporting = false;
+  let startDragTarget = null;
+  let customStartPositionsInitialized = false;
   let customPresetKeys = [];
   let hiddenBuiltInPresetKeys = [];
 
@@ -793,6 +814,15 @@
       objectStyle: controls.objectStyle.value,
       groupingMode: controls.groupingMode.value,
       contactGuideMode: controls.contactGuideMode.value,
+      customStartEnabled: controls.customStartEnabled.checked,
+      originalLauncherStartX: Number(controls.originalLauncherStartX.value),
+      originalLauncherStartY: Number(controls.originalLauncherStartY.value),
+      originalTargetStartX: Number(controls.originalTargetStartX.value),
+      originalTargetStartY: Number(controls.originalTargetStartY.value),
+      contextLauncherStartX: Number(controls.contextLauncherStartX.value),
+      contextLauncherStartY: Number(controls.contextLauncherStartY.value),
+      contextTargetStartX: Number(controls.contextTargetStartX.value),
+      contextTargetStartY: Number(controls.contextTargetStartY.value),
       colorChangeMode: controls.colorChangeMode.value,
       colorChangeColor: controls.colorChangeColor.value,
       launcherColor: controls.launcherColor.value,
@@ -990,6 +1020,60 @@
 
     if (contextIsOff) {
       hideParameterTooltip();
+    }
+  }
+
+  function writeCoordinateControl(xId, yId, x, y) {
+    controls[xId].value = Number(clamp(x, 0, STAGE_WIDTH).toFixed(1));
+    controls[yId].value = Number(clamp(y, 0, STAGE_HEIGHT).toFixed(1));
+  }
+
+  function getAutomaticStartPositions(state) {
+    const automaticState = { ...state, customStartEnabled: false };
+    const laneY = getMainLaneY(automaticState);
+    const originalGeometry = getGeometry(automaticState, laneY, { scope: "original", directionSign: 1 });
+    const contextState = getContextMotionState(automaticState);
+    const contextGeometry = getGeometry(contextState, laneY + automaticState.contextYOffset, {
+      scope: "context",
+      directionSign: originalGeometry.contextDirectionSign
+    });
+
+    return {
+      originalLauncher: { x: originalGeometry.launcherStartX, y: originalGeometry.launcherStartY },
+      originalTarget: { x: originalGeometry.targetBaseX, y: originalGeometry.targetBaseY },
+      contextLauncher: { x: contextGeometry.launcherStartX, y: contextGeometry.launcherStartY },
+      contextTarget: { x: contextGeometry.targetBaseX, y: contextGeometry.targetBaseY }
+    };
+  }
+
+  function initializeCustomStartPositions(force = false) {
+    if (customStartPositionsInitialized && !force) {
+      return;
+    }
+
+    const positions = getAutomaticStartPositions(cloneState());
+    writeCoordinateControl(
+      "originalLauncherStartX",
+      "originalLauncherStartY",
+      positions.originalLauncher.x,
+      positions.originalLauncher.y
+    );
+    writeCoordinateControl("originalTargetStartX", "originalTargetStartY", positions.originalTarget.x, positions.originalTarget.y);
+    writeCoordinateControl(
+      "contextLauncherStartX",
+      "contextLauncherStartY",
+      positions.contextLauncher.x,
+      positions.contextLauncher.y
+    );
+    writeCoordinateControl("contextTargetStartX", "contextTargetStartY", positions.contextTarget.x, positions.contextTarget.y);
+    customStartPositionsInitialized = true;
+  }
+
+  function syncStartDragUi() {
+    const enabled = Boolean(controls.customStartEnabled.checked);
+    canvas.classList.toggle("start-drag-enabled", enabled);
+    if (!enabled) {
+      startDragTarget = null;
     }
   }
 
@@ -1192,7 +1276,9 @@
         control.value = value;
       }
     });
+    customStartPositionsInitialized = Boolean(controls.customStartEnabled.checked);
     syncContextControlVisibility();
+    syncStartDragUi();
     updateOutputs();
     refreshText();
     drawFrame(cloneState(), 0, ctx);
@@ -1633,10 +1719,20 @@
       return;
     }
 
-    const { radius, launcherStopX, targetBaseX, laneY } = eventState.geometry;
-    const stopEdge = launcherStopX + radius;
-    const startEdge = targetBaseX - radius;
-    const markerY = laneY;
+    const { radius, launcherStopX, launcherStopY, targetBaseX, targetBaseY, approachUnitX, approachUnitY } = eventState.geometry;
+    const stopEdge = {
+      x: launcherStopX + approachUnitX * radius,
+      y: launcherStopY + approachUnitY * radius
+    };
+    const startEdge = {
+      x: targetBaseX - approachUnitX * radius,
+      y: targetBaseY - approachUnitY * radius
+    };
+    const perpendicular = {
+      x: -approachUnitY,
+      y: approachUnitX
+    };
+    const markerHalfLength = radius * 1.7;
 
     drawCtx.save();
     drawCtx.strokeStyle = "rgba(245, 224, 137, 0.92)";
@@ -1645,24 +1741,24 @@
 
     if (state.markerMode === "bridge") {
       drawCtx.beginPath();
-      drawCtx.roundRect(stopEdge, markerY - 6, Math.max(4, startEdge - stopEdge), 12, 6);
-      drawCtx.fill();
+      drawCtx.moveTo(stopEdge.x, stopEdge.y);
+      drawCtx.lineTo(startEdge.x, startEdge.y);
       drawCtx.stroke();
     }
 
     if (state.markerMode === "stop" || state.markerMode === "both") {
       drawCtx.setLineDash([8, 6]);
       drawCtx.beginPath();
-      drawCtx.moveTo(stopEdge, markerY - radius * 1.7);
-      drawCtx.lineTo(stopEdge, markerY + radius * 1.7);
+      drawCtx.moveTo(stopEdge.x - perpendicular.x * markerHalfLength, stopEdge.y - perpendicular.y * markerHalfLength);
+      drawCtx.lineTo(stopEdge.x + perpendicular.x * markerHalfLength, stopEdge.y + perpendicular.y * markerHalfLength);
       drawCtx.stroke();
     }
 
     if (state.markerMode === "start" || state.markerMode === "both") {
       drawCtx.setLineDash([8, 6]);
       drawCtx.beginPath();
-      drawCtx.moveTo(startEdge, markerY - radius * 1.7);
-      drawCtx.lineTo(startEdge, markerY + radius * 1.7);
+      drawCtx.moveTo(startEdge.x - perpendicular.x * markerHalfLength, startEdge.y - perpendicular.y * markerHalfLength);
+      drawCtx.lineTo(startEdge.x + perpendicular.x * markerHalfLength, startEdge.y + perpendicular.y * markerHalfLength);
       drawCtx.stroke();
     }
 
@@ -1676,7 +1772,10 @@
 
     const adjustedTime = time - state.contextOffsetMs;
     const contextWindowMs = Number(state.contextDurationMs) || 750;
-    const contextGeometry = getGeometry(getContextMotionState(state), mainGeometry.laneY + state.contextYOffset);
+    const contextGeometry = getGeometry(getContextMotionState(state), mainGeometry.laneY + state.contextYOffset, {
+      scope: "context",
+      directionSign: mainGeometry.contextDirectionSign
+    });
     return contextWindowMs >= 740 || Math.abs(adjustedTime - contextGeometry.stopTime) <= contextWindowMs / 2;
   }
 
@@ -1695,16 +1794,17 @@
     const boxHalfHeight = Math.min(radius * 2.3, maxHalfHeight);
     const contextState = getContextMotionState(state);
     const contextLaneY = eventState.geometry.laneY + state.contextYOffset;
-    const contextGeometry = getGeometry(contextState, contextLaneY);
+    const contextGeometry = getGeometry(contextState, contextLaneY, {
+      scope: "context",
+      directionSign: eventState.geometry.contextDirectionSign
+    });
 
-    const drawBox = (label, geometry, directionSign, color, fallback) => {
-      const launcherStartX = directionSign === 1 ? geometry.launcherStartX : STAGE_WIDTH - geometry.launcherStartX;
-      const targetBaseX = directionSign === 1 ? geometry.targetBaseX : STAGE_WIDTH - geometry.targetBaseX;
-      const left = Math.max(20, Math.min(launcherStartX, targetBaseX) - radius * 1.8);
-      const right = Math.min(STAGE_WIDTH - 20, Math.max(launcherStartX, targetBaseX) + radius * 7.2);
-      const laneY = geometry.laneY;
-      const top = laneY - boxHalfHeight;
-      const height = boxHalfHeight * 2;
+    const drawBox = (label, geometry, color, fallback) => {
+      const left = Math.max(20, Math.min(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) - radius * 1.8);
+      const right = Math.min(STAGE_WIDTH - 20, Math.max(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) + radius * 7.2);
+      const top = Math.max(20, Math.min(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) - boxHalfHeight);
+      const bottom = Math.min(STAGE_HEIGHT - 20, Math.max(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) + boxHalfHeight);
+      const height = Math.max(12, bottom - top);
       const strokeColor = hexToRgba(color, state.stageTheme === "light" ? 0.86 : 0.9, fallback);
       const fillColor = hexToRgba(color, state.stageTheme === "light" ? 0.07 : 0.045, fallback);
 
@@ -1727,7 +1827,7 @@
     };
 
     if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original set", eventState.geometry, 1, state.groupingOriginalColor, "#e05a5a");
+      drawBox("Original set", eventState.geometry, state.groupingOriginalColor, "#e05a5a");
     }
 
     if (
@@ -1737,7 +1837,6 @@
       drawBox(
         "Context set",
         contextGeometry,
-        eventState.geometry.contextDirectionSign,
         state.groupingContextColor,
         "#d8a51b"
       );
@@ -1754,7 +1853,7 @@
     const lanes = [];
     if (state.contactGuideMode === "original" || state.contactGuideMode === "both") {
       lanes.push({
-        laneY: eventState.geometry.laneY,
+        laneY: eventState.geometry.targetBaseY,
         x: eventState.geometry.targetBaseX,
         color: state.groupingOriginalColor,
         fallback: "#e05a5a"
@@ -1762,13 +1861,13 @@
     }
     if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
       const contextState = getContextMotionState(state);
-      const contextGeometry = getGeometry(contextState, eventState.geometry.laneY + state.contextYOffset);
+      const contextGeometry = getGeometry(contextState, eventState.geometry.laneY + state.contextYOffset, {
+        scope: "context",
+        directionSign: eventState.geometry.contextDirectionSign
+      });
       lanes.push({
-        laneY: contextGeometry.laneY,
-        x:
-          eventState.geometry.contextDirectionSign === 1
-            ? contextGeometry.targetBaseX
-            : STAGE_WIDTH - contextGeometry.targetBaseX,
+        laneY: contextGeometry.targetBaseY,
+        x: contextGeometry.targetBaseX,
         color: state.groupingContextColor,
         fallback: "#d8a51b"
       });
@@ -1787,12 +1886,54 @@
     drawCtx.restore();
   }
 
-  function getGeometry(state, laneY) {
+  function rotateVector(x, y, radians) {
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    return {
+      x: x * cos - y * sin,
+      y: x * sin + y * cos
+    };
+  }
+
+  function readCoordinate(value, fallback, min, max) {
+    const number = Number(value);
+    return Number.isFinite(number) ? clamp(number, min, max) : fallback;
+  }
+
+  function getStartPoint(state, scope, role, fallbackX, fallbackY) {
+    const prefix = `${scope}${role}`;
     const radius = state.ballRadius;
-    const targetBaseX = (state.occluderEnabled ? STAGE_WIDTH * 0.62 : STAGE_WIDTH * 0.58) + state.stimulusXOffset;
-    const launcherStopX = targetBaseX - radius * 2 - state.gapPx;
-    const launcherStartX = 92 + state.stimulusXOffset;
-    const launcherDistance = Math.max(launcherStopX - launcherStartX, 1);
+    return {
+      x: readCoordinate(state[`${prefix}StartX`], fallbackX, radius, STAGE_WIDTH - radius),
+      y: readCoordinate(state[`${prefix}StartY`], fallbackY, radius, STAGE_HEIGHT - radius)
+    };
+  }
+
+  function getGeometry(state, laneY, options = {}) {
+    const radius = state.ballRadius;
+    const scope = options.scope || "original";
+    const directionSign = options.directionSign || 1;
+    const defaultTargetX = (state.occluderEnabled ? STAGE_WIDTH * 0.62 : STAGE_WIDTH * 0.58) + state.stimulusXOffset;
+    const orientedTargetX = directionSign === 1 ? defaultTargetX : STAGE_WIDTH - defaultTargetX;
+    const orientedLauncherX = directionSign === 1 ? 92 + state.stimulusXOffset : STAGE_WIDTH - (92 + state.stimulusXOffset);
+    const usesCustomStarts = Boolean(state.customStartEnabled);
+    const launcherStart = usesCustomStarts
+      ? getStartPoint(state, scope, "Launcher", orientedLauncherX, laneY)
+      : { x: orientedLauncherX, y: laneY };
+    const targetBase = usesCustomStarts
+      ? getStartPoint(state, scope, "Target", orientedTargetX, laneY)
+      : { x: orientedTargetX, y: laneY };
+    const approachDx = targetBase.x - launcherStart.x;
+    const approachDy = targetBase.y - launcherStart.y;
+    const approachLength = Math.hypot(approachDx, approachDy);
+    const fallbackUnitX = directionSign;
+    const fallbackUnitY = 0;
+    const approachUnitX = approachLength > 0.001 ? approachDx / approachLength : fallbackUnitX;
+    const approachUnitY = approachLength > 0.001 ? approachDy / approachLength : fallbackUnitY;
+    const contactDistance = Math.max(0, radius * 2 + state.gapPx);
+    const launcherStopX = targetBase.x - approachUnitX * contactDistance;
+    const launcherStopY = targetBase.y - approachUnitY * contactDistance;
+    const launcherDistance = Math.max(Math.hypot(launcherStopX - launcherStart.x, launcherStopY - launcherStart.y), 1);
     const travelMs = solveTravelMs(launcherDistance, state.launcherSpeed, state.launcherAccel);
     const stopTime = state.leadInMs + travelMs;
     const targetStartTime = stopTime + state.delayMs;
@@ -1800,16 +1941,26 @@
     const launcherImpactSpeed = velocityAt(travelMs, state.launcherSpeed, state.launcherAccel);
     const targetSpeed = launcherImpactSpeed * state.targetSpeedRatio;
     const angleRad = (state.targetAngle * Math.PI) / 180;
+    const customTargetUnit = rotateVector(approachUnitX, approachUnitY, angleRad);
+    const targetUnitX = usesCustomStarts ? customTargetUnit.x : directionSign * Math.cos(angleRad);
+    const targetUnitY = usesCustomStarts ? customTargetUnit.y : Math.sin(angleRad);
     const targetDistance = displacementAt(remainingMs, targetSpeed, state.targetAccel);
     const contextDirectionSign = state.contextDirection === "same" ? 1 : -1;
 
     return {
       radius,
       laneY,
-      targetBaseX,
+      launcherStartX: launcherStart.x,
+      launcherStartY: launcherStart.y,
+      targetBaseX: targetBase.x,
+      targetBaseY: targetBase.y,
       launcherStopX,
-      launcherStartX,
+      launcherStopY,
       launcherDistance,
+      approachUnitX,
+      approachUnitY,
+      targetUnitX,
+      targetUnitY,
       travelMs,
       stopTime,
       targetStartTime,
@@ -1823,35 +1974,35 @@
   }
 
   function getMainEventState(state, t, laneY) {
-    const geometry = getGeometry(state, laneY);
+    const geometry = getGeometry(state, laneY, { scope: "original", directionSign: 1 });
     const approachElapsed = clamp(t - state.leadInMs, 0, geometry.travelMs);
     const approachDistance = Math.min(
       geometry.launcherDistance,
       displacementAt(approachElapsed, state.launcherSpeed, state.launcherAccel)
     );
-    let launcherX = geometry.launcherStartX + approachDistance;
-    let launcherY = laneY;
+    let launcherX = geometry.launcherStartX + geometry.approachUnitX * approachDistance;
+    let launcherY = geometry.launcherStartY + geometry.approachUnitY * approachDistance;
 
     let targetX = geometry.targetBaseX;
-    let targetY = laneY;
+    let targetY = geometry.targetBaseY;
     if (state.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
       const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, state.targetAccel);
-      targetX += Math.cos(geometry.angleRad) * moveDistance;
-      targetY += Math.sin(geometry.angleRad) * moveDistance;
+      targetX += geometry.targetUnitX * moveDistance;
+      targetY += geometry.targetUnitY * moveDistance;
     }
 
     if (state.launcherBehavior === "continue" && t >= geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, state.launcherAccel);
-      launcherX = geometry.launcherStopX + Math.cos(geometry.angleRad) * moveDistance;
-      launcherY = laneY + Math.sin(geometry.angleRad) * moveDistance;
+      launcherX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
+      launcherY = geometry.launcherStopY + geometry.targetUnitY * moveDistance;
     }
 
     if (state.launcherBehavior === "entrain" && t >= geometry.targetStartTime) {
       const separation = geometry.radius * 2;
-      launcherX = targetX - Math.cos(geometry.angleRad) * separation;
-      launcherY = targetY - Math.sin(geometry.angleRad) * separation;
+      launcherX = targetX - geometry.targetUnitX * separation;
+      launcherY = targetY - geometry.targetUnitY * separation;
     }
 
     return {
@@ -1879,40 +2030,36 @@
     };
   }
 
-  function orientEventX(x, directionSign) {
-    return directionSign === 1 ? x : STAGE_WIDTH - x;
-  }
-
   function getDirectedEventState(eventState, t, laneY, directionSign) {
-    const geometry = getGeometry(eventState, laneY);
+    const geometry = getGeometry(eventState, laneY, { scope: "context", directionSign });
     const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
     const approachDistance = Math.min(
       geometry.launcherDistance,
       displacementAt(approachElapsed, eventState.launcherSpeed, eventState.launcherAccel)
     );
-    let launcherX = orientEventX(geometry.launcherStartX + approachDistance, directionSign);
-    let launcherY = laneY;
-    let targetX = orientEventX(geometry.targetBaseX, directionSign);
-    let targetY = laneY;
+    let launcherX = geometry.launcherStartX + geometry.approachUnitX * approachDistance;
+    let launcherY = geometry.launcherStartY + geometry.approachUnitY * approachDistance;
+    let targetX = geometry.targetBaseX;
+    let targetY = geometry.targetBaseY;
 
     if (eventState.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
       const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, eventState.targetAccel);
-      targetX += directionSign * Math.cos(geometry.angleRad) * moveDistance;
-      targetY += Math.sin(geometry.angleRad) * moveDistance;
+      targetX += geometry.targetUnitX * moveDistance;
+      targetY += geometry.targetUnitY * moveDistance;
     }
 
     if (eventState.launcherBehavior === "continue" && t >= geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, eventState.launcherAccel);
-      launcherX = orientEventX(geometry.launcherStopX, directionSign) + directionSign * Math.cos(geometry.angleRad) * moveDistance;
-      launcherY = laneY + Math.sin(geometry.angleRad) * moveDistance;
+      launcherX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
+      launcherY = geometry.launcherStopY + geometry.targetUnitY * moveDistance;
     }
 
     if (eventState.launcherBehavior === "entrain" && t >= geometry.targetStartTime) {
       const separation = geometry.radius * 2;
-      launcherX = targetX - directionSign * Math.cos(geometry.angleRad) * separation;
-      launcherY = targetY - Math.sin(geometry.angleRad) * separation;
+      launcherX = targetX - geometry.targetUnitX * separation;
+      launcherY = targetY - geometry.targetUnitY * separation;
     }
 
     return {
@@ -1926,20 +2073,20 @@
   }
 
   function getDirectedSingleEventState(eventState, t, laneY, directionSign) {
-    const geometry = getGeometry(eventState, laneY);
+    const geometry = getGeometry(eventState, laneY, { scope: "context", directionSign });
     const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
     const approachDistance = Math.min(
       geometry.launcherDistance,
       displacementAt(approachElapsed, eventState.launcherSpeed, eventState.launcherAccel)
     );
-    let singleX = orientEventX(geometry.launcherStartX + approachDistance, directionSign);
-    let singleY = laneY;
+    let singleX = geometry.launcherStartX + geometry.approachUnitX * approachDistance;
+    let singleY = geometry.launcherStartY + geometry.approachUnitY * approachDistance;
 
     if (t > geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, eventState.launcherAccel);
-      singleX = orientEventX(geometry.launcherStopX, directionSign) + directionSign * Math.cos(geometry.angleRad) * moveDistance;
-      singleY = laneY + Math.sin(geometry.angleRad) * moveDistance;
+      singleX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
+      singleY = geometry.launcherStopY + geometry.targetUnitY * moveDistance;
     }
 
     return {
@@ -2134,6 +2281,10 @@
 
     drawFixation(drawCtx, state);
 
+    if (drawCtx === ctx) {
+      drawStartDragHandles(drawCtx, state);
+    }
+
     if (state.renderMode === "lab") {
       drawLegend(drawCtx, state);
 
@@ -2143,6 +2294,154 @@
       drawCtx.fillText(`t = ${Math.round(t)} ms`, STAGE_WIDTH - 116, STAGE_HEIGHT - 28);
       drawCtx.restore();
     }
+  }
+
+  function getStagePoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: clamp(((event.clientX - rect.left) / rect.width) * STAGE_WIDTH, 0, STAGE_WIDTH),
+      y: clamp(((event.clientY - rect.top) / rect.height) * STAGE_HEIGHT, 0, STAGE_HEIGHT)
+    };
+  }
+
+  function getStartDragHandles(state) {
+    const laneY = getMainLaneY(state);
+    const originalGeometry = getGeometry(state, laneY, { scope: "original", directionSign: 1 });
+    const handles = [
+      {
+        id: "originalLauncher",
+        label: "O1",
+        x: originalGeometry.launcherStartX,
+        y: originalGeometry.launcherStartY,
+        xControl: "originalLauncherStartX",
+        yControl: "originalLauncherStartY"
+      },
+      {
+        id: "originalTarget",
+        label: "O2",
+        x: originalGeometry.targetBaseX,
+        y: originalGeometry.targetBaseY,
+        xControl: "originalTargetStartX",
+        yControl: "originalTargetStartY"
+      }
+    ];
+
+    if (state.contextMode !== "none") {
+      const contextGeometry = getGeometry(getContextMotionState(state), laneY + state.contextYOffset, {
+        scope: "context",
+        directionSign: originalGeometry.contextDirectionSign
+      });
+      handles.push(
+        {
+          id: "contextLauncher",
+          label: "C1",
+          x: contextGeometry.launcherStartX,
+          y: contextGeometry.launcherStartY,
+          xControl: "contextLauncherStartX",
+          yControl: "contextLauncherStartY"
+        },
+        {
+          id: "contextTarget",
+          label: "C2",
+          x: contextGeometry.targetBaseX,
+          y: contextGeometry.targetBaseY,
+          xControl: "contextTargetStartX",
+          yControl: "contextTargetStartY"
+        }
+      );
+    }
+
+    return handles;
+  }
+
+  function findStartDragHandle(state, point) {
+    const radius = state.ballRadius + 12;
+    return getStartDragHandles(state).find((handle) => Math.hypot(point.x - handle.x, point.y - handle.y) <= radius) || null;
+  }
+
+  function drawStartDragHandles(drawCtx, state) {
+    if (!state.customStartEnabled) {
+      return;
+    }
+
+    drawCtx.save();
+    drawCtx.font = '800 12px "Avenir Next", "Segoe UI", sans-serif';
+    drawCtx.textAlign = "center";
+    drawCtx.textBaseline = "middle";
+    getStartDragHandles(state).forEach((handle) => {
+      drawCtx.beginPath();
+      drawCtx.arc(handle.x, handle.y, state.ballRadius + 7, 0, Math.PI * 2);
+      drawCtx.strokeStyle = "rgba(255, 255, 255, 0.94)";
+      drawCtx.lineWidth = 2.5;
+      drawCtx.stroke();
+      drawCtx.beginPath();
+      drawCtx.arc(handle.x, handle.y, state.ballRadius + 12, 0, Math.PI * 2);
+      drawCtx.strokeStyle = "rgba(239, 59, 47, 0.86)";
+      drawCtx.lineWidth = 2;
+      drawCtx.stroke();
+      drawCtx.fillStyle = "rgba(255, 253, 246, 0.92)";
+      drawCtx.fillText(handle.label, handle.x, handle.y - state.ballRadius - 20);
+    });
+    drawCtx.restore();
+  }
+
+  function updateDraggedStartPosition(event) {
+    if (!startDragTarget) {
+      return;
+    }
+
+    const state = cloneState();
+    const handle = getStartDragHandles(state).find((candidate) => candidate.id === startDragTarget.id);
+    if (!handle) {
+      return;
+    }
+
+    const point = getStagePoint(event);
+    writeCoordinateControl(handle.xControl, handle.yControl, point.x, point.y);
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = "Start position updated.";
+    drawFrame(cloneState(), 0, ctx);
+  }
+
+  function bindStartDragging() {
+    canvas.addEventListener("pointerdown", (event) => {
+      const state = cloneState();
+      if (!state.customStartEnabled) {
+        return;
+      }
+
+      initializeCustomStartPositions();
+      const handle = findStartDragHandle(cloneState(), getStagePoint(event));
+      if (!handle) {
+        return;
+      }
+
+      stopPreview();
+      startDragTarget = handle;
+      canvas.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      if (!startDragTarget) {
+        return;
+      }
+      updateDraggedStartPosition(event);
+    });
+
+    const endDrag = (event) => {
+      if (!startDragTarget) {
+        return;
+      }
+      updateDraggedStartPosition(event);
+      canvas.releasePointerCapture?.(event.pointerId);
+      startDragTarget = null;
+    };
+
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
   }
 
   function getAudioContextClass() {
@@ -2453,6 +2752,15 @@
       contextTargetAngleDegrees: state.contextTargetAngle,
       groupingMode: state.groupingMode,
       contactGuideMode: state.contactGuideMode,
+      customStartEnabled: state.customStartEnabled,
+      originalLauncherStartX: state.originalLauncherStartX,
+      originalLauncherStartY: state.originalLauncherStartY,
+      originalTargetStartX: state.originalTargetStartX,
+      originalTargetStartY: state.originalTargetStartY,
+      contextLauncherStartX: state.contextLauncherStartX,
+      contextLauncherStartY: state.contextLauncherStartY,
+      contextTargetStartX: state.contextTargetStartX,
+      contextTargetStartY: state.contextTargetStartY,
       colorChangeMode: state.colorChangeMode,
       launcherColor: state.launcherColor,
       targetColor: state.targetColor,
@@ -2510,6 +2818,25 @@
         objectStyle: state.objectStyle,
         groupingMode: state.groupingMode,
         contactGuideMode: state.contactGuideMode,
+        customStartEnabled: state.customStartEnabled,
+        customStartPositionsPx: {
+          originalLauncher: {
+            x: state.originalLauncherStartX,
+            y: state.originalLauncherStartY
+          },
+          originalTarget: {
+            x: state.originalTargetStartX,
+            y: state.originalTargetStartY
+          },
+          contextLauncher: {
+            x: state.contextLauncherStartX,
+            y: state.contextLauncherStartY
+          },
+          contextTarget: {
+            x: state.contextTargetStartX,
+            y: state.contextTargetStartY
+          }
+        },
         colorChangeMode: state.colorChangeMode,
         colorChangeColor: state.colorChangeColor,
         launcherColor: state.launcherColor,
@@ -2648,6 +2975,7 @@
         objectStyle: condition.objectStyle,
         groupingMode: condition.groupingMode,
         contactGuideMode: condition.contactGuideMode,
+        customStartEnabled: condition.customStartEnabled,
         colorChangeMode: condition.colorChangeMode,
         colorChangeColor: condition.colorChangeColor,
         launcherColor: condition.launcherColor,
@@ -2685,6 +3013,7 @@
       targetAccel: 0,
       contactOcclusionMode: "target-front",
       contextContactOcclusionMode: "target-front",
+      customStartEnabled: false,
       stimulusXOffset: 0,
       stimulusYOffset: 0,
       soundEnabled: false
@@ -3321,6 +3650,23 @@
         });
         return;
       }
+      if (id === "customStartEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          if (control.checked) {
+            initializeCustomStartPositions();
+          }
+          syncStartDragUi();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = control.checked ? "Drag start positions on." : "Ready.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
+      if (id.endsWith("StartX") || id.endsWith("StartY")) {
+        return;
+      }
       if (id === "presetSelect") {
         return;
       }
@@ -3419,5 +3765,6 @@
   enhanceRangePrecision();
   bindParameterHelp();
   bindControls();
+  bindStartDragging();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();

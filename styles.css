@@ -418,6 +418,14 @@ canvas {
   aspect-ratio: 16 / 9;
 }
 
+canvas.start-drag-enabled {
+  cursor: grab;
+}
+
+canvas.start-drag-enabled:active {
+  cursor: grabbing;
+}
+
 .stage-overlay {
   position: absolute;
   inset: 0;

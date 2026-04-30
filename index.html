@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260429-occlusion-tooltips" />
+    <link rel="stylesheet" href="styles.css?v=20260430-drag-starts" />
   </head>
   <body>
     <div class="page-shell">
@@ -102,7 +102,7 @@
                 <output data-for="gapPx"></output>
               </label>
               <label class="field">
-                <span>Original front</span>
+                <span>Front object</span>
                 <select id="contactOcclusionMode">
                   <option value="target-front">Second object front</option>
                   <option value="launcher-front">First object front</option>
@@ -149,12 +149,12 @@
                 </select>
               </label>
               <label class="field context-dependent-control">
-                <span>Context window</span>
+                <span>Window</span>
                 <input id="contextDurationMs" data-format="ms" min="50" max="750" step="25" type="range" />
                 <output data-for="contextDurationMs"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context timing</span>
+                <span>Timing</span>
                 <input id="contextOffsetMs" data-format="signedMs" min="-220" max="0" step="10" type="range" />
                 <output data-for="contextOffsetMs"></output>
               </label>
@@ -171,22 +171,22 @@
                 <output data-for="contextYOffset"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context lead-in</span>
+                <span>Lead-in</span>
                 <input id="contextLeadInMs" data-format="int" min="0" max="1200" step="10" type="range" />
                 <output data-for="contextLeadInMs"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context speed</span>
+                <span>Speed</span>
                 <input id="contextLauncherSpeed" data-format="float1" min="120" max="5000" step="10" type="range" />
                 <output data-for="contextLauncherSpeed"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context accel.</span>
+                <span>Acceleration</span>
                 <input id="contextLauncherAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
                 <output data-for="contextLauncherAccel"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context after</span>
+                <span>After contact</span>
                 <select id="contextLauncherBehavior">
                   <option value="stop">Stops: launching</option>
                   <option value="continue">Continues: pass/slip</option>
@@ -194,17 +194,17 @@
                 </select>
               </label>
               <label class="field context-dependent-control">
-                <span>Context delay</span>
+                <span>Delay</span>
                 <input id="contextDelayMs" data-format="ms" min="0" max="300" step="5" type="range" />
                 <output data-for="contextDelayMs"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context overlap</span>
+                <span>Overlap</span>
                 <input id="contextGapPx" data-format="overlap" min="-56" max="0" step="1" type="range" />
                 <output data-for="contextGapPx"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context front</span>
+                <span>Front object</span>
                 <select id="contextContactOcclusionMode">
                   <option value="target-front">Second object front</option>
                   <option value="launcher-front">First object front</option>
@@ -213,17 +213,17 @@
                 </select>
               </label>
               <label class="field context-dependent-control">
-                <span>Context target ratio</span>
+                <span>Target ratio</span>
                 <input id="contextTargetSpeedRatio" data-format="float2" min="0.4" max="1.8" step="0.05" type="range" />
                 <output data-for="contextTargetSpeedRatio"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context target accel.</span>
+                <span>Target accel.</span>
                 <input id="contextTargetAccel" data-format="accel" min="-900" max="1800" step="50" type="range" />
                 <output data-for="contextTargetAccel"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Context angle</span>
+                <span>Target angle</span>
                 <input id="contextTargetAngle" data-format="degrees" min="-75" max="75" step="1" type="range" />
                 <output data-for="contextTargetAngle"></output>
               </label>
@@ -273,6 +273,10 @@
                   <option value="context">Context set</option>
                   <option value="both">Both sets</option>
                 </select>
+              </label>
+              <label class="field checkbox-field">
+                <input id="customStartEnabled" type="checkbox" />
+                <span>Drag start positions</span>
               </label>
               <label class="field">
                 <span>Sudden color change</span>
@@ -331,6 +335,14 @@
                 <input id="stimulusYOffset" data-format="signedPx" min="-130" max="130" step="5" type="range" />
                 <output data-for="stimulusYOffset"></output>
               </label>
+              <input id="originalLauncherStartX" type="hidden" />
+              <input id="originalLauncherStartY" type="hidden" />
+              <input id="originalTargetStartX" type="hidden" />
+              <input id="originalTargetStartY" type="hidden" />
+              <input id="contextLauncherStartX" type="hidden" />
+              <input id="contextLauncherStartY" type="hidden" />
+              <input id="contextTargetStartX" type="hidden" />
+              <input id="contextTargetStartY" type="hidden" />
             </div>
           </section>
 
@@ -431,6 +443,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260429-full-qa-tooltip"></script>
+    <script src="app.js?v=20260430-drag-starts"></script>
   </body>
 </html>
