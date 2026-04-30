@@ -14,23 +14,42 @@
   const presetNameInput = document.getElementById("presetNameInput");
   const savePresetButton = document.getElementById("savePresetButton");
   const deletePresetButton = document.getElementById("deletePresetButton");
+  const showAdvancedControls = document.getElementById("showAdvancedControls");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
   const psychopyButton = document.getElementById("psychopyButton");
+  const conditionSetSelect = document.getElementById("conditionSetSelect");
+  const conditionJsonButton = document.getElementById("conditionJsonButton");
+  const conditionCsvButton = document.getElementById("conditionCsvButton");
   const downloadLink = document.getElementById("downloadLink");
   const metadataLink = document.getElementById("metadataLink");
   const psychopyLink = document.getElementById("psychopyLink");
+  const conditionJsonLink = document.getElementById("conditionJsonLink");
+  const conditionCsvLink = document.getElementById("conditionCsvLink");
   const statusText = document.getElementById("statusText");
   const stageOverlay = document.querySelector(".stage-overlay");
   const scenarioBadge = document.getElementById("scenarioBadge");
   const timingBadge = document.getElementById("timingBadge");
+  const summaryPreset = document.getElementById("summaryPreset");
+  const summaryDuration = document.getElementById("summaryDuration");
+  const summaryFps = document.getElementById("summaryFps");
+  const summaryDelay = document.getElementById("summaryDelay");
+  const summaryRelation = document.getElementById("summaryRelation");
+  const summaryContext = document.getElementById("summaryContext");
+  const summaryFormat = document.getElementById("summaryFormat");
+  const validationList = document.getElementById("validationList");
   const literatureBlurb = document.getElementById("literatureBlurb");
   const presetSummary = document.getElementById("presetSummary");
   const presetNote = document.getElementById("presetNote");
   const videoPanel = document.getElementById("videoPanel");
   const exportMeta = document.getElementById("exportMeta");
   const exportedVideo = document.getElementById("exportedVideo");
+  const artifactChecklist = document.getElementById("artifactChecklist");
+  const artifactFilename = document.getElementById("artifactFilename");
+  const artifactJsonStatus = document.getElementById("artifactJsonStatus");
+  const artifactCsvStatus = document.getElementById("artifactCsvStatus");
+  const artifactWarnings = document.getElementById("artifactWarnings");
   const relationMetric = document.getElementById("relationMetric");
   const categoryMetric = document.getElementById("categoryMetric");
   const captureMetric = document.getElementById("captureMetric");
@@ -107,6 +126,7 @@
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
     presetNameInput: "Changes: the name used when saving the current settings. Use for: making a reusable condition you can apply later.",
+    showAdvancedControls: "Changes: reveals less-common controls. Use for: sound, display calibration, target speed ratio, markers, ball size, and other parameters that are usually held fixed.",
     durationMs: "Changes: total video length. Use for: making sure the clip includes approach, contact, launched motion, and context without cutting anything off.",
     leadInMs: "Changes: still time before the first object moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of the first object before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
@@ -116,13 +136,13 @@
     launcherBehavior: "Changes: what the first object does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of the second object's motion after contact. Use for: straight launch versus angled launch.",
     delayMs: "Changes: time between contact and second-object motion. Short delays look more directly causal; long delays look less like immediate launching.",
-    gapPx: "Changes: overlap at contact. Use for: 0 px means just touching; larger overlap values make the second object begin partly behind or in front of the first.",
+    gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode: "Changes: optional marker drawn in the gap. Use for: testing whether an added spatial cue changes responses to gap displays.",
     ballRadius: "Changes: object size. Use for: scaling the balls while keeping the same motion logic.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
     contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
-    contextMode: "Changes: whether a nearby context event is shown. Use for: None shows only the test event; Nearby launch tests causal capture; Single object controls for motion without impact.",
+    contextMode: "Changes: whether a nearby context event is shown. None shows only the judged event; Nearby launch tests capture; Single object controls for motion; Pass context gives continuous motion without a launch.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
     contextOffsetMs: "Changes: context timing relative to the original event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
     contextDirection: "Changes: context motion direction. Same matches the original event; opposite mirrors it.",
@@ -132,7 +152,7 @@
     contextLauncherAccel: "Changes: whether the context first object speeds up or slows down before contact.",
     contextLauncherBehavior: "Changes: what the context first object does after contact. Stop is launch-like; continue is pass-like; entrain makes both context objects move together.",
     contextDelayMs: "Changes: delay between context contact and context target motion. Use for: strong immediate context versus weaker delayed context.",
-    contextGapPx: "Changes: context-row overlap at contact. Use for: 0 px means just touching; larger overlap values make the context objects partly cover each other.",
+    contextGapPx: "Changes: context-row spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. Use for: setting context occlusion independently from the original-row front-object setting.",
     contextTargetSpeedRatio: "Changes: context second-object speed as a multiple of context first-object impact speed. Use for: matching the original launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether the context second object speeds up or slows down after it starts moving.",
@@ -163,7 +183,8 @@
     outputFormat: "Changes: requested video format. PsychoPy usually works best with MP4/H.264, but browser support may force WebM.",
     fps: "Changes: frames per second for preview stepping and exported video. Higher FPS is smoother; lower FPS is more visibly stepped.",
     videoBitrate: "Changes: export compression quality. Higher bitrate gives cleaner edges and larger files.",
-    fileLabel: "Changes: base filename for video, JSON, and PsychoPy CSV. Use readable condition names for experiment folders."
+    fileLabel: "Changes: base filename for video, JSON, and PsychoPy CSV. Use readable condition names for experiment folders.",
+    conditionSetSelect: "Changes: the condition-family manifest to export. The manifest is a plan: it names clips and stores parameters, but it does not render all videos automatically."
   };
 
   const presets = {
@@ -245,7 +266,7 @@
         delayMs: 0,
         gapPx: -56,
         markerMode: "none",
-        ballRadius: 30,
+        ballRadius: 28,
         occluderEnabled: false,
         occluderWidth: 150,
         contextMode: "launch",
@@ -255,8 +276,8 @@
         contextYOffset: 120,
         renderMode: "stimulus",
         stageTheme: "dark",
-        groupingMode: "both",
-        contactGuideMode: "both",
+        groupingMode: "none",
+        contactGuideMode: "none",
         groupingOriginalColor: "#e05a5a",
         groupingContextColor: "#d8a51b",
         fps: 60,
@@ -752,6 +773,8 @@
   let currentObjectUrl = null;
   let currentMetadataUrl = null;
   let currentPsychopyUrl = null;
+  let currentConditionJsonUrl = null;
+  let currentConditionCsvUrl = null;
   let previewHandle = null;
   let impactSoundTimer = null;
   let sharedAudioContext = null;
@@ -1040,6 +1063,11 @@
     } else if (controls.customStartEnabled.checked && controls.customStartAlignStartsVertical.checked) {
       enforceCustomStartConstraints();
     }
+  }
+
+  function syncAdvancedControlVisibility() {
+    document.body.classList.toggle("show-advanced", Boolean(showAdvancedControls?.checked));
+    hideParameterTooltip();
   }
 
   function writeCoordinateControl(xId, yId, x, y) {
@@ -1514,6 +1542,98 @@
     timingMetric.textContent = standards.timing;
   }
 
+  function describeContext(state) {
+    if (state.contextMode === "none") {
+      return "none";
+    }
+    const labels = {
+      launch: "nearby launch",
+      single: "single object",
+      pass: "pass context"
+    };
+    const timing = state.contextOffsetMs === 0 ? "sync" : `${Math.abs(state.contextOffsetMs)} ms early`;
+    return `${labels[state.contextMode] || state.contextMode}, ${timing}`;
+  }
+
+  function describeOutputFormat(value) {
+    const labels = {
+      lab: "MP4 if possible",
+      mp4: "MP4",
+      "webm-vp9": "WebM VP9",
+      "webm-vp8": "WebM VP8",
+      webm: "WebM"
+    };
+    return labels[value] || value;
+  }
+
+  function describeSummaryRelation(state, standards) {
+    if (state.gapPx > 0) {
+      return `gap ${Math.round(state.gapPx)} px`;
+    }
+    if (state.gapPx < 0) {
+      return `${standards.overlapPercent}% overlap`;
+    }
+    return "contact";
+  }
+
+  function getExperimentWarnings(state) {
+    const warnings = [];
+    if (state.renderMode === "lab") {
+      warnings.push("Lab preview exports labels. Use Clean stimulus or Fixation for participant movies.");
+    }
+    if (state.contactGuideMode !== "none") {
+      warnings.push("Contact guide is visible in export. Turn off unless it is a condition.");
+    }
+    if (state.groupingMode !== "none") {
+      warnings.push("Grouping boxes are visible to participants. Keep only if grouping is tested.");
+    }
+    if (state.markerMode !== "none") {
+      warnings.push("Gap marker is visible to participants. Keep only if marker cues are tested.");
+    }
+    if (state.soundEnabled) {
+      warnings.push("Audio export depends on browser encoding. Check the saved movie in PsychoPy.");
+    }
+    return warnings;
+  }
+
+  function renderExperimentWarnings(state) {
+    if (!validationList) {
+      return;
+    }
+    const warnings = getExperimentWarnings(state);
+    validationList.replaceChildren();
+    validationList.classList.toggle("hidden", warnings.length === 0);
+    warnings.forEach((warning) => {
+      const item = document.createElement("li");
+      item.textContent = warning;
+      validationList.appendChild(item);
+    });
+  }
+
+  function refreshSummary(state, copy, standards) {
+    if (summaryPreset) {
+      summaryPreset.textContent = copy.label;
+    }
+    if (summaryDuration) {
+      summaryDuration.textContent = `${Math.round(state.durationMs)} ms`;
+    }
+    if (summaryFps) {
+      summaryFps.textContent = `${Math.round(state.fps)}`;
+    }
+    if (summaryDelay) {
+      summaryDelay.textContent = `${Math.round(state.delayMs)} ms`;
+    }
+    if (summaryRelation) {
+      summaryRelation.textContent = describeSummaryRelation(state, standards);
+    }
+    if (summaryContext) {
+      summaryContext.textContent = describeContext(state);
+    }
+    if (summaryFormat) {
+      summaryFormat.textContent = describeOutputFormat(state.outputFormat);
+    }
+  }
+
   function refreshText() {
     const state = cloneState();
     const copy = activePresetKey ? getPreset(activePresetKey) : getDynamicCopy(state);
@@ -1545,6 +1665,8 @@
     if (timingBadge) {
       timingBadge.textContent = `${spatialTag} + ${Math.round(state.delayMs)} ms delay${occlusionTag}`;
     }
+    refreshSummary(state, copy, standards);
+    renderExperimentWarnings(state);
     updateStandards(state);
   }
 
@@ -2840,8 +2962,22 @@
       forceEndRoutine: "true",
       loopPlayback: "false",
       noAudio: String(!state.soundEnabled),
+      durationMs: state.durationMs,
+      leadInMs: state.leadInMs,
+      launcherSpeedPxPerSec: state.launcherSpeed,
+      launcherAccelerationPxPerSec2: state.launcherAccel,
+      launcherBehavior: state.launcherBehavior,
+      targetSpeedRatio: state.targetSpeedRatio,
+      targetAccelerationPxPerSec2: state.targetAccel,
+      targetAngleDegrees: state.targetAngle,
       contactDelayMs: state.delayMs,
+      gapPx: state.gapPx,
+      spatialGapPx: standards.gapPx,
       overlapPercent: standards.overlapPercent,
+      markerMode: state.markerMode,
+      ballRadiusPx: state.ballRadius,
+      occluderEnabled: state.occluderEnabled,
+      occluderWidthPx: state.occluderWidth,
       impactMs: standards.impactMs,
       targetOnsetMs: standards.targetOnsetMs,
       contactOcclusionMode: state.contactOcclusionMode,
@@ -2879,7 +3015,24 @@
       contextColor: state.contextColor,
       contextTargetColor: state.contextTargetColor,
       groupingOriginalColor: state.groupingOriginalColor,
-      groupingContextColor: state.groupingContextColor
+      groupingContextColor: state.groupingContextColor,
+      renderMode: state.renderMode,
+      stageTheme: state.stageTheme,
+      objectStyle: state.objectStyle,
+      colorChangeColor: state.colorChangeColor,
+      pxPerDva: state.pxPerDva,
+      ballDiameterDva: standards.ballDiameterDva,
+      gapDva: standards.gapDva,
+      contextSeparationDva: standards.contextSeparationDva,
+      fixationDva: state.fixationDva,
+      stimulusXOffsetPx: state.stimulusXOffset,
+      stimulusYOffsetPx: state.stimulusYOffset,
+      soundEnabled: state.soundEnabled,
+      soundType: state.soundType,
+      soundVolume: state.soundVolume,
+      outputFormat: state.outputFormat,
+      videoBitrateMbps: state.videoBitrate,
+      validationWarnings: getExperimentWarnings(state).join(" | ")
     };
     const columns = Object.keys(row);
     return `${columns.join(",")}\n${columns.map((column) => csvCell(row[column])).join(",")}\n`;
@@ -3018,6 +3171,238 @@
     psychopyLink.download = preferredName;
     psychopyLink.textContent = `Download ${preferredName}`;
     psychopyLink.classList.remove("hidden");
+  }
+
+  function setConditionJsonDownload(manifest, preferredName) {
+    const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+    if (currentConditionJsonUrl) {
+      URL.revokeObjectURL(currentConditionJsonUrl);
+    }
+    currentConditionJsonUrl = URL.createObjectURL(blob);
+    conditionJsonLink.href = currentConditionJsonUrl;
+    conditionJsonLink.download = preferredName;
+    conditionJsonLink.textContent = `Download ${preferredName}`;
+    conditionJsonLink.classList.remove("hidden");
+  }
+
+  function setConditionCsvDownload(csv, preferredName) {
+    const blob = new Blob([csv], { type: "text/csv" });
+    if (currentConditionCsvUrl) {
+      URL.revokeObjectURL(currentConditionCsvUrl);
+    }
+    currentConditionCsvUrl = URL.createObjectURL(blob);
+    conditionCsvLink.href = currentConditionCsvUrl;
+    conditionCsvLink.download = preferredName;
+    conditionCsvLink.textContent = `Download ${preferredName}`;
+    conditionCsvLink.classList.remove("hidden");
+  }
+
+  function stateFromConditionParameters(baseState, parameters) {
+    return {
+      ...baseState,
+      durationMs: parameters.durationMs,
+      leadInMs: parameters.leadInMs,
+      launcherSpeed: parameters.launcherSpeedPxPerSec,
+      launcherAccel: parameters.launcherAccelerationPxPerSec2,
+      targetSpeedRatio: parameters.targetSpeedRatio,
+      targetAccel: parameters.targetAccelerationPxPerSec2,
+      launcherBehavior: parameters.launcherBehavior,
+      targetAngle: parameters.targetAngleDegrees,
+      delayMs: parameters.contactDelayMs,
+      gapPx: parameters.gapPx,
+      markerMode: parameters.markerMode,
+      ballRadius: parameters.ballRadiusPx,
+      occluderEnabled: parameters.occluderEnabled,
+      occluderWidth: parameters.occluderWidthPx,
+      contactOcclusionMode: parameters.contactOcclusionMode,
+      contextMode: parameters.contextMode,
+      contextDurationMs: parameters.contextDurationMs,
+      contextOffsetMs: parameters.contextOffsetMs,
+      contextDirection: parameters.contextDirection,
+      contextYOffset: parameters.contextYOffsetPx,
+      contextLeadInMs: parameters.contextLeadInMs,
+      contextLauncherSpeed: parameters.contextLauncherSpeedPxPerSec,
+      contextLauncherAccel: parameters.contextLauncherAccelerationPxPerSec2,
+      contextLauncherBehavior: parameters.contextLauncherBehavior,
+      contextDelayMs: parameters.contextDelayMs,
+      contextGapPx: parameters.contextGapPx,
+      contextContactOcclusionMode: parameters.contextContactOcclusionMode,
+      contextTargetSpeedRatio: parameters.contextTargetSpeedRatio,
+      contextTargetAccel: parameters.contextTargetAccelerationPxPerSec2,
+      contextTargetAngle: parameters.contextTargetAngleDegrees,
+      renderMode: parameters.renderMode,
+      stageTheme: parameters.stageTheme,
+      objectStyle: parameters.objectStyle,
+      groupingMode: parameters.groupingMode,
+      contactGuideMode: parameters.contactGuideMode,
+      colorChangeMode: parameters.colorChangeMode,
+      colorChangeColor: parameters.colorChangeColor,
+      launcherColor: parameters.launcherColor,
+      targetColor: parameters.targetColor,
+      contextColor: parameters.contextColor,
+      contextTargetColor: parameters.contextTargetColor,
+      groupingOriginalColor: parameters.groupingOriginalColor,
+      groupingContextColor: parameters.groupingContextColor,
+      pxPerDva: parameters.pxPerDva,
+      fixationDva: parameters.fixationDva,
+      stimulusXOffset: parameters.stimulusXOffsetPx,
+      stimulusYOffset: parameters.stimulusYOffsetPx,
+      soundEnabled: parameters.soundEnabled,
+      soundType: parameters.soundType,
+      soundVolume: parameters.soundVolume,
+      outputFormat: parameters.outputFormat,
+      videoBitrate: parameters.videoBitrateMbps,
+      fps: parameters.fps
+    };
+  }
+
+  function getConditionMovieName(baseName, condition, index, extension) {
+    const order = String(index + 1).padStart(2, "0");
+    return `${baseName}-${order}-${sanitizeLabel(condition.label || "condition")}.${extension}`;
+  }
+
+  function buildConditionManifest(kind, baseState, exportFormat = chooseExportFormat(baseState)) {
+    const rawSet = buildConditionSet(kind, baseState);
+    const baseName = `${sanitizeLabel(baseState.fileLabel)}-${sanitizeLabel(rawSet.family)}`;
+    const encoded = getEncodedDimensions(exportFormat);
+    const conditions = rawSet.conditions.map((condition, index) => {
+      const filename = getConditionMovieName(baseName, condition, index, exportFormat.extension);
+      const conditionState = stateFromConditionParameters(baseState, condition.parameters);
+      const frameCount = getExportFrameCount(conditionState);
+      return {
+        index: index + 1,
+        family: rawSet.family,
+        label: condition.label,
+        phase: condition.phase,
+        role: condition.role,
+        pairId: condition.pairId,
+        prediction: condition.prediction,
+        literatureAnchor: condition.literatureAnchor,
+        movieFilename: filename,
+        movieFile: getPsychopyMoviePath(filename),
+        psychopyCsv: `${baseName}-psychopy.csv`,
+        intendedDurationSec: getIntendedDurationSec(conditionState),
+        movieDurationSec: Number((frameCount / conditionState.fps).toFixed(3)),
+        frameCount,
+        widthPx: encoded.width,
+        heightPx: encoded.height,
+        validationWarnings: getExperimentWarnings(conditionState),
+        standards: condition.standards,
+        parameters: condition.parameters
+      };
+    });
+    return {
+      generatedAt: new Date().toISOString(),
+      family: rawSet.family,
+      note: rawSet.note,
+      sourcePreset: getConditionName(),
+      requestedFormat: baseState.outputFormat,
+      actualMimeType: exportFormat.mimeType,
+      extension: exportFormat.extension,
+      movieFolder: PSYCHOPY_STIMULI_FOLDER,
+      psychopyCsv: `${baseName}-psychopy.csv`,
+      instructions: "Render each listed movie, place it in stimuli/, and use the CSV as a PsychoPy loop conditions file.",
+      conditions
+    };
+  }
+
+  function buildConditionSetCsv(manifest) {
+    const rows = manifest.conditions.map((condition) => ({
+      movieFile: condition.movieFile,
+      conditionIndex: condition.index,
+      conditionFamily: condition.family,
+      conditionLabel: condition.label,
+      phase: condition.phase,
+      role: condition.role,
+      pairId: condition.pairId,
+      prediction: condition.prediction,
+      literatureAnchor: condition.literatureAnchor,
+      intendedDurationSec: condition.intendedDurationSec,
+      movieDurationSec: condition.movieDurationSec,
+      movieFPS: condition.parameters.fps,
+      frameCount: condition.frameCount,
+      widthPx: condition.widthPx,
+      heightPx: condition.heightPx,
+      units: "pix",
+      positionXPix: 0,
+      positionYPix: 0,
+      forceEndRoutine: "true",
+      loopPlayback: "false",
+      noAudio: String(!condition.parameters.soundEnabled),
+      durationMs: condition.parameters.durationMs,
+      leadInMs: condition.parameters.leadInMs,
+      launcherSpeedPxPerSec: condition.parameters.launcherSpeedPxPerSec,
+      launcherAccelerationPxPerSec2: condition.parameters.launcherAccelerationPxPerSec2,
+      launcherBehavior: condition.parameters.launcherBehavior,
+      targetSpeedRatio: condition.parameters.targetSpeedRatio,
+      targetAccelerationPxPerSec2: condition.parameters.targetAccelerationPxPerSec2,
+      targetAngleDegrees: condition.parameters.targetAngleDegrees,
+      contactDelayMs: condition.parameters.contactDelayMs,
+      gapPx: condition.parameters.gapPx,
+      overlapPercent: condition.standards.overlapPercent,
+      impactMs: condition.standards.impactMs,
+      targetOnsetMs: condition.standards.targetOnsetMs,
+      contextMode: condition.parameters.contextMode,
+      contextDurationMs: condition.parameters.contextDurationMs,
+      contextOffsetMs: condition.parameters.contextOffsetMs,
+      contextDirection: condition.parameters.contextDirection,
+      contextSeparationPx: condition.parameters.contextYOffsetPx,
+      contextLauncherBehavior: condition.parameters.contextLauncherBehavior,
+      contextGapPx: condition.parameters.contextGapPx,
+      renderMode: condition.parameters.renderMode,
+      stageTheme: condition.parameters.stageTheme,
+      groupingMode: condition.parameters.groupingMode,
+      contactGuideMode: condition.parameters.contactGuideMode,
+      validationWarnings: condition.validationWarnings.join(" | ")
+    }));
+    if (rows.length === 0) {
+      return "";
+    }
+    const columns = Object.keys(rows[0]);
+    return `${columns.join(",")}\n${rows
+      .map((row) => columns.map((column) => csvCell(row[column])).join(","))
+      .join("\n")}\n`;
+  }
+
+  function exportConditionSetJson() {
+    const state = cloneState();
+    const exportFormat = chooseExportFormat(state);
+    const manifest = buildConditionManifest(conditionSetSelect.value, state, exportFormat);
+    setConditionJsonDownload(manifest, `${sanitizeLabel(manifest.family)}-condition-set.json`);
+    setConditionCsvDownload(buildConditionSetCsv(manifest), manifest.psychopyCsv);
+    statusText.textContent = `${manifest.conditions.length} condition records ready.`;
+  }
+
+  function exportConditionSetCsv() {
+    const state = cloneState();
+    const exportFormat = chooseExportFormat(state);
+    const manifest = buildConditionManifest(conditionSetSelect.value, state, exportFormat);
+    setConditionCsvDownload(buildConditionSetCsv(manifest), manifest.psychopyCsv);
+    setConditionJsonDownload(manifest, `${sanitizeLabel(manifest.family)}-condition-set.json`);
+    statusText.textContent = `${manifest.conditions.length} PsychoPy rows ready.`;
+  }
+
+  function updateArtifactChecklist(state, filename, exportFormat) {
+    if (!artifactChecklist) {
+      return;
+    }
+    const warnings = getExperimentWarnings(state);
+    artifactChecklist.classList.remove("hidden");
+    if (artifactFilename) {
+      artifactFilename.textContent = filename;
+    }
+    if (artifactJsonStatus) {
+      artifactJsonStatus.textContent = "ready";
+    }
+    if (artifactCsvStatus) {
+      artifactCsvStatus.textContent = "ready";
+    }
+    if (artifactWarnings) {
+      artifactWarnings.textContent = warnings.length === 0 ? "none" : `${warnings.length} warning${warnings.length === 1 ? "" : "s"}`;
+    }
+    if (exportFormat.usedFallback && artifactWarnings) {
+      artifactWarnings.textContent = artifactWarnings.textContent === "none" ? "format fallback" : `${artifactWarnings.textContent}, format fallback`;
+    }
   }
 
   function exportParameters() {
@@ -3212,10 +3597,10 @@
     }
 
     if (kind === "captureContext") {
-      const contexts = ["none", "single", "launch"];
+      const contexts = ["none", "single", "launch", "pass"];
       return {
         family: "Scholl/Nakayama context types",
-        note: "Full-overlap test event paired with no context, a single-object context, or a synchronized launch context.",
+        note: "Full-overlap test event paired with no context, single-object motion, pass context, or a synchronized launch context.",
         conditions: contexts.map((contextMode) =>
           withCondition(base, {
             label: `full-overlap-${contextMode}-context`,
@@ -3725,6 +4110,7 @@
     downloadLink.classList.remove("hidden");
     setMetadataDownload(buildMetadata(state, filename, exportFormat), metadataFilename);
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
+    updateArtifactChecklist(state, filename, exportFormat);
 
     exportedVideo.src = currentObjectUrl;
     videoPanel.classList.remove("hidden");
@@ -3850,6 +4236,11 @@
       });
     });
 
+    showAdvancedControls?.addEventListener("change", () => {
+      syncAdvancedControlVisibility();
+      statusText.textContent = showAdvancedControls.checked ? "Advanced controls shown." : "Ready.";
+    });
+
     presetSelect.addEventListener("change", () => {
       selectedPresetKey = presetSelect.value;
       const preset = getPreset(selectedPresetKey);
@@ -3872,6 +4263,8 @@
     exportButton.addEventListener("click", exportVideo);
     metadataButton.addEventListener("click", exportParameters);
     psychopyButton.addEventListener("click", exportPsychopyCsv);
+    conditionJsonButton?.addEventListener("click", exportConditionSetJson);
+    conditionCsvButton?.addEventListener("click", exportConditionSetCsv);
 
     window.addEventListener("resize", () => {
       drawFrame(cloneState(), 0, ctx);
@@ -3900,5 +4293,6 @@
   bindParameterHelp();
   bindControls();
   bindStartDragging();
+  syncAdvancedControlVisibility();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();

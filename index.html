@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260430-start-constraints" />
+    <link rel="stylesheet" href="styles.css?v=20260430-experiment-export" />
   </head>
   <body>
     <div class="page-shell">
@@ -40,6 +40,10 @@
               <button id="savePresetButton" class="secondary-button" type="button">Save</button>
               <button id="deletePresetButton" class="secondary-button" type="button">Remove</button>
             </div>
+            <label class="field checkbox-field advanced-toggle">
+              <input id="showAdvancedControls" type="checkbox" />
+              <span>Show advanced controls</span>
+            </label>
             <p id="presetSummary" class="microcopy hidden"></p>
           </section>
 
@@ -97,8 +101,8 @@
                 <output data-for="delayMs"></output>
               </label>
               <label class="field">
-                <span>Overlap</span>
-                <input id="gapPx" data-format="overlap" min="-56" max="0" step="1" type="range" />
+                <span>Overlap / gap</span>
+                <input id="gapPx" data-format="overlap" min="-56" max="80" step="1" type="range" />
                 <output data-for="gapPx"></output>
               </label>
               <label class="field">
@@ -145,6 +149,7 @@
                   <option value="none">None</option>
                   <option value="launch">Nearby launch</option>
                   <option value="single">Single object</option>
+                  <option value="pass">Pass context</option>
                 </select>
               </label>
               <label class="field context-dependent-control">
@@ -198,8 +203,8 @@
                 <output data-for="contextDelayMs"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Overlap</span>
-                <input id="contextGapPx" data-format="overlap" min="-56" max="0" step="1" type="range" />
+                <span>Overlap / gap</span>
+                <input id="contextGapPx" data-format="overlap" min="-56" max="80" step="1" type="range" />
                 <output data-for="contextGapPx"></output>
               </label>
               <label class="field context-dependent-control">
@@ -418,6 +423,31 @@
               CSV is the PsychoPy conditions file. Use <code>$movieFile</code> in MovieStim.
             </p>
             <a id="psychopyLink" class="download-link hidden" download>Download PsychoPy CSV</a>
+            <div class="condition-set-box">
+              <label class="field">
+                <span>Condition set</span>
+                <select id="conditionSetSelect">
+                  <option value="captureContext">Capture: context types</option>
+                  <option value="captureDuration">Capture: context duration</option>
+                  <option value="captureTiming">Capture: timing offsets</option>
+                  <option value="captureDirection">Capture: direction check</option>
+                  <option value="delayOverlap">Delay x overlap grid</option>
+                  <option value="ohl7">7-step overlap continuum</option>
+                  <option value="kominsky9">9-step overlap continuum</option>
+                  <option value="categoryCarveup">Launch / pass / push categories</option>
+                  <option value="contextAdaptation">Context after adaptation</option>
+                  <option value="retinotopicTransfer">Retinotopic transfer</option>
+                  <option value="featureTransfer">Feature transfer</option>
+                </select>
+              </label>
+              <div class="button-row">
+                <button id="conditionJsonButton" class="secondary-button" type="button">Set JSON</button>
+                <button id="conditionCsvButton" class="secondary-button" type="button">Set CSV</button>
+              </div>
+              <p class="microcopy">Manifest only. Use it to name videos and drive a PsychoPy loop.</p>
+              <a id="conditionJsonLink" class="download-link hidden" download>Download set JSON</a>
+              <a id="conditionCsvLink" class="download-link hidden" download>Download set CSV</a>
+            </div>
           </section>
         </aside>
 
@@ -426,6 +456,16 @@
             <h2>Preview</h2>
             <button id="previewButton" class="primary-button preview-button" type="button">Play</button>
           </div>
+          <div id="summaryStrip" class="summary-strip" aria-label="Current stimulus summary">
+            <span><b>Case</b><em id="summaryPreset">Clear launch</em></span>
+            <span><b>Duration</b><em id="summaryDuration">1200 ms</em></span>
+            <span><b>FPS</b><em id="summaryFps">60</em></span>
+            <span><b>Delay</b><em id="summaryDelay">0 ms</em></span>
+            <span><b>Relation</b><em id="summaryRelation">contact</em></span>
+            <span><b>Context</b><em id="summaryContext">none</em></span>
+            <span><b>Export</b><em id="summaryFormat">MP4 if possible</em></span>
+          </div>
+          <ul id="validationList" class="validation-list hidden" aria-live="polite"></ul>
           <div class="stage-frame">
             <canvas id="stage" width="960" height="540"></canvas>
             <div class="stage-overlay">
@@ -439,6 +479,12 @@
               <h2>Export preview</h2>
               <span id="exportMeta" class="microcopy"></span>
             </div>
+            <div id="artifactChecklist" class="artifact-card hidden">
+              <span><b>Video</b><em id="artifactFilename">not exported</em></span>
+              <span><b>JSON</b><em id="artifactJsonStatus">pending</em></span>
+              <span><b>PsychoPy CSV</b><em id="artifactCsvStatus">pending</em></span>
+              <span><b>Check</b><em id="artifactWarnings">none</em></span>
+            </div>
             <video id="exportedVideo" controls playsinline></video>
           </section>
         </section>
@@ -449,6 +495,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260430-frame-aligned-default"></script>
+    <script src="app.js?v=20260430-experiment-export"></script>
   </body>
 </html>
