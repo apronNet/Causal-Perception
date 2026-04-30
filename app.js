@@ -178,7 +178,7 @@
       values: {
         durationMs: 1200,
         leadInMs: 200,
-        launcherSpeed: 860,
+        launcherSpeed: 876,
         targetSpeedRatio: 1,
         launcherBehavior: "stop",
         targetAngle: 0,
