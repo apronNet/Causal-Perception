@@ -1004,20 +1004,20 @@
     return text.split(/\s+Use for:/)[0];
   }
 
-  function showParameterTooltip(field, text) {
+  function showParameterTooltip(anchor, text) {
     const tooltip = getParameterTooltip();
     const margin = 12;
     tooltip.textContent = formatParameterTooltipText(text);
     tooltip.classList.remove("hidden");
 
-    const fieldRect = field.getBoundingClientRect();
+    const fieldRect = anchor.getBoundingClientRect();
     const tooltipRect = tooltip.getBoundingClientRect();
     const left = clamp(fieldRect.left, margin, window.innerWidth - tooltipRect.width - margin);
-    const below = fieldRect.bottom + 8;
+    const below = fieldRect.bottom + 6;
     const top =
       below + tooltipRect.height <= window.innerHeight - margin
         ? below
-        : Math.max(margin, fieldRect.top - tooltipRect.height - 8);
+        : Math.max(margin, fieldRect.top - tooltipRect.height - 6);
 
     tooltip.style.left = `${left}px`;
     tooltip.style.top = `${top}px`;
@@ -1030,19 +1030,20 @@
       if (!field || field.dataset.helpBound === "true") {
         return;
       }
+      const label = field.querySelector("span");
+      if (!label) {
+        return;
+      }
 
       field.classList.add("help-field");
       field.dataset.helpBound = "true";
       field.dataset.helpText = text;
-      field.addEventListener("pointerenter", () => showParameterTooltip(field, text));
-      field.addEventListener("pointerleave", hideParameterTooltip);
-      field.addEventListener("click", () => showParameterTooltip(field, text));
-      field.addEventListener("focusin", () => showParameterTooltip(field, text));
-      field.addEventListener("focusout", (event) => {
-        if (!field.contains(event.relatedTarget)) {
-          hideParameterTooltip();
-        }
-      });
+      label.addEventListener("pointerenter", () => showParameterTooltip(label, text));
+      label.addEventListener("pointerleave", hideParameterTooltip);
+      label.addEventListener("click", () => showParameterTooltip(label, text));
+      label.setAttribute("tabindex", "0");
+      label.addEventListener("focus", () => showParameterTooltip(label, text));
+      label.addEventListener("blur", hideParameterTooltip);
     });
 
     window.addEventListener("scroll", hideParameterTooltip, true);
