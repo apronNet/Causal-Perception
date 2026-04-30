@@ -110,6 +110,43 @@ h1 {
   border: 2px solid var(--line);
 }
 
+.michotte-photo-wrap::before,
+.michotte-photo-wrap::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  width: 15%;
+  height: 10%;
+  top: 17.5%;
+  border-radius: 999px 999px 52% 52%;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(166, 141, 124, 0.72) 0%,
+      rgba(72, 50, 43, 0.9) 55%,
+      rgba(9, 8, 8, 0.96) 58%,
+      rgba(41, 28, 24, 0.86) 76%,
+      rgba(117, 92, 77, 0.42) 100%
+    );
+  box-shadow:
+    0 0 3px rgba(5, 4, 4, 0.54),
+    inset 0 1px 1px rgba(218, 194, 174, 0.24);
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0.08);
+  transform-origin: 50% 45%;
+}
+
+.michotte-photo-wrap::before {
+  left: 38.8%;
+  rotate: -5deg;
+}
+
+.michotte-photo-wrap::after {
+  left: 55.8%;
+  rotate: 3deg;
+}
+
 .michotte-card img {
   display: block;
   width: 224px;
@@ -118,20 +155,23 @@ h1 {
   filter: grayscale(1);
 }
 
-.michotte-blink-clip {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  pointer-events: none;
+.michotte-card.is-playing-blink .michotte-photo-wrap::before,
+.michotte-card.is-playing-blink .michotte-photo-wrap::after {
+  animation: michotteBlink 260ms ease-in-out both;
 }
 
-.michotte-card.is-playing-blink .michotte-blink-clip {
-  opacity: 1;
+@keyframes michotteBlink {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scaleY(0.08);
+  }
+
+  36%,
+  58% {
+    opacity: 0.96;
+    transform: scaleY(1);
+  }
 }
 
 .michotte-caption {

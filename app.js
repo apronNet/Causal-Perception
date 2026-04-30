@@ -9,9 +9,7 @@
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
   const SHARED_PRESETS_URL = "shared-presets.json";
-  const MICHOTTE_BLINK_CLIP = "assets/albert-michotte-blink.gif";
-  const MICHOTTE_BLINK_DELAY_MS = 500;
-  const MICHOTTE_BLINK_DURATION_MS = 540;
+  const MICHOTTE_BLINK_DURATION_MS = 280;
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
@@ -21,7 +19,6 @@
   const exportPresetButton = document.getElementById("exportPresetButton");
   const michotteCard = document.getElementById("michotteCard");
   const michotteBlinkButton = document.getElementById("michotteBlinkButton");
-  const michotteBlinkClip = document.getElementById("michotteBlinkClip");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
@@ -1066,26 +1063,20 @@
   }
 
   function bindMichotteBlink() {
-    if (!michotteCard || !michotteBlinkButton || !michotteBlinkClip) {
+    if (!michotteCard || !michotteBlinkButton) {
       return;
     }
 
-    let delayTimer = 0;
     let hideTimer = 0;
     const blink = () => {
-      window.clearTimeout(delayTimer);
       window.clearTimeout(hideTimer);
       michotteCard.classList.remove("is-playing-blink");
-      michotteBlinkClip.removeAttribute("src");
+      void michotteCard.offsetWidth;
 
-      delayTimer = window.setTimeout(() => {
-        michotteBlinkClip.src = `${MICHOTTE_BLINK_CLIP}?t=${Date.now()}`;
-        michotteCard.classList.add("is-playing-blink");
-        hideTimer = window.setTimeout(() => {
-          michotteCard.classList.remove("is-playing-blink");
-          michotteBlinkClip.removeAttribute("src");
-        }, MICHOTTE_BLINK_DURATION_MS);
-      }, MICHOTTE_BLINK_DELAY_MS);
+      michotteCard.classList.add("is-playing-blink");
+      hideTimer = window.setTimeout(() => {
+        michotteCard.classList.remove("is-playing-blink");
+      }, MICHOTTE_BLINK_DURATION_MS);
     };
 
     michotteBlinkButton.addEventListener("click", blink);
