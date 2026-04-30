@@ -121,7 +121,7 @@
     ballRadius: "Changes: object size. Use for: scaling the balls while keeping the same motion logic.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
-    contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front and Draw first then second both put the target on top; Alternate switches the top object.",
+    contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
     contextMode: "Changes: whether a nearby context event is shown. Use for: None shows only the test event; Nearby launch tests causal capture; Single object controls for motion without impact.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
     contextOffsetMs: "Changes: context timing relative to the original event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
@@ -784,6 +784,10 @@
     drawCtx.imageSmoothingQuality = "high";
   }
 
+  function normalizeOcclusionMode(value) {
+    return value === "launcher-front" || value === "alternate" ? value : "target-front";
+  }
+
   function cloneState() {
     return {
       durationMs: Number(controls.durationMs.value),
@@ -800,7 +804,7 @@
       ballRadius: Number(controls.ballRadius.value),
       occluderEnabled: controls.occluderEnabled.checked,
       occluderWidth: Number(controls.occluderWidth.value),
-      contactOcclusionMode: controls.contactOcclusionMode.value,
+      contactOcclusionMode: normalizeOcclusionMode(controls.contactOcclusionMode.value),
       contextMode: controls.contextMode.value,
       contextDurationMs: Number(controls.contextDurationMs.value),
       contextOffsetMs: Number(controls.contextOffsetMs.value),
@@ -812,7 +816,7 @@
       contextLauncherBehavior: controls.contextLauncherBehavior.value,
       contextDelayMs: Number(controls.contextDelayMs.value),
       contextGapPx: Number(controls.contextGapPx.value),
-      contextContactOcclusionMode: controls.contextContactOcclusionMode.value,
+      contextContactOcclusionMode: normalizeOcclusionMode(controls.contextContactOcclusionMode.value),
       contextTargetSpeedRatio: Number(controls.contextTargetSpeedRatio.value),
       contextTargetAccel: Number(controls.contextTargetAccel.value),
       contextTargetAngle: Number(controls.contextTargetAngle.value),
@@ -1293,10 +1297,12 @@
       if (!control) {
         return;
       }
+      const normalizedValue =
+        key === "contactOcclusionMode" || key === "contextContactOcclusionMode" ? normalizeOcclusionMode(value) : value;
       if (control.type === "checkbox") {
-        control.checked = Boolean(value);
+        control.checked = Boolean(normalizedValue);
       } else {
-        control.value = value;
+        control.value = normalizedValue;
       }
     });
     customStartPositionsInitialized = Boolean(controls.customStartEnabled.checked);
@@ -2201,10 +2207,6 @@
         const phase = Math.floor(Math.max(0, eventState.time - eventState.geometry.targetStartTime) / 80);
         drawOrder = phase % 2 === 0 ? [target, launcher] : [launcher, target];
       }
-    }
-
-    if (occlusionMode === "none") {
-      drawOrder = [launcher, target];
     }
 
     return drawOrder;
