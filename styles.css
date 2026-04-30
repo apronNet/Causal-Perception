@@ -193,11 +193,15 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 0;
+  justify-self: center;
+  width: 100%;
+  max-width: 630px;
 }
 
 .stage-panel {
   position: sticky;
   top: 12px;
+  justify-self: center;
 }
 
 .panel-block {
@@ -258,10 +262,15 @@ h3 {
 
 .preset-save-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) 70px 86px;
   gap: 6px;
   align-items: end;
   margin-top: 8px;
+}
+
+.preset-panel .panel-content {
+  display: grid;
+  gap: 8px;
 }
 
 .control-grid {
