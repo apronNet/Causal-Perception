@@ -36,7 +36,12 @@
   const summaryFps = document.getElementById("summaryFps");
   const summaryDelay = document.getElementById("summaryDelay");
   const summaryRelation = document.getElementById("summaryRelation");
+  const summarySpeed = document.getElementById("summarySpeed");
+  const summaryRadius = document.getElementById("summaryRadius");
+  const summaryAfter = document.getElementById("summaryAfter");
   const summaryContext = document.getElementById("summaryContext");
+  const summaryMode = document.getElementById("summaryMode");
+  const summarySound = document.getElementById("summarySound");
   const summaryFormat = document.getElementById("summaryFormat");
   const validationList = document.getElementById("validationList");
   const literatureBlurb = document.getElementById("literatureBlurb");
@@ -1569,13 +1574,39 @@
 
   function describeOutputFormat(value) {
     const labels = {
-      lab: "MP4 if possible",
+      lab: "MP4 preferred",
       mp4: "MP4",
       "webm-vp9": "WebM VP9",
       "webm-vp8": "WebM VP8",
       webm: "WebM"
     };
     return labels[value] || value;
+  }
+
+  function describeLauncherBehavior(value) {
+    const labels = {
+      stop: "stops",
+      continue: "passes",
+      entrain: "entrains"
+    };
+    return labels[value] || value;
+  }
+
+  function describeRenderMode(value) {
+    const labels = {
+      stimulus: "clean",
+      clean: "clean",
+      fixation: "fixation",
+      lab: "lab"
+    };
+    return labels[value] || value;
+  }
+
+  function describeSound(state) {
+    if (!state.soundEnabled || state.soundVolume <= 0) {
+      return "off";
+    }
+    return `${state.soundType}, ${Math.round(state.soundVolume * 100)}%`;
   }
 
   function describeSummaryRelation(state, standards) {
@@ -1638,8 +1669,23 @@
     if (summaryRelation) {
       summaryRelation.textContent = describeSummaryRelation(state, standards);
     }
+    if (summarySpeed) {
+      summarySpeed.textContent = `${Math.round(state.launcherSpeed)} px/s`;
+    }
+    if (summaryRadius) {
+      summaryRadius.textContent = `${Math.round(state.ballRadius)} px`;
+    }
+    if (summaryAfter) {
+      summaryAfter.textContent = describeLauncherBehavior(state.launcherBehavior);
+    }
     if (summaryContext) {
       summaryContext.textContent = describeContext(state);
+    }
+    if (summaryMode) {
+      summaryMode.textContent = describeRenderMode(state.renderMode);
+    }
+    if (summarySound) {
+      summarySound.textContent = describeSound(state);
     }
     if (summaryFormat) {
       summaryFormat.textContent = describeOutputFormat(state.outputFormat);
