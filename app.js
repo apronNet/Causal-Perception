@@ -73,6 +73,8 @@
     "groupingMode",
     "contactGuideMode",
     "customStartEnabled",
+    "customStartKeepRowsHorizontal",
+    "customStartAlignStartsVertical",
     "originalLauncherStartX",
     "originalLauncherStartY",
     "originalTargetStartX",
@@ -141,6 +143,8 @@
     groupingMode: "Changes: solid boxes around original row, context row, or both. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1, O2, C1, and C2 start positions manually; exports use the positions but hide the rings.",
+    customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position; C1 and C2 share one y-position when context is shown.",
+    customStartAlignStartsVertical: "Changes: keeps the two first objects on one vertical line. Use for: O1 and C1 share one x-position when context is shown.",
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
     colorChangeColor: "Changes: the new color used by sudden color change. Use for: setting the contact-locked feature change.",
     launcherColor: "Changes: color of the original first object. Use for: object identity or fixed stimulus colors.",
@@ -715,6 +719,8 @@
     groupingOriginalColor: "#e05a5a",
     groupingContextColor: "#d8a51b",
     customStartEnabled: false,
+    customStartKeepRowsHorizontal: false,
+    customStartAlignStartsVertical: false,
     originalLauncherStartX: 92,
     originalLauncherStartY: STAGE_HEIGHT / 2,
     originalTargetStartX: STAGE_WIDTH * 0.58,
@@ -739,6 +745,7 @@
     controls[id] = document.getElementById(id);
   });
   const contextDependentControls = Array.from(document.querySelectorAll(".context-dependent-control"));
+  const customStartDependentControls = Array.from(document.querySelectorAll(".custom-start-dependent-control"));
 
   let activePresetKey = "canonical";
   let selectedPresetKey = "canonical";
@@ -815,6 +822,8 @@
       groupingMode: controls.groupingMode.value,
       contactGuideMode: controls.contactGuideMode.value,
       customStartEnabled: controls.customStartEnabled.checked,
+      customStartKeepRowsHorizontal: controls.customStartKeepRowsHorizontal.checked,
+      customStartAlignStartsVertical: controls.customStartAlignStartsVertical.checked,
       originalLauncherStartX: Number(controls.originalLauncherStartX.value),
       originalLauncherStartY: Number(controls.originalLauncherStartY.value),
       originalTargetStartX: Number(controls.originalTargetStartX.value),
@@ -1024,12 +1033,18 @@
 
     if (contextIsOff) {
       hideParameterTooltip();
+    } else if (controls.customStartEnabled.checked && controls.customStartAlignStartsVertical.checked) {
+      enforceCustomStartConstraints();
     }
   }
 
   function writeCoordinateControl(xId, yId, x, y) {
     controls[xId].value = Number(clamp(x, 0, STAGE_WIDTH).toFixed(1));
     controls[yId].value = Number(clamp(y, 0, STAGE_HEIGHT).toFixed(1));
+  }
+
+  function getCoordinateControlValue(id) {
+    return Number(controls[id].value);
   }
 
   function getAutomaticStartPositions(state) {
@@ -1076,8 +1091,12 @@
   function syncStartDragUi() {
     const enabled = Boolean(controls.customStartEnabled.checked);
     canvas.classList.toggle("start-drag-enabled", enabled);
+    customStartDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !enabled);
+    });
     if (!enabled) {
       startDragTarget = null;
+      hideParameterTooltip();
     }
   }
 
@@ -1283,6 +1302,7 @@
     customStartPositionsInitialized = Boolean(controls.customStartEnabled.checked);
     syncContextControlVisibility();
     syncStartDragUi();
+    enforceCustomStartConstraints();
     updateOutputs();
     refreshText();
     drawFrame(cloneState(), 0, ctx);
@@ -2389,6 +2409,90 @@
     drawCtx.restore();
   }
 
+  function getHorizontalPartnerForStartHandle(handleId) {
+    const partners = {
+      originalLauncher: {
+        xControl: "originalTargetStartX",
+        yControl: "originalTargetStartY"
+      },
+      originalTarget: {
+        xControl: "originalLauncherStartX",
+        yControl: "originalLauncherStartY"
+      },
+      contextLauncher: {
+        xControl: "contextTargetStartX",
+        yControl: "contextTargetStartY"
+      },
+      contextTarget: {
+        xControl: "contextLauncherStartX",
+        yControl: "contextLauncherStartY"
+      }
+    };
+    return partners[handleId] || null;
+  }
+
+  function writeDraggedStartPosition(handle, point, state) {
+    writeCoordinateControl(handle.xControl, handle.yControl, point.x, point.y);
+
+    if (state.customStartKeepRowsHorizontal) {
+      const partner = getHorizontalPartnerForStartHandle(handle.id);
+      if (partner) {
+        writeCoordinateControl(partner.xControl, partner.yControl, getCoordinateControlValue(partner.xControl), point.y);
+      }
+    }
+
+    if (state.customStartAlignStartsVertical && state.contextMode !== "none") {
+      if (handle.id === "originalLauncher") {
+        writeCoordinateControl(
+          "contextLauncherStartX",
+          "contextLauncherStartY",
+          point.x,
+          getCoordinateControlValue("contextLauncherStartY")
+        );
+      } else if (handle.id === "contextLauncher") {
+        writeCoordinateControl(
+          "originalLauncherStartX",
+          "originalLauncherStartY",
+          point.x,
+          getCoordinateControlValue("originalLauncherStartY")
+        );
+      }
+    }
+  }
+
+  function enforceCustomStartConstraints() {
+    if (!controls.customStartEnabled.checked) {
+      return;
+    }
+
+    if (controls.customStartKeepRowsHorizontal.checked) {
+      writeCoordinateControl(
+        "originalTargetStartX",
+        "originalTargetStartY",
+        getCoordinateControlValue("originalTargetStartX"),
+        getCoordinateControlValue("originalLauncherStartY")
+      );
+
+      if (controls.contextMode.value !== "none") {
+        writeCoordinateControl(
+          "contextTargetStartX",
+          "contextTargetStartY",
+          getCoordinateControlValue("contextTargetStartX"),
+          getCoordinateControlValue("contextLauncherStartY")
+        );
+      }
+    }
+
+    if (controls.customStartAlignStartsVertical.checked && controls.contextMode.value !== "none") {
+      writeCoordinateControl(
+        "contextLauncherStartX",
+        "contextLauncherStartY",
+        getCoordinateControlValue("originalLauncherStartX"),
+        getCoordinateControlValue("contextLauncherStartY")
+      );
+    }
+  }
+
   function updateDraggedStartPosition(event) {
     if (!startDragTarget) {
       return;
@@ -2401,7 +2505,7 @@
     }
 
     const point = getStagePoint(event);
-    writeCoordinateControl(handle.xControl, handle.yControl, point.x, point.y);
+    writeDraggedStartPosition(handle, point, state);
     activePresetKey = null;
     updateOutputs();
     refreshText();
@@ -2757,6 +2861,8 @@
       groupingMode: state.groupingMode,
       contactGuideMode: state.contactGuideMode,
       customStartEnabled: state.customStartEnabled,
+      customStartKeepRowsHorizontal: state.customStartKeepRowsHorizontal,
+      customStartAlignStartsVertical: state.customStartAlignStartsVertical,
       originalLauncherStartX: state.originalLauncherStartX,
       originalLauncherStartY: state.originalLauncherStartY,
       originalTargetStartX: state.originalTargetStartX,
@@ -2823,6 +2929,8 @@
         groupingMode: state.groupingMode,
         contactGuideMode: state.contactGuideMode,
         customStartEnabled: state.customStartEnabled,
+        customStartKeepRowsHorizontal: state.customStartKeepRowsHorizontal,
+        customStartAlignStartsVertical: state.customStartAlignStartsVertical,
         customStartPositionsPx: {
           originalLauncher: {
             x: state.originalLauncherStartX,
@@ -2980,6 +3088,8 @@
         groupingMode: condition.groupingMode,
         contactGuideMode: condition.contactGuideMode,
         customStartEnabled: condition.customStartEnabled,
+        customStartKeepRowsHorizontal: condition.customStartKeepRowsHorizontal,
+        customStartAlignStartsVertical: condition.customStartAlignStartsVertical,
         colorChangeMode: condition.colorChangeMode,
         colorChangeColor: condition.colorChangeColor,
         launcherColor: condition.launcherColor,
@@ -3018,6 +3128,8 @@
       contactOcclusionMode: "target-front",
       contextContactOcclusionMode: "target-front",
       customStartEnabled: false,
+      customStartKeepRowsHorizontal: false,
+      customStartAlignStartsVertical: false,
       stimulusXOffset: 0,
       stimulusYOffset: 0,
       soundEnabled: false
@@ -3647,6 +3759,7 @@
         control.addEventListener("change", () => {
           activePresetKey = null;
           syncContextControlVisibility();
+          enforceCustomStartConstraints();
           updateOutputs();
           refreshText();
           statusText.textContent = "Ready.";
@@ -3659,11 +3772,26 @@
           activePresetKey = null;
           if (control.checked) {
             initializeCustomStartPositions();
+            enforceCustomStartConstraints();
           }
           syncStartDragUi();
           updateOutputs();
           refreshText();
           statusText.textContent = control.checked ? "Drag start positions on." : "Ready.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
+      if (id === "customStartKeepRowsHorizontal" || id === "customStartAlignStartsVertical") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          if (controls.customStartEnabled.checked) {
+            initializeCustomStartPositions();
+            enforceCustomStartConstraints();
+          }
+          updateOutputs();
+          refreshText();
+          statusText.textContent = "Ready.";
           drawFrame(cloneState(), 0, ctx);
         });
         return;

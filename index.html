@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260430-clear-tooltips" />
+    <link rel="stylesheet" href="styles.css?v=20260430-start-constraints" />
   </head>
   <body>
     <div class="page-shell">
@@ -278,6 +278,14 @@
                 <input id="customStartEnabled" type="checkbox" />
                 <span>Drag start positions</span>
               </label>
+              <label class="field checkbox-field custom-start-dependent-control is-retracted">
+                <input id="customStartKeepRowsHorizontal" type="checkbox" />
+                <span>Keep each set horizontal</span>
+              </label>
+              <label class="field checkbox-field custom-start-dependent-control is-retracted">
+                <input id="customStartAlignStartsVertical" type="checkbox" />
+                <span>Align starting balls vertically</span>
+              </label>
               <label class="field">
                 <span>Sudden color change</span>
                 <select id="colorChangeMode">
@@ -443,6 +451,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260430-clear-tooltips"></script>
+    <script src="app.js?v=20260430-start-constraints"></script>
   </body>
 </html>

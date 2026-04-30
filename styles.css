@@ -201,7 +201,8 @@ h3 {
 
 .hidden-control,
 .hidden-control-panel,
-.context-dependent-control.is-retracted {
+.context-dependent-control.is-retracted,
+.custom-start-dependent-control.is-retracted {
   display: none;
 }
 
