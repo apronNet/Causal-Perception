@@ -155,7 +155,7 @@ h3 {
 
 .app-grid {
   display: grid;
-  grid-template-columns: minmax(540px, 630px) minmax(430px, 690px);
+  grid-template-columns: minmax(500px, 560px) minmax(500px, 790px);
   gap: 14px;
   justify-content: center;
   align-items: start;
@@ -175,7 +175,7 @@ h3 {
   gap: 0;
   justify-self: center;
   width: 100%;
-  max-width: 630px;
+  max-width: 560px;
 }
 
 .stage-panel {
@@ -441,7 +441,7 @@ button:focus-visible,
 
 .range-pair {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr) 56px;
   gap: 4px;
   align-items: center;
 }
@@ -573,7 +573,7 @@ button:disabled {
 .stage-panel {
   padding: 9px;
   width: 100%;
-  max-width: 705px;
+  max-width: 790px;
 }
 
 .preview-bar {
