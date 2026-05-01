@@ -377,30 +377,40 @@
                 <span>Change to</span>
                 <input id="colorChangeColor" type="color" />
               </label>
-              <label class="field color-field">
-                <span>Launcher</span>
-                <input id="launcherColor" type="color" />
-              </label>
-              <label class="field color-field">
-                <span>Target</span>
-                <input id="targetColor" type="color" />
-              </label>
-              <label class="field color-field context-dependent-control">
-                <span>Context launcher</span>
-                <input id="contextColor" type="color" />
-              </label>
-              <label class="field color-field context-dependent-control">
-                <span>Context target</span>
-                <input id="contextTargetColor" type="color" />
-              </label>
-              <label class="field color-field">
-                <span>Original box</span>
-                <input id="groupingOriginalColor" type="color" />
-              </label>
-              <label class="field color-field">
-                <span>Context box</span>
-                <input id="groupingContextColor" type="color" />
-              </label>
+              <div class="control-subgroup">
+                <h3 class="subgroup-title">Original color</h3>
+                <div class="control-subgrid">
+                  <label class="field color-field">
+                    <span>Launcher</span>
+                    <input id="launcherColor" type="color" />
+                  </label>
+                  <label class="field color-field">
+                    <span>Target</span>
+                    <input id="targetColor" type="color" />
+                  </label>
+                  <label class="field color-field">
+                    <span>Grouping box</span>
+                    <input id="groupingOriginalColor" type="color" />
+                  </label>
+                </div>
+              </div>
+              <div class="control-subgroup context-dependent-control">
+                <h3 class="subgroup-title">Context color</h3>
+                <div class="control-subgrid">
+                  <label class="field color-field">
+                    <span>Launcher</span>
+                    <input id="contextColor" type="color" />
+                  </label>
+                  <label class="field color-field">
+                    <span>Target</span>
+                    <input id="contextTargetColor" type="color" />
+                  </label>
+                  <label class="field color-field">
+                    <span>Grouping box</span>
+                    <input id="groupingContextColor" type="color" />
+                  </label>
+                </div>
+              </div>
             </div>
             </div>
           </details>
