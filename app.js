@@ -90,6 +90,8 @@
     "contextDelayMs",
     "contextGapPx",
     "contextContactOcclusionMode",
+    "contextOccluderEnabled",
+    "contextOccluderWidth",
     "contextTargetSpeedRatio",
     "contextTargetAccel",
     "contextTargetAngle",
@@ -161,6 +163,8 @@
     contextDelayMs: "Changes: delay between context contact and context target motion. Use for: strong immediate context versus weaker delayed context.",
     contextGapPx: "Changes: context-row spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. Use for: setting context occlusion independently from the original-row front-object setting.",
+    contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original event.",
+    contextOccluderWidth: "Changes: context tunnel width. Wider context tunnels hide more of the context contact region.",
     contextTargetSpeedRatio: "Changes: context second-object speed as a multiple of context first-object impact speed. Use for: matching the original launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether the context second object speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context second-object motion. Use for: matching or mismatching the original event direction.",
@@ -727,6 +731,8 @@
     contextDelayMs: 0,
     contextGapPx: 0,
     contextContactOcclusionMode: "target-front",
+    contextOccluderEnabled: false,
+    contextOccluderWidth: 150,
     contextTargetSpeedRatio: 1,
     contextTargetAccel: 0,
     contextTargetAngle: 0,
@@ -851,6 +857,8 @@
       contextDelayMs: Number(controls.contextDelayMs.value),
       contextGapPx: Number(controls.contextGapPx.value),
       contextContactOcclusionMode: normalizeOcclusionMode(controls.contextContactOcclusionMode.value),
+      contextOccluderEnabled: controls.contextOccluderEnabled.checked,
+      contextOccluderWidth: Number(controls.contextOccluderWidth.value),
       contextTargetSpeedRatio: Number(controls.contextTargetSpeedRatio.value),
       contextTargetAccel: Number(controls.contextTargetAccel.value),
       contextTargetAngle: Number(controls.contextTargetAngle.value),
@@ -1481,6 +1489,8 @@
       contextGapPx: values.contextGapPx ?? stimulusDefaults.contextGapPx,
       contextContactOcclusionMode:
         values.contextContactOcclusionMode ?? values.contactOcclusionMode ?? stimulusDefaults.contextContactOcclusionMode,
+      contextOccluderEnabled: values.contextOccluderEnabled ?? stimulusDefaults.contextOccluderEnabled,
+      contextOccluderWidth: values.contextOccluderWidth ?? values.occluderWidth ?? stimulusDefaults.contextOccluderWidth,
       contextTargetSpeedRatio: values.contextTargetSpeedRatio ?? values.targetSpeedRatio ?? stimulusDefaults.contextTargetSpeedRatio,
       contextTargetAccel: values.contextTargetAccel ?? values.targetAccel ?? stimulusDefaults.contextTargetAccel,
       contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle
@@ -2434,44 +2444,47 @@
     if (state.contextMode === "single") {
       const singleEvent = getDirectedSingleEventState(contextState, adjustedTime, laneY, directionSign);
       const singlePalette = adjustedTime < singleEvent.geometry.stopTime ? palette.context : palette.contextTarget;
-      drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, state.ballRadius, singlePalette.fill, singlePalette.outline);
+      const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
+      if (!state.contextOccluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, state.ballRadius, contextOccluderBounds)) {
+        drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, state.ballRadius, singlePalette.fill, singlePalette.outline);
+      }
       return;
     }
 
     const contextEvent = getDirectedEventState(contextState, adjustedTime, laneY, directionSign);
-    drawObjectPair(
-      drawCtx,
-      state,
-      contextEvent,
-      {
-        x: contextEvent.launcherX,
-        y: contextEvent.launcherY,
-        fill: palette.context.fill,
-        outline: palette.context.outline
-      },
-      {
-        x: contextEvent.targetX,
-        y: contextEvent.targetY,
-        fill: palette.contextTarget.fill,
-        outline: palette.contextTarget.outline
-      },
-      state.ballRadius,
-      state.contextContactOcclusionMode
-    );
+    const launcher = {
+      x: contextEvent.launcherX,
+      y: contextEvent.launcherY,
+      fill: palette.context.fill,
+      outline: palette.context.outline
+    };
+    const target = {
+      x: contextEvent.targetX,
+      y: contextEvent.targetY,
+      fill: palette.contextTarget.fill,
+      outline: palette.contextTarget.outline
+    };
+    const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
+
+    if (state.contextOccluderEnabled) {
+      drawOccludedObjectPair(drawCtx, state, launcher, target, state.ballRadius, contextOccluderBounds);
+      return;
+    }
+
+    drawObjectPair(drawCtx, state, contextEvent, launcher, target, state.ballRadius, state.contextContactOcclusionMode);
   }
 
-  function drawOccluder(drawCtx, state, laneY) {
-    if (!state.occluderEnabled) {
+  function drawTunnelOccluder(drawCtx, laneY, radius, enabled, width) {
+    if (!enabled) {
       return {
         left: 0,
         right: 0
       };
     }
 
-    const width = state.occluderWidth;
     const left = STAGE_WIDTH / 2 - width / 2;
-    const top = laneY - state.ballRadius * 1.9;
-    const height = state.ballRadius * 3.8;
+    const top = laneY - radius * 1.9;
+    const height = radius * 3.8;
     const right = left + width;
 
     drawCtx.fillStyle = "rgba(235, 233, 223, 0.88)";
@@ -2486,6 +2499,26 @@
     drawCtx.fillRect(left + 14, top + 12, width - 28, height - 24);
 
     return { left, right };
+  }
+
+  function drawOccluder(drawCtx, state, laneY) {
+    return drawTunnelOccluder(drawCtx, laneY, state.ballRadius, state.occluderEnabled, state.occluderWidth);
+  }
+
+  function drawContextOccluder(drawCtx, state, laneY) {
+    return drawTunnelOccluder(drawCtx, laneY, state.ballRadius, state.contextOccluderEnabled, state.contextOccluderWidth);
+  }
+
+  function isObjectOutsideOccluder(x, radius, occluderBounds) {
+    return x + radius < occluderBounds.left || x - radius > occluderBounds.right;
+  }
+
+  function drawOccludedObjectPair(drawCtx, state, launcher, target, radius, occluderBounds) {
+    [launcher, target].forEach((object) => {
+      if (isObjectOutsideOccluder(object.x, radius, occluderBounds)) {
+        drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
+      }
+    });
   }
 
   function getOverlapDrawOrder(eventState, launcher, target, radius, occlusionMode) {
@@ -3244,6 +3277,8 @@
       contextDelayMs: state.contextDelayMs,
       contextGapPx: state.contextGapPx,
       contextContactOcclusionMode: state.contextContactOcclusionMode,
+      contextOccluderEnabled: state.contextOccluderEnabled,
+      contextOccluderWidthPx: state.contextOccluderWidth,
       contextTargetSpeedRatio: state.contextTargetSpeedRatio,
       contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
       contextTargetAngleDegrees: state.contextTargetAngle,
@@ -3326,6 +3361,8 @@
         contextDelayMs: state.contextDelayMs,
         contextGapPx: state.contextGapPx,
         contextContactOcclusionMode: state.contextContactOcclusionMode,
+        contextOccluderEnabled: state.contextOccluderEnabled,
+        contextOccluderWidthPx: state.contextOccluderWidth,
         contextTargetSpeedRatio: state.contextTargetSpeedRatio,
         contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
         contextTargetAngleDegrees: state.contextTargetAngle,
@@ -3478,6 +3515,8 @@
       contextDelayMs: parameters.contextDelayMs,
       contextGapPx: parameters.contextGapPx,
       contextContactOcclusionMode: parameters.contextContactOcclusionMode,
+      contextOccluderEnabled: parameters.contextOccluderEnabled ?? baseState.contextOccluderEnabled,
+      contextOccluderWidth: parameters.contextOccluderWidthPx ?? baseState.contextOccluderWidth,
       contextTargetSpeedRatio: parameters.contextTargetSpeedRatio,
       contextTargetAccel: parameters.contextTargetAccelerationPxPerSec2,
       contextTargetAngle: parameters.contextTargetAngleDegrees,
@@ -3600,6 +3639,8 @@
       contextSeparationPx: condition.parameters.contextYOffsetPx,
       contextLauncherBehavior: condition.parameters.contextLauncherBehavior,
       contextGapPx: condition.parameters.contextGapPx,
+      contextOccluderEnabled: condition.parameters.contextOccluderEnabled,
+      contextOccluderWidthPx: condition.parameters.contextOccluderWidthPx,
       renderMode: condition.parameters.renderMode,
       stageTheme: condition.parameters.stageTheme,
       groupingMode: condition.parameters.groupingMode,
@@ -3724,6 +3765,8 @@
         contextDelayMs: condition.contextDelayMs,
         contextGapPx: condition.contextGapPx,
         contextContactOcclusionMode: condition.contextContactOcclusionMode,
+        contextOccluderEnabled: condition.contextOccluderEnabled,
+        contextOccluderWidthPx: condition.contextOccluderWidth,
         contextTargetSpeedRatio: condition.contextTargetSpeedRatio,
         contextTargetAccelerationPxPerSec2: condition.contextTargetAccel,
         contextTargetAngleDegrees: condition.contextTargetAngle,
@@ -3768,6 +3811,7 @@
       contextDirection: "same",
       markerMode: "none",
       occluderEnabled: false,
+      contextOccluderEnabled: false,
       launcherAccel: 0,
       targetAccel: 0,
       contactOcclusionMode: "target-front",
