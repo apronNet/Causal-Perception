@@ -35,24 +35,22 @@
         <aside class="controls-panel">
           <details class="panel-block collapsible-panel preset-panel">
             <summary><h2>01 Presets</h2></summary>
-            <div class="panel-content">
-            <label class="field">
-              <span>Scenario</span>
-              <select id="presetSelect"></select>
-            </label>
-            <div class="preset-save-row">
-              <label class="field">
+            <div class="panel-content preset-compact-grid">
+              <label class="field preset-scenario-field">
+                <span>Scenario</span>
+                <select id="presetSelect"></select>
+              </label>
+              <label class="field preset-name-field">
                 <span>Save as</span>
                 <input id="presetNameInput" maxlength="48" placeholder="Preset name" type="text" />
               </label>
+              <button id="applyPresetButton" class="secondary-button" type="button">Apply</button>
               <button id="savePresetButton" class="secondary-button" type="button">Save local</button>
               <button id="deletePresetButton" class="secondary-button" type="button">Remove</button>
-            </div>
-            <button id="applyPresetButton" class="secondary-button full-button" type="button">Apply preset</button>
-            <button id="exportPresetButton" class="secondary-button full-button" type="button">Export preset JSON</button>
-            <a id="presetJsonLink" class="download-link hidden" download>Download preset JSON</a>
-            <p class="microcopy preset-storage-note">Shared presets load from shared-presets.json. Local saves stay on this browser.</p>
-            <p id="presetSummary" class="microcopy hidden"></p>
+              <button id="exportPresetButton" class="secondary-button" type="button">Export JSON</button>
+              <a id="presetJsonLink" class="download-link hidden" download>Download JSON</a>
+              <p class="microcopy preset-storage-note">Shared: shared-presets.json. Local: this browser.</p>
+              <p id="presetSummary" class="microcopy hidden"></p>
             </div>
           </details>
 
@@ -63,12 +61,13 @@
             <div class="control-grid">
               <label class="field context-toggle-field">
                 <span>context (add another set of balls)</span>
-                <select id="contextMode">
-                  <option value="none">None</option>
-                  <option value="launch">Nearby launch</option>
-                  <option value="single">Single object</option>
-                  <option value="pass">Pass context</option>
-                </select>
+                <input id="contextMode" type="hidden" value="none" />
+                <span class="choice-row context-choice-row" role="group" aria-label="Context type">
+                  <button class="choice-button" data-context-mode="none" type="button">None</button>
+                  <button class="choice-button" data-context-mode="launch" type="button">Nearby launch</button>
+                  <button class="choice-button" data-context-mode="single" type="button">Single object</button>
+                  <button class="choice-button" data-context-mode="pass" type="button">Pass context</button>
+                </span>
               </label>
               <label class="field context-dependent-control">
                 <span>Window</span>
@@ -82,10 +81,11 @@
               </label>
               <label class="field context-dependent-control">
                 <span>Direction</span>
-                <select id="contextDirection">
-                  <option value="same">Same as test event</option>
-                  <option value="opposite">Opposite direction</option>
-                </select>
+                <input id="contextDirection" type="hidden" value="same" />
+                <span class="choice-row two-choice-row" role="group" aria-label="Context direction">
+                  <button class="choice-button" data-context-direction="same" type="button">Same</button>
+                  <button class="choice-button" data-context-direction="opposite" type="button">Opposite</button>
+                </span>
               </label>
             </div>
           </section>
@@ -96,96 +96,106 @@
             </div>
             <div class="control-grid">
               <label class="field">
-                <span>Duration</span>
+                <span>Clip duration</span>
                 <input id="durationMs" data-format="int" min="200" max="8000" step="50" type="range" />
                 <output data-for="durationMs"></output>
               </label>
-              <label class="field">
-                <span>Lead-in</span>
-                <input id="leadInMs" data-format="int" min="0" max="1800" step="10" type="range" />
-                <output data-for="leadInMs"></output>
-              </label>
-              <label class="field">
-                <span>Speed</span>
-                <input id="launcherSpeed" data-format="float1" min="80" max="6500" step="1" type="range" />
-                <output data-for="launcherSpeed"></output>
-              </label>
-              <label class="field">
-                <span>Acceleration</span>
-                <input id="launcherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
-                <output data-for="launcherAccel"></output>
-              </label>
-              <label class="field">
-                <span>After contact</span>
-                <select id="launcherBehavior">
-                  <option value="stop">Stops: launching</option>
-                  <option value="continue">Continues: pass/slip</option>
-                  <option value="entrain">Continues with target: entraining</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Delay</span>
-                <input id="delayMs" data-format="ms" min="0" max="500" step="5" type="range" />
-                <output data-for="delayMs"></output>
-              </label>
-              <label class="field">
-                <span>Target ratio</span>
-                <input id="targetSpeedRatio" data-format="float2" min="0.2" max="2.5" step="0.05" type="range" />
-                <output data-for="targetSpeedRatio"></output>
-              </label>
-              <label class="field">
-                <span>Target accel.</span>
-                <input id="targetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
-                <output data-for="targetAccel"></output>
-              </label>
-              <label class="field">
-                <span>Target angle</span>
-                <input id="targetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
-                <output data-for="targetAngle"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context lead-in</span>
-                <input id="contextLeadInMs" data-format="int" min="0" max="1800" step="10" type="range" />
-                <output data-for="contextLeadInMs"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context speed</span>
-                <input id="contextLauncherSpeed" data-format="float1" min="80" max="6500" step="1" type="range" />
-                <output data-for="contextLauncherSpeed"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context accel.</span>
-                <input id="contextLauncherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
-                <output data-for="contextLauncherAccel"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context after contact</span>
-                <select id="contextLauncherBehavior">
-                  <option value="stop">Stops: launching</option>
-                  <option value="continue">Continues: pass/slip</option>
-                  <option value="entrain">Continues with target</option>
-                </select>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context delay</span>
-                <input id="contextDelayMs" data-format="ms" min="0" max="500" step="5" type="range" />
-                <output data-for="contextDelayMs"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context target ratio</span>
-                <input id="contextTargetSpeedRatio" data-format="float2" min="0.2" max="2.5" step="0.05" type="range" />
-                <output data-for="contextTargetSpeedRatio"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context target accel.</span>
-                <input id="contextTargetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
-                <output data-for="contextTargetAccel"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context target angle</span>
-                <input id="contextTargetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
-                <output data-for="contextTargetAngle"></output>
-              </label>
+              <div class="control-subgroup">
+                <h3 class="subgroup-title">Original movement</h3>
+                <div class="control-subgrid">
+                  <label class="field">
+                    <span>Lead-in</span>
+                    <input id="leadInMs" data-format="int" min="0" max="1800" step="10" type="range" />
+                    <output data-for="leadInMs"></output>
+                  </label>
+                  <label class="field">
+                    <span>Speed</span>
+                    <input id="launcherSpeed" data-format="float1" min="80" max="6500" step="1" type="range" />
+                    <output data-for="launcherSpeed"></output>
+                  </label>
+                  <label class="field">
+                    <span>Acceleration</span>
+                    <input id="launcherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
+                    <output data-for="launcherAccel"></output>
+                  </label>
+                  <label class="field">
+                    <span>After contact</span>
+                    <select id="launcherBehavior">
+                      <option value="stop">Stops: launching</option>
+                      <option value="continue">Continues: pass/slip</option>
+                      <option value="entrain">Continues with target: entraining</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Delay</span>
+                    <input id="delayMs" data-format="ms" min="0" max="500" step="5" type="range" />
+                    <output data-for="delayMs"></output>
+                  </label>
+                  <label class="field">
+                    <span>Target ratio</span>
+                    <input id="targetSpeedRatio" data-format="float2" min="0.2" max="2.5" step="0.05" type="range" />
+                    <output data-for="targetSpeedRatio"></output>
+                  </label>
+                  <label class="field">
+                    <span>Target accel.</span>
+                    <input id="targetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
+                    <output data-for="targetAccel"></output>
+                  </label>
+                  <label class="field">
+                    <span>Target angle</span>
+                    <input id="targetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
+                    <output data-for="targetAngle"></output>
+                  </label>
+                </div>
+              </div>
+              <div class="control-subgroup context-dependent-control">
+                <h3 class="subgroup-title">Context movement</h3>
+                <div class="control-subgrid">
+                  <label class="field">
+                    <span>Lead-in</span>
+                    <input id="contextLeadInMs" data-format="int" min="0" max="1800" step="10" type="range" />
+                    <output data-for="contextLeadInMs"></output>
+                  </label>
+                  <label class="field">
+                    <span>Speed</span>
+                    <input id="contextLauncherSpeed" data-format="float1" min="80" max="6500" step="1" type="range" />
+                    <output data-for="contextLauncherSpeed"></output>
+                  </label>
+                  <label class="field">
+                    <span>Acceleration</span>
+                    <input id="contextLauncherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
+                    <output data-for="contextLauncherAccel"></output>
+                  </label>
+                  <label class="field">
+                    <span>After contact</span>
+                    <select id="contextLauncherBehavior">
+                      <option value="stop">Stops: launching</option>
+                      <option value="continue">Continues: pass/slip</option>
+                      <option value="entrain">Continues with target</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Delay</span>
+                    <input id="contextDelayMs" data-format="ms" min="0" max="500" step="5" type="range" />
+                    <output data-for="contextDelayMs"></output>
+                  </label>
+                  <label class="field">
+                    <span>Target ratio</span>
+                    <input id="contextTargetSpeedRatio" data-format="float2" min="0.2" max="2.5" step="0.05" type="range" />
+                    <output data-for="contextTargetSpeedRatio"></output>
+                  </label>
+                  <label class="field">
+                    <span>Target accel.</span>
+                    <input id="contextTargetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
+                    <output data-for="contextTargetAccel"></output>
+                  </label>
+                  <label class="field">
+                    <span>Target angle</span>
+                    <input id="contextTargetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
+                    <output data-for="contextTargetAngle"></output>
+                  </label>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -195,23 +205,51 @@
             </div>
             <div class="control-grid">
               <label class="field">
-                <span>Overlap / gap</span>
-                <input id="gapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
-                <output data-for="gapPx"></output>
-              </label>
-              <label class="field">
-                <span>Front object</span>
-                <select id="contactOcclusionMode">
-                  <option value="target-front">Second object front</option>
-                  <option value="launcher-front">First object front</option>
-                  <option value="alternate">Alternate</option>
-                </select>
-              </label>
-              <label class="field">
                 <span>Radius</span>
                 <input id="ballRadius" data-format="intPx" min="12" max="60" step="1" type="range" />
                 <output data-for="ballRadius"></output>
               </label>
+              <div class="control-subgroup">
+                <h3 class="subgroup-title">Original position</h3>
+                <div class="control-subgrid">
+                  <label class="field">
+                    <span>Overlap / gap</span>
+                    <input id="gapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
+                    <output data-for="gapPx"></output>
+                  </label>
+                  <label class="field">
+                    <span>Front object</span>
+                    <select id="contactOcclusionMode">
+                      <option value="target-front">Second object front</option>
+                      <option value="launcher-front">First object front</option>
+                      <option value="alternate">Alternate</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div class="control-subgroup context-dependent-control">
+                <h3 class="subgroup-title">Context position</h3>
+                <div class="control-subgrid">
+                  <label class="field">
+                    <span>Vertical distance</span>
+                    <input id="contextYOffset" data-format="intPx" min="20" max="320" step="1" type="range" />
+                    <output data-for="contextYOffset"></output>
+                  </label>
+                  <label class="field">
+                    <span>Overlap / gap</span>
+                    <input id="contextGapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
+                    <output data-for="contextGapPx"></output>
+                  </label>
+                  <label class="field">
+                    <span>Front object</span>
+                    <select id="contextContactOcclusionMode">
+                      <option value="target-front">Second object front</option>
+                      <option value="launcher-front">First object front</option>
+                      <option value="alternate">Alternate</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
               <label class="field">
                 <span>Marker</span>
                 <select id="markerMode">
@@ -230,24 +268,6 @@
                 <span>Occluder</span>
                 <input id="occluderWidth" data-format="intPx" min="40" max="360" step="5" type="range" />
                 <output data-for="occluderWidth"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Vertical distance</span>
-                <input id="contextYOffset" data-format="intPx" min="20" max="320" step="1" type="range" />
-                <output data-for="contextYOffset"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context overlap / gap</span>
-                <input id="contextGapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
-                <output data-for="contextGapPx"></output>
-              </label>
-              <label class="field context-dependent-control">
-                <span>Context front object</span>
-                <select id="contextContactOcclusionMode">
-                  <option value="target-front">Second object front</option>
-                  <option value="launcher-front">First object front</option>
-                  <option value="alternate">Alternate</option>
-                </select>
               </label>
               <label class="field checkbox-field">
                 <input id="customStartEnabled" type="checkbox" />
@@ -315,10 +335,9 @@
             </div>
           </section>
 
-          <section class="panel-block">
-            <div class="section-heading">
-              <h2>06 Color</h2>
-            </div>
+          <details class="panel-block collapsible-panel color-panel">
+            <summary><h2>06 Color</h2></summary>
+            <div class="panel-content">
             <div class="control-grid">
               <label class="field">
                 <span>Style</span>
@@ -374,7 +393,8 @@
                 <input id="groupingContextColor" type="color" />
               </label>
             </div>
-          </section>
+            </div>
+          </details>
 
           <details class="panel-block collapsible-panel psychopy-panel">
             <summary>

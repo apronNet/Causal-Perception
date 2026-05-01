@@ -774,6 +774,8 @@
   });
   const contextDependentControls = Array.from(document.querySelectorAll(".context-dependent-control"));
   const customStartDependentControls = Array.from(document.querySelectorAll(".custom-start-dependent-control"));
+  const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
+  const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
 
   let activePresetKey = "canonical";
   let selectedPresetKey = "canonical";
@@ -1059,8 +1061,31 @@
     });
   }
 
+  function syncChoiceButtons(buttons, attribute, value) {
+    buttons.forEach((button) => {
+      const isActive = button.dataset[attribute] === value;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+  }
+
+  function syncContextChoiceButtons() {
+    syncChoiceButtons(contextModeButtons, "contextMode", controls.contextMode.value);
+    syncChoiceButtons(contextDirectionButtons, "contextDirection", controls.contextDirection.value);
+  }
+
+  function applyContextChoice(control, value) {
+    if (!control || control.value === value) {
+      return;
+    }
+
+    control.value = value;
+    control.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
+    syncContextChoiceButtons();
     contextDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", contextIsOff);
     });
@@ -4368,6 +4393,13 @@
   }
 
   function bindControls() {
+    contextModeButtons.forEach((button) => {
+      button.addEventListener("click", () => applyContextChoice(controls.contextMode, button.dataset.contextMode));
+    });
+    contextDirectionButtons.forEach((button) => {
+      button.addEventListener("click", () => applyContextChoice(controls.contextDirection, button.dataset.contextDirection));
+    });
+
     Object.entries(controls).forEach(([id, control]) => {
       if (!control) {
         return;

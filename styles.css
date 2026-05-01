@@ -262,13 +262,28 @@ h3 {
   margin-top: 8px;
 }
 
-.preset-panel .panel-content {
+.preset-panel .panel-content,
+.preset-compact-grid {
   display: grid;
   gap: 8px;
 }
 
+.preset-compact-grid {
+  grid-template-columns: minmax(150px, 1.35fr) minmax(118px, 0.85fr) repeat(4, auto);
+  align-items: end;
+  gap: 6px;
+}
+
+.preset-compact-grid .secondary-button,
+.preset-compact-grid .download-link {
+  min-height: 26px;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+
 .preset-storage-note {
   margin: 0;
+  grid-column: 1 / -1;
 }
 
 .control-grid {
@@ -290,6 +305,63 @@ h3 {
 .context-dependent-control.is-retracted,
 .custom-start-dependent-control.is-retracted {
   display: none;
+}
+
+.field > .choice-row {
+  display: grid;
+  gap: 4px;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  text-decoration: none;
+}
+
+.context-choice-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.two-choice-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.choice-button {
+  min-height: 26px;
+  padding: 4px 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.62rem;
+  letter-spacing: 0.035em;
+}
+
+.choice-button.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.control-subgroup {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+}
+
+.subgroup-title {
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.control-subgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .field > span {
@@ -829,9 +901,11 @@ canvas.start-drag-enabled:active {
   }
 
   .section-heading,
+  .preset-compact-grid,
   .preset-save-row,
   .preview-bar,
   .control-grid,
+  .control-subgrid,
   .summary-strip,
   .artifact-card,
   .button-row {
