@@ -133,7 +133,7 @@
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
     presetNameInput: "Changes: the name used when saving the current settings. Browser saves are local; shared presets must be added to shared-presets.json.",
-    durationMs: "Changes: total video length. Use for: making sure the clip includes approach, contact, launched motion, and context without cutting anything off.",
+    durationMs: "Changes: exported video length and preview playback length. Use for: making sure approach, contact, launched motion, and any context are not cut off.",
     leadInMs: "Changes: still time before the first object moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of the first object before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
     launcherAccel: "Changes: whether the first object speeds up or slows down before contact. Positive means speeding up; negative means slowing down.",

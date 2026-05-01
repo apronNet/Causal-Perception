@@ -95,11 +95,6 @@
               <h2>03 Movement</h2>
             </div>
             <div class="control-grid">
-              <label class="field">
-                <span>Clip duration</span>
-                <input id="durationMs" data-format="int" min="200" max="8000" step="50" type="range" />
-                <output data-for="durationMs"></output>
-              </label>
               <div class="control-subgroup">
                 <h3 class="subgroup-title">Original movement</h3>
                 <div class="control-subgrid">
@@ -406,6 +401,11 @@
             <div class="panel-content">
             <div class="control-grid">
               <label class="field">
+                <span>Export length</span>
+                <input id="durationMs" data-format="int" min="200" max="8000" step="50" type="range" />
+                <output data-for="durationMs"></output>
+              </label>
+              <label class="field">
                 <span>Format</span>
                 <select id="outputFormat">
                   <option value="lab">PsychoPy MP4 if possible</option>
@@ -496,7 +496,7 @@
           </div>
           <div id="summaryStrip" class="summary-strip" aria-label="Current stimulus summary">
             <span><b>Case</b><em id="summaryPreset">Clear launch</em></span>
-            <span><b>Dur</b><em id="summaryDuration">1200 ms</em></span>
+            <span><b>Length</b><em id="summaryDuration">1200 ms</em></span>
             <span><b>FPS</b><em id="summaryFps">60</em></span>
             <span><b>Delay</b><em id="summaryDelay">0 ms</em></span>
             <span><b>Contact</b><em id="summaryRelation">touch</em></span>
