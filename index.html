@@ -149,6 +149,16 @@
                     <input id="targetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                     <output data-for="targetAngle"></output>
                   </label>
+                  <label class="field">
+                    <span>O1 on-screen</span>
+                    <input id="launcherVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
+                    <output data-for="launcherVisibleMs"></output>
+                  </label>
+                  <label class="field">
+                    <span>O2 on-screen</span>
+                    <input id="targetVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
+                    <output data-for="targetVisibleMs"></output>
+                  </label>
                 </div>
               </div>
               <div class="control-subgroup context-dependent-control">
@@ -204,6 +214,16 @@
                     <span>Target angle</span>
                     <input id="contextTargetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                     <output data-for="contextTargetAngle"></output>
+                  </label>
+                  <label class="field">
+                    <span>C1 on-screen</span>
+                    <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
+                    <output data-for="contextLauncherVisibleMs"></output>
+                  </label>
+                  <label class="field">
+                    <span>C2 on-screen</span>
+                    <input id="contextTargetVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
+                    <output data-for="contextTargetVisibleMs"></output>
                   </label>
                 </div>
               </div>
@@ -425,7 +445,7 @@
             <div class="panel-content">
             <div class="control-grid">
               <label class="field">
-                <span>Export length</span>
+                <span>Video duration</span>
                 <input id="durationMs" data-format="int" min="200" max="8000" step="50" type="range" />
                 <output data-for="durationMs"></output>
               </label>

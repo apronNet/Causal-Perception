@@ -68,6 +68,8 @@
     "targetAccel",
     "launcherBehavior",
     "targetAngle",
+    "launcherVisibleMs",
+    "targetVisibleMs",
     "delayMs",
     "gapPx",
     "markerMode",
@@ -93,6 +95,8 @@
     "contextTargetSpeedRatio",
     "contextTargetAccel",
     "contextTargetAngle",
+    "contextLauncherVisibleMs",
+    "contextTargetVisibleMs",
     "renderMode",
     "stageTheme",
     "objectStyle",
@@ -133,7 +137,7 @@
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
     presetNameInput: "Changes: the name used when saving the current settings. Browser saves are local; shared presets must be added to shared-presets.json.",
-    durationMs: "Changes: exported video length and preview playback length. Use for: making sure approach, contact, launched motion, and any context are not cut off.",
+    durationMs: "Changes: total video duration for preview and export. Use for: making sure approach, contact, launched motion, and any context are not cut off.",
     leadInMs: "Changes: still time before the first object moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of the first object before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
     launcherAccel: "Changes: whether the first object speeds up or slows down before contact. Positive means speeding up; negative means slowing down.",
@@ -141,6 +145,8 @@
     targetAccel: "Changes: whether the second object speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
     launcherBehavior: "Changes: what the first object does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of the second object's motion after contact. Use for: straight launch versus angled launch.",
+    launcherVisibleMs: "Changes: when original first object is removed after video start. Set beyond video duration for no timed cut; it then remains until clip end or exits frame.",
+    targetVisibleMs: "Changes: when original second object is removed after video start. Shorter values make it disappear on screen.",
     delayMs: "Changes: time between contact and second-object motion. Short delays look more directly causal; long delays look less like immediate launching.",
     gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
@@ -167,6 +173,8 @@
     contextTargetSpeedRatio: "Changes: context second-object speed as a multiple of context first-object impact speed. Use for: matching the original launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether the context second object speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context second-object motion. Use for: matching or mismatching the original event direction.",
+    contextLauncherVisibleMs: "Changes: when context first object is removed after context event start. Set beyond video duration for no timed cut.",
+    contextTargetVisibleMs: "Changes: when context second object is removed after context event start. Shorter values make it disappear on screen.",
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
     stageTheme: "Changes: background luminance. Use for: dark, mid-gray, or light stimulus fields.",
     objectStyle: "Changes: visual rendering of the balls. Simple discs are more controlled; 3D balls are more pictorial.",
@@ -722,6 +730,8 @@
   const stimulusDefaults = {
     launcherAccel: 0,
     targetAccel: 0,
+    launcherVisibleMs: 9000,
+    targetVisibleMs: 9000,
     contextDurationMs: 750,
     contextLeadInMs: 200,
     contextBallRadius: 28,
@@ -736,6 +746,8 @@
     contextTargetSpeedRatio: 1,
     contextTargetAccel: 0,
     contextTargetAngle: 0,
+    contextLauncherVisibleMs: 9000,
+    contextTargetVisibleMs: 9000,
     contactOcclusionMode: "target-front"
   };
   const presentationDefaults = {
@@ -782,7 +794,6 @@
   const customStartDependentControls = Array.from(document.querySelectorAll(".custom-start-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
-
   let activePresetKey = "canonical";
   let selectedPresetKey = "canonical";
   let currentObjectUrl = null;
@@ -837,6 +848,8 @@
       targetAccel: Number(controls.targetAccel.value),
       launcherBehavior: controls.launcherBehavior.value,
       targetAngle: Number(controls.targetAngle.value),
+      launcherVisibleMs: Number(controls.launcherVisibleMs.value),
+      targetVisibleMs: Number(controls.targetVisibleMs.value),
       delayMs: Number(controls.delayMs.value),
       gapPx: Number(controls.gapPx.value),
       markerMode: controls.markerMode.value,
@@ -862,6 +875,8 @@
       contextTargetSpeedRatio: Number(controls.contextTargetSpeedRatio.value),
       contextTargetAccel: Number(controls.contextTargetAccel.value),
       contextTargetAngle: Number(controls.contextTargetAngle.value),
+      contextLauncherVisibleMs: Number(controls.contextLauncherVisibleMs.value),
+      contextTargetVisibleMs: Number(controls.contextTargetVisibleMs.value),
       renderMode: controls.renderMode.value,
       stageTheme: controls.stageTheme.value,
       objectStyle: controls.objectStyle.value,
@@ -915,6 +930,11 @@
         return `${number >= 0 ? "+" : ""}${Math.round(number)}°`;
       case "ms":
         return `${Math.round(number)} ms`;
+      case "visibilityMs": {
+        const videoDuration = controls.durationMs ? Number(controls.durationMs.value) : 0;
+        const suffix = number > videoDuration ? " no cut" : "";
+        return `${Math.round(number)} ms${suffix}`;
+      }
       case "signedMs":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} ms`;
       case "signedPx":
@@ -1157,6 +1177,25 @@
     );
     writeCoordinateControl("contextTargetStartX", "contextTargetStartY", positions.contextTarget.x, positions.contextTarget.y);
     customStartPositionsInitialized = true;
+  }
+
+  function resetCustomStartPositionsToAutomatic() {
+    const positions = getAutomaticStartPositions({ ...cloneState(), customStartEnabled: false });
+    writeCoordinateControl(
+      "originalLauncherStartX",
+      "originalLauncherStartY",
+      positions.originalLauncher.x,
+      positions.originalLauncher.y
+    );
+    writeCoordinateControl("originalTargetStartX", "originalTargetStartY", positions.originalTarget.x, positions.originalTarget.y);
+    writeCoordinateControl(
+      "contextLauncherStartX",
+      "contextLauncherStartY",
+      positions.contextLauncher.x,
+      positions.contextLauncher.y
+    );
+    writeCoordinateControl("contextTargetStartX", "contextTargetStartY", positions.contextTarget.x, positions.contextTarget.y);
+    customStartPositionsInitialized = false;
   }
 
   function syncStartDragUi() {
@@ -1498,7 +1537,10 @@
       contextOccluderWidth: values.contextOccluderWidth ?? values.occluderWidth ?? stimulusDefaults.contextOccluderWidth,
       contextTargetSpeedRatio: values.contextTargetSpeedRatio ?? values.targetSpeedRatio ?? stimulusDefaults.contextTargetSpeedRatio,
       contextTargetAccel: values.contextTargetAccel ?? values.targetAccel ?? stimulusDefaults.contextTargetAccel,
-      contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle
+      contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle,
+      contextLauncherVisibleMs:
+        values.contextLauncherVisibleMs ?? values.launcherVisibleMs ?? stimulusDefaults.contextLauncherVisibleMs,
+      contextTargetVisibleMs: values.contextTargetVisibleMs ?? values.targetVisibleMs ?? stimulusDefaults.contextTargetVisibleMs
     };
   }
 
@@ -1864,6 +1906,11 @@
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
+  }
+
+  function isObjectVisibleAt(localTimeMs, visibleMs) {
+    const limit = Number(visibleMs);
+    return !Number.isFinite(limit) || localTimeMs <= limit;
   }
 
   function normalizeHexColor(value, fallback) {
@@ -2461,7 +2508,10 @@
       const singlePalette = adjustedTime < singleEvent.geometry.stopTime ? palette.context : palette.contextTarget;
       const radius = singleEvent.geometry.radius;
       const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
-      if (!state.contextOccluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds)) {
+      if (
+        isObjectVisibleAt(adjustedTime, state.contextLauncherVisibleMs) &&
+        (!state.contextOccluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds))
+      ) {
         drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, radius, singlePalette.fill, singlePalette.outline);
       }
       return;
@@ -2472,13 +2522,15 @@
       x: contextEvent.launcherX,
       y: contextEvent.launcherY,
       fill: palette.context.fill,
-      outline: palette.context.outline
+      outline: palette.context.outline,
+      visible: isObjectVisibleAt(adjustedTime, state.contextLauncherVisibleMs)
     };
     const target = {
       x: contextEvent.targetX,
       y: contextEvent.targetY,
       fill: palette.contextTarget.fill,
-      outline: palette.contextTarget.outline
+      outline: palette.contextTarget.outline,
+      visible: isObjectVisibleAt(adjustedTime, state.contextTargetVisibleMs)
     };
     const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
     const radius = contextEvent.geometry.radius;
@@ -2532,16 +2584,21 @@
 
   function drawOccludedObjectPair(drawCtx, state, launcher, target, radius, occluderBounds) {
     [launcher, target].forEach((object) => {
-      if (isObjectOutsideOccluder(object.x, radius, occluderBounds)) {
+      if (object.visible !== false && isObjectOutsideOccluder(object.x, radius, occluderBounds)) {
         drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
       }
     });
   }
 
   function getOverlapDrawOrder(eventState, launcher, target, radius, occlusionMode) {
+    const visibleObjects = [launcher, target].filter((object) => object.visible !== false);
+    if (visibleObjects.length < 2) {
+      return visibleObjects;
+    }
+
     const overlapDistance = Math.hypot(target.x - launcher.x, target.y - launcher.y);
     const isOverlapping = overlapDistance < radius * 2;
-    let drawOrder = [launcher, target];
+    let drawOrder = visibleObjects;
 
     if (isOverlapping) {
       if (occlusionMode === "launcher-front") {
@@ -2568,13 +2625,15 @@
       x: eventState.launcherX,
       y: eventState.launcherY,
       fill: palette.launcher.fill,
-      outline: palette.launcher.outline
+      outline: palette.launcher.outline,
+      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs)
     };
     const target = {
       x: eventState.targetX,
       y: eventState.targetY,
       fill: palette.target.fill,
-      outline: palette.target.outline
+      outline: palette.target.outline,
+      visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs)
     };
     drawObjectPair(drawCtx, state, eventState, launcher, target, radius, state.contactOcclusionMode);
   }
@@ -2583,7 +2642,7 @@
     const radius = state.ballRadius;
     const palette = getPaletteAtTime(state, eventState);
 
-    if (eventState.launcherX + radius < occluderBounds.left) {
+    if (isObjectVisibleAt(eventState.time, state.launcherVisibleMs) && eventState.launcherX + radius < occluderBounds.left) {
       drawObject(
         drawCtx,
         state,
@@ -2595,7 +2654,11 @@
       );
     }
 
-    if (eventState.targetX - radius > occluderBounds.right && eventState.targetX < STAGE_WIDTH + radius) {
+    if (
+      isObjectVisibleAt(eventState.time, state.targetVisibleMs) &&
+      eventState.targetX - radius > occluderBounds.right &&
+      eventState.targetX < STAGE_WIDTH + radius
+    ) {
       drawObject(
         drawCtx,
         state,
@@ -3086,8 +3149,14 @@
         : state.contextOffsetMs < 0
           ? `early${compactNumber(Math.abs(state.contextOffsetMs))}ms`
           : `late${compactNumber(state.contextOffsetMs)}ms`;
-    const windowTag = state.contextDurationMs === 750 ? "" : `-win${compactNumber(state.contextDurationMs)}ms`;
-    return [
+    const extraTags = [];
+    if (state.contextDurationMs !== 750) {
+      extraTags.push(`win${compactNumber(state.contextDurationMs)}ms`);
+    }
+    if (state.contextLauncherVisibleMs < state.durationMs || state.contextTargetVisibleMs < state.durationMs) {
+      extraTags.push(`cvis${compactNumber(state.contextLauncherVisibleMs)}-${compactNumber(state.contextTargetVisibleMs)}ms`);
+    }
+    const base = [
       `ctx${sanitizeLabel(state.contextMode)}`,
       timing,
       `cv${compactNumber(state.contextLauncherSpeed)}pxs`,
@@ -3095,7 +3164,8 @@
       `c${getGapFilenamePartFrom(state.contextGapPx, state.contextBallRadius)}`,
       `cr${compactNumber(state.contextBallRadius)}px`,
       `cratio${compactNumber(state.contextTargetSpeedRatio * 100)}pct`
-    ].join("-") + windowTag;
+    ].join("-");
+    return extraTags.length > 0 ? `${base}-${extraTags.join("-")}` : base;
   }
 
   function getExportFilenameBase(state) {
@@ -3113,6 +3183,9 @@
     ];
     if (state.launcherAccel !== 0 || state.targetAccel !== 0) {
       parts.push(`accel${compactNumber(state.launcherAccel)}-${compactNumber(state.targetAccel)}`);
+    }
+    if (state.launcherVisibleMs < state.durationMs || state.targetVisibleMs < state.durationMs) {
+      parts.push(`vis${compactNumber(state.launcherVisibleMs)}-${compactNumber(state.targetVisibleMs)}ms`);
     }
     if (state.occluderEnabled) {
       parts.push(`occ${compactNumber(state.occluderWidth)}px`);
@@ -3241,7 +3314,13 @@
         encodedDurationSec: durationSec,
         intendedDurationSec: getIntendedDurationSec(state),
         impactSec: Number((standards.impactMs / 1000).toFixed(3)),
-        targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3))
+        targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3)),
+        objectVisibleSec: {
+          launcher: Number((state.launcherVisibleMs / 1000).toFixed(3)),
+          target: Number((state.targetVisibleMs / 1000).toFixed(3)),
+          contextLauncher: Number((state.contextLauncherVisibleMs / 1000).toFixed(3)),
+          contextTarget: Number((state.contextTargetVisibleMs / 1000).toFixed(3))
+        }
       },
       placement: `Put the movie in ${PSYCHOPY_STIMULI_FOLDER}/ next to the PsychoPy experiment and use the CSV as the loop conditions file.`
     };
@@ -3278,6 +3357,8 @@
       targetSpeedRatio: state.targetSpeedRatio,
       targetAccelerationPxPerSec2: state.targetAccel,
       targetAngleDegrees: state.targetAngle,
+      launcherVisibleMs: state.launcherVisibleMs,
+      targetVisibleMs: state.targetVisibleMs,
       contactDelayMs: state.delayMs,
       gapPx: state.gapPx,
       spatialGapPx: standards.gapPx,
@@ -3307,6 +3388,8 @@
       contextTargetSpeedRatio: state.contextTargetSpeedRatio,
       contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
       contextTargetAngleDegrees: state.contextTargetAngle,
+      contextLauncherVisibleMs: state.contextLauncherVisibleMs,
+      contextTargetVisibleMs: state.contextTargetVisibleMs,
       groupingMode: state.groupingMode,
       contactGuideMode: state.contactGuideMode,
       customStartEnabled: state.customStartEnabled,
@@ -3397,6 +3480,8 @@
       targetAccel: parameters.targetAccelerationPxPerSec2,
       launcherBehavior: parameters.launcherBehavior,
       targetAngle: parameters.targetAngleDegrees,
+      launcherVisibleMs: parameters.launcherVisibleMs ?? baseState.launcherVisibleMs,
+      targetVisibleMs: parameters.targetVisibleMs ?? baseState.targetVisibleMs,
       delayMs: parameters.contactDelayMs,
       gapPx: parameters.gapPx,
       markerMode: parameters.markerMode,
@@ -3422,6 +3507,8 @@
       contextTargetSpeedRatio: parameters.contextTargetSpeedRatio,
       contextTargetAccel: parameters.contextTargetAccelerationPxPerSec2,
       contextTargetAngle: parameters.contextTargetAngleDegrees,
+      contextLauncherVisibleMs: parameters.contextLauncherVisibleMs ?? baseState.contextLauncherVisibleMs,
+      contextTargetVisibleMs: parameters.contextTargetVisibleMs ?? baseState.contextTargetVisibleMs,
       renderMode: parameters.renderMode,
       stageTheme: parameters.stageTheme,
       objectStyle: parameters.objectStyle,
@@ -3529,6 +3616,8 @@
       targetSpeedRatio: condition.parameters.targetSpeedRatio,
       targetAccelerationPxPerSec2: condition.parameters.targetAccelerationPxPerSec2,
       targetAngleDegrees: condition.parameters.targetAngleDegrees,
+      launcherVisibleMs: condition.parameters.launcherVisibleMs,
+      targetVisibleMs: condition.parameters.targetVisibleMs,
       contactDelayMs: condition.parameters.contactDelayMs,
       gapPx: condition.parameters.gapPx,
       ballRadiusPx: condition.parameters.ballRadiusPx,
@@ -3545,6 +3634,8 @@
       contextGapPx: condition.parameters.contextGapPx,
       contextOccluderEnabled: condition.parameters.contextOccluderEnabled,
       contextOccluderWidthPx: condition.parameters.contextOccluderWidthPx,
+      contextLauncherVisibleMs: condition.parameters.contextLauncherVisibleMs,
+      contextTargetVisibleMs: condition.parameters.contextTargetVisibleMs,
       renderMode: condition.parameters.renderMode,
       stageTheme: condition.parameters.stageTheme,
       groupingMode: condition.parameters.groupingMode,
@@ -3637,6 +3728,8 @@
         targetAccelerationPxPerSec2: condition.targetAccel,
         launcherBehavior: condition.launcherBehavior,
         targetAngleDegrees: condition.targetAngle,
+        launcherVisibleMs: condition.launcherVisibleMs,
+        targetVisibleMs: condition.targetVisibleMs,
         contactDelayMs: condition.delayMs,
         gapPx: condition.gapPx,
         markerMode: condition.markerMode,
@@ -3662,6 +3755,8 @@
         contextTargetSpeedRatio: condition.contextTargetSpeedRatio,
         contextTargetAccelerationPxPerSec2: condition.contextTargetAccel,
         contextTargetAngleDegrees: condition.contextTargetAngle,
+        contextLauncherVisibleMs: condition.contextLauncherVisibleMs,
+        contextTargetVisibleMs: condition.contextTargetVisibleMs,
         renderMode: condition.renderMode,
         stageTheme: condition.stageTheme,
         objectStyle: condition.objectStyle,
@@ -4365,6 +4460,8 @@
             controls.customStartAlignStartsVertical.checked = true;
             initializeCustomStartPositions();
             enforceCustomStartConstraints();
+          } else {
+            resetCustomStartPositionsToAutomatic();
           }
           syncStartDragUi();
           updateOutputs();
