@@ -83,6 +83,7 @@
     "contextOffsetMs",
     "contextDirection",
     "contextYOffset",
+    "contextBallRadius",
     "contextLeadInMs",
     "contextLauncherSpeed",
     "contextLauncherAccel",
@@ -148,6 +149,7 @@
     markerMode:
       "Changes: optional cue drawn only when Overlap / Gap is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
     ballRadius: "Changes: object size. Use for: scaling the balls while keeping the same motion logic.",
+    contextBallRadius: "Changes: context object size. Use for: matching the original balls or testing size mismatch between rows.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
     contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
@@ -725,6 +727,7 @@
     targetAccel: 0,
     contextDurationMs: 750,
     contextLeadInMs: 200,
+    contextBallRadius: 28,
     contextLauncherSpeed: 860,
     contextLauncherAccel: 0,
     contextLauncherBehavior: "stop",
@@ -850,6 +853,7 @@
       contextOffsetMs: Number(controls.contextOffsetMs.value),
       contextDirection: controls.contextDirection.value,
       contextYOffset: Number(controls.contextYOffset.value),
+      contextBallRadius: Number(controls.contextBallRadius.value),
       contextLeadInMs: Number(controls.contextLeadInMs.value),
       contextLauncherSpeed: Number(controls.contextLauncherSpeed.value),
       contextLauncherAccel: Number(controls.contextLauncherAccel.value),
@@ -900,7 +904,7 @@
     };
   }
 
-  function formatValue(format, value) {
+  function formatValue(format, value, inputId = "") {
     const number = Number(value);
     switch (format) {
       case "int":
@@ -920,7 +924,8 @@
       case "signedPx":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} px`;
       case "overlap": {
-        const radius = controls.ballRadius ? Number(controls.ballRadius.value) : 28;
+        const radiusControl = inputId === "contextGapPx" ? controls.contextBallRadius : controls.ballRadius;
+        const radius = radiusControl ? Number(radiusControl.value) : 28;
         if (number < 0) {
           const overlap = clamp((-number / Math.max(1, radius * 2)) * 100, 0, 100);
           return `${Math.round(overlap)}% overlap`;
@@ -950,7 +955,7 @@
   function updateOutputs() {
     document.querySelectorAll("output[data-for]").forEach((output) => {
       const input = document.getElementById(output.dataset.for);
-      output.textContent = formatValue(input.dataset.format, input.value);
+      output.textContent = formatValue(input.dataset.format, input.value, input.id);
       const fineInput = input.dataset.fineControlId ? document.getElementById(input.dataset.fineControlId) : null;
       if (fineInput && document.activeElement !== fineInput) {
         fineInput.value = input.value;
@@ -1482,6 +1487,7 @@
     return {
       ...values,
       contextLeadInMs: values.contextLeadInMs ?? values.leadInMs ?? stimulusDefaults.contextLeadInMs,
+      contextBallRadius: values.contextBallRadius ?? values.ballRadius ?? stimulusDefaults.contextBallRadius,
       contextLauncherSpeed: values.contextLauncherSpeed ?? values.launcherSpeed ?? stimulusDefaults.contextLauncherSpeed,
       contextLauncherAccel: values.contextLauncherAccel ?? values.launcherAccel ?? stimulusDefaults.contextLauncherAccel,
       contextLauncherBehavior: values.contextLauncherBehavior ?? stimulusDefaults.contextLauncherBehavior,
@@ -1638,6 +1644,8 @@
     )} ms${direction}${accelerationTag}`;
     const pxPerDva = Math.max(1, state.pxPerDva);
     const ballDiameterDva = (state.ballRadius * 2) / pxPerDva;
+    const contextBallRadius = Number.isFinite(state.contextBallRadius) ? state.contextBallRadius : state.ballRadius;
+    const contextBallDiameterDva = (contextBallRadius * 2) / pxPerDva;
     const contextSeparationDva = state.contextYOffset / pxPerDva;
     const gapDva = gapMagnitude / pxPerDva;
     const stimulusOffsetDva = {
@@ -1654,6 +1662,7 @@
       gapPx: Math.round(gapMagnitude),
       gapDva: Number(gapDva.toFixed(2)),
       ballDiameterDva: Number(ballDiameterDva.toFixed(2)),
+      contextBallDiameterDva: Number(contextBallDiameterDva.toFixed(2)),
       contextSeparationDva: Number(contextSeparationDva.toFixed(2)),
       fixationDiameterDva: Number(state.fixationDva.toFixed(2)),
       stimulusOffsetPx: {
@@ -1796,7 +1805,10 @@
       summarySpeed.textContent = `${Math.round(state.launcherSpeed)} px/s`;
     }
     if (summaryRadius) {
-      summaryRadius.textContent = `${Math.round(state.ballRadius)} px`;
+      summaryRadius.textContent =
+        state.contextMode === "none"
+          ? `${Math.round(state.ballRadius)} px`
+          : `O ${Math.round(state.ballRadius)} / C ${Math.round(state.contextBallRadius)} px`;
     }
     if (summaryAfter) {
       summaryAfter.textContent = describeLauncherBehavior(state.launcherBehavior);
@@ -2117,14 +2129,11 @@
       return;
     }
 
-    const radius = state.ballRadius;
     const rowGap = Math.abs(state.contextYOffset);
     const groupedRowsAreClose =
       state.groupingMode === "both" &&
       isContextEventVisible(state, eventState.time, eventState.geometry) &&
       rowGap > 0;
-    const maxHalfHeight = groupedRowsAreClose ? Math.max(10, rowGap / 2 - 8) : radius * 2.3;
-    const boxHalfHeight = Math.min(radius * 2.3, maxHalfHeight);
     const contextState = getContextMotionState(state);
     const contextLaneY = eventState.geometry.laneY + state.contextYOffset;
     const contextGeometry = getGeometry(contextState, contextLaneY, {
@@ -2133,6 +2142,9 @@
     });
 
     const drawBox = (label, geometry, color, fallback) => {
+      const radius = geometry.radius;
+      const maxHalfHeight = groupedRowsAreClose ? Math.max(10, rowGap / 2 - 8) : radius * 2.3;
+      const boxHalfHeight = Math.min(radius * 2.3, maxHalfHeight);
       const left = Math.max(20, Math.min(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) - radius * 1.8);
       const right = Math.min(STAGE_WIDTH - 20, Math.max(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) + radius * 7.2);
       const top = Math.max(20, Math.min(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) - boxHalfHeight);
@@ -2181,13 +2193,13 @@
       return;
     }
 
-    const radius = state.ballRadius;
     const contextVisible = isContextEventVisible(state, eventState.time, eventState.geometry);
     const lanes = [];
     if (state.contactGuideMode === "original" || state.contactGuideMode === "both") {
       lanes.push({
         laneY: eventState.geometry.targetBaseY,
         x: eventState.geometry.targetBaseX,
+        radius: eventState.geometry.radius,
         color: state.groupingOriginalColor,
         fallback: "#e05a5a"
       });
@@ -2201,6 +2213,7 @@
       lanes.push({
         laneY: contextGeometry.targetBaseY,
         x: contextGeometry.targetBaseX,
+        radius: contextGeometry.radius,
         color: state.groupingContextColor,
         fallback: "#d8a51b"
       });
@@ -2212,8 +2225,8 @@
     lanes.forEach((lane) => {
       drawCtx.strokeStyle = hexToRgba(lane.color, state.stageTheme === "light" ? 0.62 : 0.72, lane.fallback);
       drawCtx.beginPath();
-      drawCtx.moveTo(lane.x, lane.laneY - radius * 2.9);
-      drawCtx.lineTo(lane.x, lane.laneY + radius * 2.9);
+      drawCtx.moveTo(lane.x, lane.laneY - lane.radius * 2.9);
+      drawCtx.lineTo(lane.x, lane.laneY + lane.radius * 2.9);
       drawCtx.stroke();
     });
     drawCtx.restore();
@@ -2351,12 +2364,15 @@
   function getContextMotionState(state) {
     return {
       ...state,
+      ballRadius: Number.isFinite(state.contextBallRadius) ? state.contextBallRadius : state.ballRadius,
       leadInMs: state.contextLeadInMs,
       launcherSpeed: state.contextLauncherSpeed,
       launcherAccel: state.contextLauncherAccel,
       launcherBehavior: state.contextMode === "pass" ? "continue" : state.contextLauncherBehavior,
       delayMs: state.contextDelayMs,
       gapPx: state.contextGapPx,
+      occluderEnabled: state.contextOccluderEnabled,
+      occluderWidth: state.contextOccluderWidth,
       targetSpeedRatio: state.contextTargetSpeedRatio,
       targetAccel: state.contextTargetAccel,
       targetAngle: state.contextTargetAngle
@@ -2444,9 +2460,10 @@
     if (state.contextMode === "single") {
       const singleEvent = getDirectedSingleEventState(contextState, adjustedTime, laneY, directionSign);
       const singlePalette = adjustedTime < singleEvent.geometry.stopTime ? palette.context : palette.contextTarget;
+      const radius = singleEvent.geometry.radius;
       const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
-      if (!state.contextOccluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, state.ballRadius, contextOccluderBounds)) {
-        drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, state.ballRadius, singlePalette.fill, singlePalette.outline);
+      if (!state.contextOccluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds)) {
+        drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, radius, singlePalette.fill, singlePalette.outline);
       }
       return;
     }
@@ -2465,13 +2482,14 @@
       outline: palette.contextTarget.outline
     };
     const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
+    const radius = contextEvent.geometry.radius;
 
     if (state.contextOccluderEnabled) {
-      drawOccludedObjectPair(drawCtx, state, launcher, target, state.ballRadius, contextOccluderBounds);
+      drawOccludedObjectPair(drawCtx, state, launcher, target, radius, contextOccluderBounds);
       return;
     }
 
-    drawObjectPair(drawCtx, state, contextEvent, launcher, target, state.ballRadius, state.contextContactOcclusionMode);
+    drawObjectPair(drawCtx, state, contextEvent, launcher, target, radius, state.contextContactOcclusionMode);
   }
 
   function drawTunnelOccluder(drawCtx, laneY, radius, enabled, width) {
@@ -2506,7 +2524,7 @@
   }
 
   function drawContextOccluder(drawCtx, state, laneY) {
-    return drawTunnelOccluder(drawCtx, laneY, state.ballRadius, state.contextOccluderEnabled, state.contextOccluderWidth);
+    return drawTunnelOccluder(drawCtx, laneY, state.contextBallRadius, state.contextOccluderEnabled, state.contextOccluderWidth);
   }
 
   function isObjectOutsideOccluder(x, radius, occluderBounds) {
@@ -2665,6 +2683,7 @@
         label: "O1",
         x: originalGeometry.launcherStartX,
         y: originalGeometry.launcherStartY,
+        radius: originalGeometry.radius,
         xControl: "originalLauncherStartX",
         yControl: "originalLauncherStartY"
       },
@@ -2673,6 +2692,7 @@
         label: "O2",
         x: originalGeometry.targetBaseX,
         y: originalGeometry.targetBaseY,
+        radius: originalGeometry.radius,
         xControl: "originalTargetStartX",
         yControl: "originalTargetStartY"
       }
@@ -2689,6 +2709,7 @@
           label: "C1",
           x: contextGeometry.launcherStartX,
           y: contextGeometry.launcherStartY,
+          radius: contextGeometry.radius,
           xControl: "contextLauncherStartX",
           yControl: "contextLauncherStartY"
         },
@@ -2697,6 +2718,7 @@
           label: "C2",
           x: contextGeometry.targetBaseX,
           y: contextGeometry.targetBaseY,
+          radius: contextGeometry.radius,
           xControl: "contextTargetStartX",
           yControl: "contextTargetStartY"
         }
@@ -2707,8 +2729,10 @@
   }
 
   function findStartDragHandle(state, point) {
-    const radius = state.ballRadius + 12;
-    return getStartDragHandles(state).find((handle) => Math.hypot(point.x - handle.x, point.y - handle.y) <= radius) || null;
+    return (
+      getStartDragHandles(state).find((handle) => Math.hypot(point.x - handle.x, point.y - handle.y) <= handle.radius + 12) ||
+      null
+    );
   }
 
   function drawStartDragHandles(drawCtx, state) {
@@ -2722,17 +2746,17 @@
     drawCtx.textBaseline = "middle";
     getStartDragHandles(state).forEach((handle) => {
       drawCtx.beginPath();
-      drawCtx.arc(handle.x, handle.y, state.ballRadius + 7, 0, Math.PI * 2);
+      drawCtx.arc(handle.x, handle.y, handle.radius + 7, 0, Math.PI * 2);
       drawCtx.strokeStyle = "rgba(255, 255, 255, 0.94)";
       drawCtx.lineWidth = 2.5;
       drawCtx.stroke();
       drawCtx.beginPath();
-      drawCtx.arc(handle.x, handle.y, state.ballRadius + 12, 0, Math.PI * 2);
+      drawCtx.arc(handle.x, handle.y, handle.radius + 12, 0, Math.PI * 2);
       drawCtx.strokeStyle = "rgba(239, 59, 47, 0.86)";
       drawCtx.lineWidth = 2;
       drawCtx.stroke();
       drawCtx.fillStyle = "rgba(255, 253, 246, 0.92)";
-      drawCtx.fillText(handle.label, handle.x, handle.y - state.ballRadius - 20);
+      drawCtx.fillText(handle.label, handle.x, handle.y - handle.radius - 20);
     });
     drawCtx.restore();
   }
@@ -3069,7 +3093,8 @@
       timing,
       `cv${compactNumber(state.contextLauncherSpeed)}pxs`,
       `cdelay${compactNumber(state.contextDelayMs)}ms`,
-      `c${getGapFilenamePartFrom(state.contextGapPx, state.ballRadius)}`,
+      `c${getGapFilenamePartFrom(state.contextGapPx, state.contextBallRadius)}`,
+      `cr${compactNumber(state.contextBallRadius)}px`,
       `cratio${compactNumber(state.contextTargetSpeedRatio * 100)}pct`
     ].join("-") + windowTag;
   }
@@ -3270,6 +3295,7 @@
       contextOffsetMs: state.contextOffsetMs,
       contextDirection: state.contextDirection,
       contextSeparationPx: state.contextYOffset,
+      contextBallRadiusPx: state.contextBallRadius,
       contextLeadInMs: state.contextLeadInMs,
       contextLauncherSpeedPxPerSec: state.contextLauncherSpeed,
       contextLauncherAccelerationPxPerSec2: state.contextLauncherAccel,
@@ -3308,6 +3334,7 @@
       colorChangeColor: state.colorChangeColor,
       pxPerDva: state.pxPerDva,
       ballDiameterDva: standards.ballDiameterDva,
+      contextBallDiameterDva: standards.contextBallDiameterDva,
       gapDva: standards.gapDva,
       contextSeparationDva: standards.contextSeparationDva,
       fixationDva: state.fixationDva,
@@ -3354,6 +3381,7 @@
         contextOffsetMs: state.contextOffsetMs,
         contextDirection: state.contextDirection,
         contextYOffsetPx: state.contextYOffset,
+        contextBallRadiusPx: state.contextBallRadius,
         contextLeadInMs: state.contextLeadInMs,
         contextLauncherSpeedPxPerSec: state.contextLauncherSpeed,
         contextLauncherAccelerationPxPerSec2: state.contextLauncherAccel,
@@ -3402,6 +3430,7 @@
         groupingContextColor: state.groupingContextColor,
         pxPerDva: state.pxPerDva,
         ballDiameterDva: standards.ballDiameterDva,
+        contextBallDiameterDva: standards.contextBallDiameterDva,
         gapDva: standards.gapDva,
         contextSeparationDva: standards.contextSeparationDva,
         fixationDiameterDva: standards.fixationDiameterDva,
@@ -3508,6 +3537,7 @@
       contextOffsetMs: parameters.contextOffsetMs,
       contextDirection: parameters.contextDirection,
       contextYOffset: parameters.contextYOffsetPx,
+      contextBallRadius: parameters.contextBallRadiusPx ?? parameters.ballRadiusPx ?? baseState.contextBallRadius,
       contextLeadInMs: parameters.contextLeadInMs,
       contextLauncherSpeed: parameters.contextLauncherSpeedPxPerSec,
       contextLauncherAccel: parameters.contextLauncherAccelerationPxPerSec2,
@@ -3629,6 +3659,7 @@
       targetAngleDegrees: condition.parameters.targetAngleDegrees,
       contactDelayMs: condition.parameters.contactDelayMs,
       gapPx: condition.parameters.gapPx,
+      ballRadiusPx: condition.parameters.ballRadiusPx,
       overlapPercent: condition.standards.overlapPercent,
       impactMs: condition.standards.impactMs,
       targetOnsetMs: condition.standards.targetOnsetMs,
@@ -3637,6 +3668,7 @@
       contextOffsetMs: condition.parameters.contextOffsetMs,
       contextDirection: condition.parameters.contextDirection,
       contextSeparationPx: condition.parameters.contextYOffsetPx,
+      contextBallRadiusPx: condition.parameters.contextBallRadiusPx,
       contextLauncherBehavior: condition.parameters.contextLauncherBehavior,
       contextGapPx: condition.parameters.contextGapPx,
       contextOccluderEnabled: condition.parameters.contextOccluderEnabled,
@@ -3758,6 +3790,7 @@
         contextOffsetMs: condition.contextOffsetMs,
         contextDirection: condition.contextDirection,
         contextYOffsetPx: condition.contextYOffset,
+        contextBallRadiusPx: condition.contextBallRadius,
         contextLeadInMs: condition.contextLeadInMs,
         contextLauncherSpeedPxPerSec: condition.contextLauncherSpeed,
         contextLauncherAccelerationPxPerSec2: condition.contextLauncherAccel,
@@ -3809,6 +3842,7 @@
       contextDurationMs: 750,
       contextOffsetMs: 0,
       contextDirection: "same",
+      contextBallRadius: baseState.contextBallRadius ?? baseState.ballRadius,
       markerMode: "none",
       occluderEnabled: false,
       contextOccluderEnabled: false,
