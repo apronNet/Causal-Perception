@@ -145,8 +145,10 @@
     targetAccel: "Changes: whether the second object speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
     launcherBehavior: "Changes: what the first object does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of the second object's motion after contact. Use for: straight launch versus angled launch.",
-    launcherVisibleMs: "Changes: when original first object is removed after video start. Set beyond video duration for no timed cut; it then remains until clip end or exits frame.",
-    targetVisibleMs: "Changes: when original second object is removed after video start. Shorter values make it disappear on screen.",
+    launcherVisibleMs:
+      "Changes: how long O1 stays visible after the video starts. Longer than Video duration means no timed cut; O1 stays until the clip ends or it moves offscreen. Shorter than Video duration makes O1 disappear on screen at that time.",
+    targetVisibleMs:
+      "Changes: how long O2 stays visible after the video starts. Longer than Video duration means no timed cut; O2 stays until the clip ends or it moves offscreen. Shorter than Video duration makes O2 disappear on screen at that time.",
     delayMs: "Changes: time between contact and second-object motion. Short delays look more directly causal; long delays look less like immediate launching.",
     gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
@@ -173,8 +175,10 @@
     contextTargetSpeedRatio: "Changes: context second-object speed as a multiple of context first-object impact speed. Use for: matching the original launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether the context second object speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context second-object motion. Use for: matching or mismatching the original event direction.",
-    contextLauncherVisibleMs: "Changes: when context first object is removed after context event start. Set beyond video duration for no timed cut.",
-    contextTargetVisibleMs: "Changes: when context second object is removed after context event start. Shorter values make it disappear on screen.",
+    contextLauncherVisibleMs:
+      "Changes: how long C1 stays visible after the context event starts. Longer than Video duration means no timed cut; C1 stays until the clip ends or it moves offscreen. Shorter than Video duration makes C1 disappear on screen at that context time.",
+    contextTargetVisibleMs:
+      "Changes: how long C2 stays visible after the context event starts. Longer than Video duration means no timed cut; C2 stays until the clip ends or it moves offscreen. Shorter than Video duration makes C2 disappear on screen at that context time.",
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
     stageTheme: "Changes: background luminance. Use for: dark, mid-gray, or light stimulus fields.",
     objectStyle: "Changes: visual rendering of the balls. Simple discs are more controlled; 3D balls are more pictorial.",
