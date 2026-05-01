@@ -122,6 +122,14 @@
                     </select>
                   </label>
                   <label class="field">
+                    <span>Front object</span>
+                    <select id="contactOcclusionMode">
+                      <option value="target-front">Second object front</option>
+                      <option value="launcher-front">First object front</option>
+                      <option value="alternate">Alternate</option>
+                    </select>
+                  </label>
+                  <label class="field">
                     <span>Delay</span>
                     <input id="delayMs" data-format="ms" min="0" max="500" step="5" type="range" />
                     <output data-for="delayMs"></output>
@@ -170,6 +178,14 @@
                     </select>
                   </label>
                   <label class="field">
+                    <span>Front object</span>
+                    <select id="contextContactOcclusionMode">
+                      <option value="target-front">Second object front</option>
+                      <option value="launcher-front">First object front</option>
+                      <option value="alternate">Alternate</option>
+                    </select>
+                  </label>
+                  <label class="field">
                     <span>Delay</span>
                     <input id="contextDelayMs" data-format="ms" min="0" max="500" step="5" type="range" />
                     <output data-for="contextDelayMs"></output>
@@ -212,24 +228,20 @@
                     <input id="gapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
                     <output data-for="gapPx"></output>
                   </label>
+                  <label class="field checkbox-field">
+                    <input id="occluderEnabled" type="checkbox" />
+                    <span>Tunnel occluder</span>
+                  </label>
                   <label class="field">
-                    <span>Front object</span>
-                    <select id="contactOcclusionMode">
-                      <option value="target-front">Second object front</option>
-                      <option value="launcher-front">First object front</option>
-                      <option value="alternate">Alternate</option>
-                    </select>
+                    <span>Tunnel width</span>
+                    <input id="occluderWidth" data-format="intPx" min="40" max="360" step="5" type="range" />
+                    <output data-for="occluderWidth"></output>
                   </label>
                 </div>
               </div>
               <div class="control-subgroup context-dependent-control">
                 <h3 class="subgroup-title">Context position</h3>
                 <div class="control-subgrid">
-                  <label class="field">
-                    <span>Vertical distance</span>
-                    <input id="contextYOffset" data-format="intPx" min="20" max="320" step="1" type="range" />
-                    <output data-for="contextYOffset"></output>
-                  </label>
                   <label class="field">
                     <span>Radius</span>
                     <input id="contextBallRadius" data-format="intPx" min="12" max="60" step="1" type="range" />
@@ -240,17 +252,9 @@
                     <input id="contextGapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
                     <output data-for="contextGapPx"></output>
                   </label>
-                  <label class="field">
-                    <span>Front object</span>
-                    <select id="contextContactOcclusionMode">
-                      <option value="target-front">Second object front</option>
-                      <option value="launcher-front">First object front</option>
-                      <option value="alternate">Alternate</option>
-                    </select>
-                  </label>
                   <label class="field checkbox-field">
                     <input id="contextOccluderEnabled" type="checkbox" />
-                    <span>Context tunnel</span>
+                    <span>Tunnel occluder</span>
                   </label>
                   <label class="field">
                     <span>Tunnel width</span>
@@ -259,6 +263,11 @@
                   </label>
                 </div>
               </div>
+              <label class="field context-dependent-control">
+                <span>Vertical distance</span>
+                <input id="contextYOffset" data-format="intPx" min="20" max="320" step="1" type="range" />
+                <output data-for="contextYOffset"></output>
+              </label>
               <label class="field">
                 <span>Marker</span>
                 <select id="markerMode">
@@ -268,15 +277,6 @@
                   <option value="start">Start marker</option>
                   <option value="both">Stop and start markers</option>
                 </select>
-              </label>
-              <label class="field checkbox-field">
-                <input id="occluderEnabled" type="checkbox" />
-                <span>Tunnel occluder</span>
-              </label>
-              <label class="field">
-                <span>Occluder</span>
-                <input id="occluderWidth" data-format="intPx" min="40" max="360" step="5" type="range" />
-                <output data-for="occluderWidth"></output>
               </label>
               <label class="field checkbox-field">
                 <input id="customStartEnabled" type="checkbox" />
@@ -471,8 +471,6 @@
                 <output data-for="soundVolume"></output>
               </label>
             </div>
-            <button id="metadataButton" class="secondary-button full-button" type="button">Export JSON</button>
-            <a id="metadataLink" class="download-link hidden" download>Download latest JSON</a>
             <button id="psychopyButton" class="secondary-button full-button" type="button">Export PsychoPy CSV</button>
             <a id="psychopyLink" class="download-link hidden" download>Download PsychoPy CSV</a>
             <div class="condition-set-box">
@@ -538,7 +536,6 @@
             </div>
             <div id="artifactChecklist" class="artifact-card hidden">
               <span><b>Video</b><em id="artifactFilename">not exported</em></span>
-              <span><b>JSON</b><em id="artifactJsonStatus">pending</em></span>
               <span><b>PsychoPy CSV</b><em id="artifactCsvStatus">pending</em></span>
               <span><b>Review</b><em id="artifactWarnings">no notes</em></span>
             </div>

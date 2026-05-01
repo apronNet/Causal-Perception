@@ -18,13 +18,11 @@
   const exportPresetButton = document.getElementById("exportPresetButton");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
-  const metadataButton = document.getElementById("metadataButton");
   const psychopyButton = document.getElementById("psychopyButton");
   const conditionSetSelect = document.getElementById("conditionSetSelect");
   const conditionJsonButton = document.getElementById("conditionJsonButton");
   const conditionCsvButton = document.getElementById("conditionCsvButton");
   const downloadLink = document.getElementById("downloadLink");
-  const metadataLink = document.getElementById("metadataLink");
   const psychopyLink = document.getElementById("psychopyLink");
   const conditionJsonLink = document.getElementById("conditionJsonLink");
   const conditionCsvLink = document.getElementById("conditionCsvLink");
@@ -54,7 +52,6 @@
   const exportedVideo = document.getElementById("exportedVideo");
   const artifactChecklist = document.getElementById("artifactChecklist");
   const artifactFilename = document.getElementById("artifactFilename");
-  const artifactJsonStatus = document.getElementById("artifactJsonStatus");
   const artifactCsvStatus = document.getElementById("artifactCsvStatus");
   const artifactWarnings = document.getElementById("artifactWarnings");
   const relationMetric = document.getElementById("relationMetric");
@@ -789,7 +786,6 @@
   let activePresetKey = "canonical";
   let selectedPresetKey = "canonical";
   let currentObjectUrl = null;
-  let currentMetadataUrl = null;
   let currentPsychopyUrl = null;
   let currentConditionJsonUrl = null;
   let currentConditionCsvUrl = null;
@@ -1056,12 +1052,15 @@
 
       field.classList.add("help-field");
       field.dataset.helpBound = "true";
-      field.dataset.helpText = text;
-      label.addEventListener("pointerenter", () => showParameterTooltip(label, text));
+      const helpText = field.closest(".psychopy-panel")
+        ? `${formatParameterTooltipText(text)} See GitHub README for PsychoPy details.`
+        : text;
+      field.dataset.helpText = helpText;
+      label.addEventListener("pointerenter", () => showParameterTooltip(label, helpText));
       label.addEventListener("pointerleave", hideParameterTooltip);
-      label.addEventListener("click", () => showParameterTooltip(label, text));
+      label.addEventListener("click", () => showParameterTooltip(label, helpText));
       label.setAttribute("tabindex", "0");
-      label.addEventListener("focus", () => showParameterTooltip(label, text));
+      label.addEventListener("focus", () => showParameterTooltip(label, helpText));
       label.addEventListener("blur", hideParameterTooltip);
     });
 
@@ -3351,133 +3350,6 @@
     return `${columns.join(",")}\n${columns.map((column) => csvCell(row[column])).join(",")}\n`;
   }
 
-  function buildMetadata(state, filename, exportDetails = {}) {
-    const standards = getStandards(state);
-    const encoded = getEncodedDimensions(exportDetails);
-    return {
-      filename,
-      generatedAt: new Date().toISOString(),
-      preset: getConditionName(),
-      standards,
-      parameters: {
-        durationMs: state.durationMs,
-        leadInMs: state.leadInMs,
-        launcherSpeedPxPerSec: state.launcherSpeed,
-        launcherAccelerationPxPerSec2: state.launcherAccel,
-        targetSpeedRatio: state.targetSpeedRatio,
-        targetAccelerationPxPerSec2: state.targetAccel,
-        launcherBehavior: state.launcherBehavior,
-        targetAngleDegrees: state.targetAngle,
-        contactDelayMs: state.delayMs,
-        spatialGapPx: Math.max(0, state.gapPx),
-        overlapPercent: standards.overlapPercent,
-        markerMode: state.markerMode,
-        ballRadiusPx: state.ballRadius,
-        occluderEnabled: state.occluderEnabled,
-        occluderWidthPx: state.occluderWidth,
-        contactOcclusionMode: state.contactOcclusionMode,
-        contextMode: state.contextMode,
-        contextDurationMs: state.contextDurationMs,
-        contextOffsetMs: state.contextOffsetMs,
-        contextDirection: state.contextDirection,
-        contextYOffsetPx: state.contextYOffset,
-        contextBallRadiusPx: state.contextBallRadius,
-        contextLeadInMs: state.contextLeadInMs,
-        contextLauncherSpeedPxPerSec: state.contextLauncherSpeed,
-        contextLauncherAccelerationPxPerSec2: state.contextLauncherAccel,
-        contextLauncherBehavior: state.contextLauncherBehavior,
-        contextDelayMs: state.contextDelayMs,
-        contextGapPx: state.contextGapPx,
-        contextContactOcclusionMode: state.contextContactOcclusionMode,
-        contextOccluderEnabled: state.contextOccluderEnabled,
-        contextOccluderWidthPx: state.contextOccluderWidth,
-        contextTargetSpeedRatio: state.contextTargetSpeedRatio,
-        contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
-        contextTargetAngleDegrees: state.contextTargetAngle,
-        renderMode: state.renderMode,
-        stageTheme: state.stageTheme,
-        objectStyle: state.objectStyle,
-        groupingMode: state.groupingMode,
-        contactGuideMode: state.contactGuideMode,
-        customStartEnabled: state.customStartEnabled,
-        customStartKeepRowsHorizontal: state.customStartKeepRowsHorizontal,
-        customStartAlignStartsVertical: state.customStartAlignStartsVertical,
-        customStartPositionsPx: {
-          originalLauncher: {
-            x: state.originalLauncherStartX,
-            y: state.originalLauncherStartY
-          },
-          originalTarget: {
-            x: state.originalTargetStartX,
-            y: state.originalTargetStartY
-          },
-          contextLauncher: {
-            x: state.contextLauncherStartX,
-            y: state.contextLauncherStartY
-          },
-          contextTarget: {
-            x: state.contextTargetStartX,
-            y: state.contextTargetStartY
-          }
-        },
-        colorChangeMode: state.colorChangeMode,
-        colorChangeColor: state.colorChangeColor,
-        launcherColor: state.launcherColor,
-        targetColor: state.targetColor,
-        contextColor: state.contextColor,
-        contextTargetColor: state.contextTargetColor,
-        groupingOriginalColor: state.groupingOriginalColor,
-        groupingContextColor: state.groupingContextColor,
-        pxPerDva: state.pxPerDva,
-        ballDiameterDva: standards.ballDiameterDva,
-        contextBallDiameterDva: standards.contextBallDiameterDva,
-        gapDva: standards.gapDva,
-        contextSeparationDva: standards.contextSeparationDva,
-        fixationDiameterDva: standards.fixationDiameterDva,
-        stimulusXOffsetPx: state.stimulusXOffset,
-        stimulusYOffsetPx: state.stimulusYOffset,
-        stimulusOffsetDva: standards.stimulusOffsetDva,
-        soundEnabled: state.soundEnabled,
-        soundType: state.soundType,
-        soundVolume: state.soundVolume,
-        outputFormat: state.outputFormat,
-        videoBitrateMbps: state.videoBitrate,
-        fps: state.fps
-      },
-      export: {
-        requestedFormat: state.outputFormat,
-        actualMimeType: exportDetails.mimeType || null,
-        extension: exportDetails.extension || null,
-        logicalWidthPx: STAGE_WIDTH,
-        logicalHeightPx: STAGE_HEIGHT,
-        encodedWidthPx: encoded.width,
-        encodedHeightPx: encoded.height,
-        intendedDurationSec: getIntendedDurationSec(state),
-        encodedDurationSec: getExportDurationSec(state),
-        frameCount: getExportFrameCount(state),
-        bitrateMbps: state.videoBitrate,
-        browserEncoded: true
-      },
-      psychopy: buildPsychopyMetadata(state, filename, exportDetails),
-      literatureBasis: [
-        "Scholl & Nakayama 2002: full-overlap test events, synchronized launch context, brief impact windows, temporal asynchrony, and direction phase.",
-        "Kominsky & Wenig 2025: launch/pass overlap continua and launch/push entraining contrasts."
-      ]
-    };
-  }
-
-  function setMetadataDownload(metadata, preferredName) {
-    const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: "application/json" });
-    if (currentMetadataUrl) {
-      URL.revokeObjectURL(currentMetadataUrl);
-    }
-    currentMetadataUrl = URL.createObjectURL(blob);
-    metadataLink.href = currentMetadataUrl;
-    metadataLink.download = preferredName;
-    metadataLink.textContent = `Download ${preferredName}`;
-    metadataLink.classList.remove("hidden");
-  }
-
   function setPsychopyDownload(csv, preferredName) {
     const blob = new Blob([csv], { type: "text/csv" });
     if (currentPsychopyUrl) {
@@ -3726,25 +3598,12 @@
     if (artifactFilename) {
       artifactFilename.textContent = filename;
     }
-    if (artifactJsonStatus) {
-      artifactJsonStatus.textContent = "ready";
-    }
     if (artifactCsvStatus) {
       artifactCsvStatus.textContent = "ready";
     }
     if (artifactWarnings) {
       artifactWarnings.textContent = describeExportReview(warnings, exportFormat);
     }
-  }
-
-  function exportParameters() {
-    const state = cloneState();
-    const exportFormat = chooseExportFormat(state);
-    const movieFilename = getExportMovieFilename(state, exportFormat.extension);
-    const filename = movieFilename.replace(/\.(webm|mp4)$/i, ".json");
-    setMetadataDownload(buildMetadata(state, movieFilename, exportFormat), filename);
-    setPsychopyDownload(buildPsychopyCsv(state, movieFilename, exportFormat), getPsychopyCsvName(movieFilename));
-    statusText.textContent = "JSON and PsychoPy CSV ready.";
   }
 
   function exportPsychopyCsv() {
@@ -4439,14 +4298,12 @@
     currentObjectUrl = URL.createObjectURL(blob);
 
     const filename = getExportMovieFilename(state, exportFormat.extension);
-    const metadataFilename = filename.replace(/\.(webm|mp4)$/, ".json");
     const psychopyFilename = getPsychopyCsvName(filename);
     downloadLink.href = currentObjectUrl;
     downloadLink.download = filename;
     downloadLink.textContent = "Download video";
     downloadLink.title = filename;
     downloadLink.classList.remove("hidden");
-    setMetadataDownload(buildMetadata(state, filename, exportFormat), metadataFilename);
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
     updateArtifactChecklist(state, filename, exportFormat);
 
@@ -4611,7 +4468,6 @@
     downloadLink.addEventListener("click", (event) => {
       event.stopPropagation();
     });
-    metadataButton.addEventListener("click", exportParameters);
     psychopyButton.addEventListener("click", exportPsychopyCsv);
     conditionJsonButton?.addEventListener("click", exportConditionSetJson);
     conditionCsvButton?.addEventListener("click", exportConditionSetCsv);
