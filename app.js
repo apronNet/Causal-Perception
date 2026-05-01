@@ -9,7 +9,6 @@
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
   const SHARED_PRESETS_URL = "shared-presets.json";
-  const MICHOTTE_BLINK_DURATION_MS = 280;
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
@@ -17,8 +16,6 @@
   const savePresetButton = document.getElementById("savePresetButton");
   const deletePresetButton = document.getElementById("deletePresetButton");
   const exportPresetButton = document.getElementById("exportPresetButton");
-  const michotteCard = document.getElementById("michotteCard");
-  const michotteBlinkButton = document.getElementById("michotteBlinkButton");
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const metadataButton = document.getElementById("metadataButton");
@@ -1060,26 +1057,6 @@
         hideParameterTooltip();
       }
     });
-  }
-
-  function bindMichotteBlink() {
-    if (!michotteCard || !michotteBlinkButton) {
-      return;
-    }
-
-    let hideTimer = 0;
-    const blink = () => {
-      window.clearTimeout(hideTimer);
-      michotteCard.classList.remove("is-playing-blink");
-      void michotteCard.offsetWidth;
-
-      michotteCard.classList.add("is-playing-blink");
-      hideTimer = window.setTimeout(() => {
-        michotteCard.classList.remove("is-playing-blink");
-      }, MICHOTTE_BLINK_DURATION_MS);
-    };
-
-    michotteBlinkButton.addEventListener("click", blink);
   }
 
   function syncContextControlVisibility() {
@@ -4555,7 +4532,6 @@
   initializeRanges();
   enhanceRangePrecision();
   bindParameterHelp();
-  bindMichotteBlink();
   bindControls();
   bindStartDragging();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
