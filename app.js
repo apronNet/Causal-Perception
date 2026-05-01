@@ -222,7 +222,7 @@
         durationMs: 1200,
         leadInMs: 200,
         launcherSpeed: 876,
-        targetSpeedRatio: 1,
+        targetSpeedRatio: 1 / 3.4,
         launcherBehavior: "stop",
         targetAngle: 0,
         delayMs: 0,
@@ -928,6 +928,8 @@
         return `${number.toFixed(1)} px/s`;
       case "float2":
         return `${number.toFixed(2)} ×`;
+      case "float3":
+        return `${number.toFixed(3)} ×`;
       case "accel":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} px/s^2`;
       case "degrees":
