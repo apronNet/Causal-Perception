@@ -19,6 +19,7 @@
   --radius-sm: 0;
   --grid-unit: 12px;
   --content-max: 1280px;
+  --layout-max: 1364px;
 }
 
 * {
@@ -52,13 +53,14 @@ body {
 }
 
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  width: min(100%, var(--content-max));
-  margin: 0 auto 14px;
-  padding: 10px 0 14px;
+  gap: clamp(18px, 3vw, 42px);
+  width: min(100%, var(--layout-max));
+  margin: 0 auto 10px;
+  padding: 16px 0 12px;
 }
 
 .topbar,
@@ -80,12 +82,18 @@ h3 {
 h1 {
   max-width: none;
   font-size: clamp(2.15rem, 4vw, 4rem);
-  line-height: 0.9;
+  line-height: 0.92;
+}
+
+.title-block {
+  min-width: 0;
+  align-self: end;
+  padding-bottom: 4px;
 }
 
 .app-subtitle {
-  max-width: 520px;
-  margin: 8px 0 0;
+  max-width: none;
+  margin: 9px 0 0 2px;
   color: var(--muted);
   font-size: clamp(0.78rem, 1vw, 0.92rem);
   font-weight: 500;
@@ -97,7 +105,9 @@ h1 {
   display: grid;
   grid-template-columns: 224px max-content;
   align-items: end;
-  gap: 14px;
+  gap: 16px;
+  align-self: end;
+  justify-self: end;
   width: auto;
   margin: 0;
   color: inherit;
@@ -170,6 +180,8 @@ h3 {
   display: grid;
   grid-template-columns: minmax(500px, 560px) minmax(500px, 790px);
   gap: 14px;
+  max-width: var(--layout-max);
+  margin: 0 auto;
   justify-content: center;
   align-items: start;
 }
@@ -1085,6 +1097,15 @@ canvas.trajectory-edit-enabled:active {
     grid-template-columns: 1fr;
   }
 
+  .topbar {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .michotte-card {
+    justify-self: start;
+  }
+
   .stage-panel {
     position: static;
   }
@@ -1102,7 +1123,6 @@ canvas.trajectory-edit-enabled:active {
 
   .topbar {
     align-items: flex-start;
-    flex-direction: column;
     gap: 12px;
   }
 
