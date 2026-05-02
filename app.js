@@ -903,6 +903,9 @@
   controlIds.forEach((id) => {
     controls[id] = document.getElementById(id);
   });
+  document.querySelectorAll("[data-default-collapsed]").forEach((panel) => {
+    panel.open = false;
+  });
   const contextDependentControls = Array.from(document.querySelectorAll(".context-dependent-control"));
   const customStartDependentControls = Array.from(document.querySelectorAll(".custom-start-dependent-control"));
   const railDependentControls = Array.from(document.querySelectorAll(".rail-dependent-control"));
