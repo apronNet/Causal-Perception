@@ -41,17 +41,37 @@
   const scenarioBadge = document.getElementById("scenarioBadge");
   const timingBadge = document.getElementById("timingBadge");
   const summaryPreset = document.getElementById("summaryPreset");
+  const summaryCompact = document.getElementById("summaryCompact");
+  const summaryCategory = document.getElementById("summaryCategory");
   const summaryDuration = document.getElementById("summaryDuration");
   const summaryFps = document.getElementById("summaryFps");
+  const summaryLeadIn = document.getElementById("summaryLeadIn");
+  const summaryImpact = document.getElementById("summaryImpact");
+  const summaryTargetOnset = document.getElementById("summaryTargetOnset");
   const summaryDelay = document.getElementById("summaryDelay");
   const summaryRelation = document.getElementById("summaryRelation");
+  const summaryOverlap = document.getElementById("summaryOverlap");
   const summarySpeed = document.getElementById("summarySpeed");
+  const summaryTargetRatio = document.getElementById("summaryTargetRatio");
+  const summaryLauncherAccel = document.getElementById("summaryLauncherAccel");
+  const summaryTargetAccel = document.getElementById("summaryTargetAccel");
+  const summaryTargetAngle = document.getElementById("summaryTargetAngle");
   const summaryRadius = document.getElementById("summaryRadius");
   const summaryAfter = document.getElementById("summaryAfter");
+  const summaryLauncherVisible = document.getElementById("summaryLauncherVisible");
+  const summaryTargetVisible = document.getElementById("summaryTargetVisible");
   const summaryContext = document.getElementById("summaryContext");
+  const summaryContextWindow = document.getElementById("summaryContextWindow");
+  const summaryContextOffset = document.getElementById("summaryContextOffset");
+  const summaryContextDirection = document.getElementById("summaryContextDirection");
+  const summaryContextPairs = document.getElementById("summaryContextPairs");
   const summaryMode = document.getElementById("summaryMode");
+  const summaryBackground = document.getElementById("summaryBackground");
+  const summaryStyle = document.getElementById("summaryStyle");
   const summarySound = document.getElementById("summarySound");
   const summaryFormat = document.getElementById("summaryFormat");
+  const summaryAspect = document.getElementById("summaryAspect");
+  const summaryBitrate = document.getElementById("summaryBitrate");
   const validationList = document.getElementById("validationList");
   const literatureBlurb = document.getElementById("literatureBlurb");
   const presetSummary = document.getElementById("presetSummary");
@@ -2571,6 +2591,34 @@
     return labels[value] || value;
   }
 
+  function describeObjectStyle(value) {
+    const labels = {
+      flat: "simple filled discs",
+      outline: "outline discs",
+      ring: "ring discs",
+      shaded: "3D shaded"
+    };
+    return labels[value] || value;
+  }
+
+  function describeStageTheme(state) {
+    const labels = {
+      dark: "dark",
+      midgray: "mid-gray",
+      light: "light"
+    };
+    const themeLabel = labels[state.stageTheme] || state.stageTheme;
+    return `${themeLabel}, ${state.stageColor}`;
+  }
+
+  function describeSignedMs(value) {
+    const rounded = Math.round(Number(value) || 0);
+    if (rounded === 0) {
+      return "0 ms";
+    }
+    return `${Math.abs(rounded)} ms ${rounded < 0 ? "early" : "late"}`;
+  }
+
   function describeSound(state) {
     if (!state.soundEnabled || state.soundVolume <= 0) {
       return "off";
@@ -2626,8 +2674,18 @@
   }
 
   function refreshSummary(state, copy, standards) {
+    const relationText = describeSummaryRelation(state, standards);
+    const contextText = describeContext(state);
+    const contextPairCount = getContextPairCount(state);
+    const contextIsOff = state.contextMode === "none";
+    if (summaryCompact) {
+      summaryCompact.textContent = `${copy.label}, ${relationText}, ${Math.round(state.durationMs)} ms`;
+    }
     if (summaryPreset) {
       summaryPreset.textContent = copy.label;
+    }
+    if (summaryCategory) {
+      summaryCategory.textContent = standards.category;
     }
     if (summaryDuration) {
       summaryDuration.textContent = `${Math.round(state.durationMs)} ms`;
@@ -2635,35 +2693,92 @@
     if (summaryFps) {
       summaryFps.textContent = `${Math.round(state.fps)}`;
     }
+    if (summaryLeadIn) {
+      summaryLeadIn.textContent = `${Math.round(state.leadInMs)} ms`;
+    }
+    if (summaryImpact) {
+      summaryImpact.textContent = `${standards.impactMs} ms`;
+    }
+    if (summaryTargetOnset) {
+      summaryTargetOnset.textContent = `${standards.targetOnsetMs} ms`;
+    }
     if (summaryDelay) {
       summaryDelay.textContent = `${Math.round(state.delayMs)} ms`;
     }
     if (summaryRelation) {
-      summaryRelation.textContent = describeSummaryRelation(state, standards);
+      summaryRelation.textContent = standards.relation;
+    }
+    if (summaryOverlap) {
+      summaryOverlap.textContent =
+        state.gapPx > 0
+          ? `${Math.round(state.gapPx)} px gap, ${standards.gapDva} deg`
+          : `${standards.overlapPercent}% overlap`;
     }
     if (summarySpeed) {
       summarySpeed.textContent = `${Math.round(state.launcherSpeed)} px/s`;
+    }
+    if (summaryTargetRatio) {
+      summaryTargetRatio.textContent = `${Number(state.targetSpeedRatio).toFixed(3)} x`;
+    }
+    if (summaryLauncherAccel) {
+      summaryLauncherAccel.textContent = `${Math.round(state.launcherAccel)} px/s^2`;
+    }
+    if (summaryTargetAccel) {
+      summaryTargetAccel.textContent = `${Math.round(state.targetAccel)} px/s^2`;
+    }
+    if (summaryTargetAngle) {
+      summaryTargetAngle.textContent = `${Math.round(state.targetAngle)} deg`;
     }
     if (summaryRadius) {
       summaryRadius.textContent =
         state.contextMode === "none"
           ? `${Math.round(state.ballRadius)} px`
-          : `O ${Math.round(state.ballRadius)} / C ${Math.round(state.contextBallRadius)} px`;
+          : `main ${Math.round(state.ballRadius)} px / context ${Math.round(state.contextBallRadius)} px`;
     }
     if (summaryAfter) {
       summaryAfter.textContent = describeLauncherBehavior(state.launcherBehavior);
     }
+    if (summaryLauncherVisible) {
+      summaryLauncherVisible.textContent = formatValue(state.launcherVisibleMs, "visibilityMs");
+    }
+    if (summaryTargetVisible) {
+      summaryTargetVisible.textContent = formatValue(state.targetVisibleMs, "visibilityMs");
+    }
     if (summaryContext) {
-      summaryContext.textContent = describeContext(state);
+      summaryContext.textContent = contextText;
+    }
+    if (summaryContextWindow) {
+      summaryContextWindow.textContent = contextIsOff ? "off" : `${Math.round(state.contextDurationMs)} ms`;
+    }
+    if (summaryContextOffset) {
+      summaryContextOffset.textContent = contextIsOff ? "off" : describeSignedMs(state.contextOffsetMs);
+    }
+    if (summaryContextDirection) {
+      summaryContextDirection.textContent = contextIsOff ? "off" : state.contextDirection;
+    }
+    if (summaryContextPairs) {
+      summaryContextPairs.textContent = String(contextPairCount);
     }
     if (summaryMode) {
       summaryMode.textContent = describeRenderMode(state.renderMode);
+    }
+    if (summaryBackground) {
+      summaryBackground.textContent = describeStageTheme(state);
+    }
+    if (summaryStyle) {
+      summaryStyle.textContent = describeObjectStyle(state.objectStyle);
     }
     if (summarySound) {
       summarySound.textContent = describeSound(state);
     }
     if (summaryFormat) {
       summaryFormat.textContent = describeOutputFormat(state.outputFormat);
+    }
+    if (summaryAspect) {
+      summaryAspect.textContent = state.aspectRatio;
+    }
+    if (summaryBitrate) {
+      summaryBitrate.textContent = `${Number(state.videoBitrate).toFixed(1)} Mbps`;
     }
   }
 
