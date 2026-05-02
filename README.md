@@ -14,6 +14,12 @@ No installation is needed. The app runs in the browser and exports participant-r
 
 The exported video is the timing reference. The browser preview is useful for editing, but final FPS, sound, aspect ratio, and resolution should be checked from the exported file.
 
+## Browser Compatibility
+
+The maker is browser-only and should open directly on Windows, macOS, Android, and iOS. Preview, presets, CSV, and JSON use standard web features. Video export depends on the browser's built-in canvas recording and media encoder support.
+
+If a phone or tablet has trouble exporting a movie, try a lower resolution first. If MP4 is unavailable, the app falls back toward WebM when the browser allows it. If the file opens instead of saving, use the browser's Save or Share option.
+
 ## Core Controls
 
 **Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, and what O1 does after contact.

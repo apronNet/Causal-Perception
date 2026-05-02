@@ -54,6 +54,7 @@
   const conditionJsonLink = document.getElementById("conditionJsonLink");
   const conditionCsvLink = document.getElementById("conditionCsvLink");
   const presetJsonLink = document.getElementById("presetJsonLink");
+  const compatibilityNotice = document.getElementById("compatibilityNotice");
   const statusText = document.getElementById("statusText");
   const stageOverlay = document.querySelector(".stage-overlay");
   const scenarioBadge = document.getElementById("scenarioBadge");
@@ -2537,9 +2538,26 @@
     }
   }
 
+  function readLocalStorageValue(key) {
+    try {
+      return window.localStorage?.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeLocalStorageValue(key, value) {
+    try {
+      window.localStorage?.setItem(key, value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function readCustomPresets() {
     try {
-      const stored = JSON.parse(localStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY) || "[]");
+      const stored = JSON.parse(readLocalStorageValue(CUSTOM_PRESETS_STORAGE_KEY) || "[]");
       return Array.isArray(stored) ? stored : [];
     } catch (error) {
       return [];
@@ -2548,7 +2566,7 @@
 
   function readHiddenBuiltInPresets() {
     try {
-      const stored = JSON.parse(localStorage.getItem(HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY) || "[]");
+      const stored = JSON.parse(readLocalStorageValue(HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY) || "[]");
       return Array.isArray(stored) ? stored.filter((key) => primaryPresetKeys.includes(key)) : [];
     } catch (error) {
       return [];
@@ -2556,9 +2574,7 @@
   }
 
   function writeHiddenBuiltInPresets() {
-    try {
-      localStorage.setItem(HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY, JSON.stringify(hiddenBuiltInPresetKeys));
-    } catch (error) {
+    if (!writeLocalStorageValue(HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY, JSON.stringify(hiddenBuiltInPresetKeys))) {
       statusText.textContent = "Preset storage unavailable.";
     }
   }
@@ -2568,10 +2584,8 @@
   }
 
   function writeCustomPresets() {
-    try {
-      const savedPresets = customPresetKeys.map((key) => presets[key]).filter(Boolean);
-      localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(savedPresets));
-    } catch (error) {
+    const savedPresets = customPresetKeys.map((key) => presets[key]).filter(Boolean);
+    if (!writeLocalStorageValue(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(savedPresets))) {
       statusText.textContent = "Preset storage unavailable.";
     }
   }
@@ -2795,6 +2809,7 @@
     enforceCustomStartConstraints();
     updateOutputs();
     refreshText();
+    updateCompatibilityNotice(cloneState());
     drawFrame(cloneState(), 0, ctx);
   }
 
@@ -5488,6 +5503,69 @@
     return [...mp4, ...vp9, ...vp8, ...webm];
   }
 
+  function hasCanvasCaptureStream(canvasElement = canvas) {
+    return Boolean(canvasElement && typeof canvasElement.captureStream === "function");
+  }
+
+  function hasDownloadAttributeSupport() {
+    return typeof HTMLAnchorElement !== "undefined" && "download" in HTMLAnchorElement.prototype;
+  }
+
+  function hasMediaRecorderSupport() {
+    return typeof MediaRecorder !== "undefined";
+  }
+
+  function isTouchDevice() {
+    return Boolean(navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+  }
+
+  function isSmallViewport() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 820px)").matches;
+  }
+
+  function isMobileLikeDevice() {
+    return isTouchDevice() && isSmallViewport();
+  }
+
+  function getBrowserExportIssues(state = cloneState()) {
+    const issues = [];
+    if (!hasMediaRecorderSupport()) {
+      issues.push("Video export needs MediaRecorder. Preview and CSV/JSON still work in this browser.");
+    }
+    if (!hasCanvasCaptureStream()) {
+      issues.push("Video export needs canvas recording. Preview and CSV/JSON still work in this browser.");
+    }
+    if (state.outputFormat === "mp4" && hasMediaRecorderSupport() && typeof MediaRecorder.isTypeSupported === "function") {
+      const supportsMp4 = getMimeCandidates({ ...state, outputFormat: "mp4" }).some(
+        (candidate) => candidate.includes("mp4") && MediaRecorder.isTypeSupported(candidate)
+      );
+      if (!supportsMp4) {
+        issues.push("MP4 is not available in this browser; export will try WebM instead.");
+      }
+    }
+    if (!hasDownloadAttributeSupport()) {
+      issues.push("Downloads may open in a viewer. Use Save/Share if the file does not save automatically.");
+    }
+    if (isMobileLikeDevice()) {
+      issues.push("Mobile export can be slow. Use lower resolution first, then verify the exported movie.");
+    }
+    return issues;
+  }
+
+  function canExportVideoInThisBrowser() {
+    return hasMediaRecorderSupport() && hasCanvasCaptureStream();
+  }
+
+  function updateCompatibilityNotice(state = cloneState()) {
+    if (!compatibilityNotice) {
+      return;
+    }
+    const issues = getBrowserExportIssues(state);
+    compatibilityNotice.textContent = issues.join(" ");
+    compatibilityNotice.classList.toggle("hidden", issues.length === 0);
+    exportButton.disabled = isExporting || !canExportVideoInThisBrowser();
+  }
+
   function chooseExportFormat(state) {
     const candidates = getMimeCandidates(state);
     const canCheckSupport = typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function";
@@ -5504,6 +5582,46 @@
       extension,
       usedFallback
     };
+  }
+
+  function getMimeExtension(mimeType) {
+    return String(mimeType || "").includes("mp4") ? "mp4" : "webm";
+  }
+
+  function getRecorderFallbackCandidates(state, preferredMimeType) {
+    return [...new Set([preferredMimeType, ...getMimeCandidates(state), ""].filter((candidate) => candidate !== undefined))];
+  }
+
+  function createMediaRecorderWithFallback(stream, state, preferredFormat) {
+    const canCheckSupport = hasMediaRecorderSupport() && typeof MediaRecorder.isTypeSupported === "function";
+    const candidates = getRecorderFallbackCandidates(state, preferredFormat.mimeType);
+    const baseOptions = {
+      videoBitsPerSecond: Math.round(state.videoBitrate * 1000000)
+    };
+    if (state.soundEnabled) {
+      baseOptions.audioBitsPerSecond = 128000;
+    }
+
+    for (const candidate of candidates) {
+      if (candidate && canCheckSupport && !MediaRecorder.isTypeSupported(candidate)) {
+        continue;
+      }
+      try {
+        const options = candidate ? { ...baseOptions, mimeType: candidate } : baseOptions;
+        const recorder = new MediaRecorder(stream, options);
+        const actualMimeType = recorder.mimeType || candidate || preferredFormat.mimeType || "video/webm";
+        return {
+          recorder,
+          mimeType: actualMimeType,
+          extension: getMimeExtension(actualMimeType),
+          usedFallback: actualMimeType !== preferredFormat.mimeType
+        };
+      } catch {
+        // Try the next browser-supported MIME candidate.
+      }
+    }
+
+    return null;
   }
 
   function getAspectRatioParts(value) {
@@ -6970,8 +7088,9 @@
       return;
     }
 
-    if (typeof MediaRecorder === "undefined") {
-      statusText.textContent = "MediaRecorder is unavailable in this browser.";
+    if (!canExportVideoInThisBrowser()) {
+      updateCompatibilityNotice(cloneState());
+      statusText.textContent = "Video export is unavailable in this browser; CSV and JSON export still work.";
       return;
     }
 
@@ -6991,7 +7110,7 @@
 
     if (state.soundEnabled) {
       const AudioContextClass = getAudioContextClass();
-      if (AudioContextClass) {
+      if (AudioContextClass && typeof AudioContextClass.prototype.createMediaStreamDestination === "function") {
         exportAudioContext = new AudioContextClass();
         if (exportAudioContext.state === "suspended") {
           await exportAudioContext.resume().catch(() => {});
@@ -7018,42 +7137,26 @@
     const exportFormat = chooseExportFormat(state);
     exportFormat.width = exportCanvas.width;
     exportFormat.height = exportCanvas.height;
-    let mimeType = exportFormat.mimeType;
     if (exportFormat.usedFallback) {
       statusText.textContent = "Requested format unsupported; using browser fallback.";
     }
 
-    const recorderOptions = {
-      mimeType,
-      videoBitsPerSecond: Math.round(state.videoBitrate * 1000000)
-    };
-    if (state.soundEnabled) {
-      recorderOptions.audioBitsPerSecond = 128000;
-    }
-
-    let recorder;
-    try {
-      recorder = new MediaRecorder(stream, recorderOptions);
-    } catch (error) {
-      statusText.textContent = "Selected encoder failed; retrying WebM.";
-      exportFormat.mimeType = "video/webm";
-      exportFormat.extension = "webm";
-      mimeType = exportFormat.mimeType;
-      try {
-        recorder = new MediaRecorder(stream, {
-          mimeType,
-          videoBitsPerSecond: Math.round(state.videoBitrate * 1000000)
-        });
-      } catch (fallbackError) {
-        if (exportAudioContext) {
-          await exportAudioContext.close().catch(() => {});
-        }
-        statusText.textContent = "Video encoder unavailable in this browser.";
-        exportButton.disabled = false;
-        isExporting = false;
-        return;
+    const recorderResult = createMediaRecorderWithFallback(stream, state, exportFormat);
+    if (!recorderResult) {
+      if (exportAudioContext) {
+        await exportAudioContext.close().catch(() => {});
       }
+      statusText.textContent = "Video encoder unavailable in this browser.";
+      exportButton.disabled = false;
+      isExporting = false;
+      updateCompatibilityNotice(state);
+      return;
     }
+    const recorder = recorderResult.recorder;
+    const mimeType = recorderResult.mimeType;
+    exportFormat.mimeType = mimeType;
+    exportFormat.extension = recorderResult.extension;
+    exportFormat.usedFallback = exportFormat.usedFallback || recorderResult.usedFallback;
     const chunks = [];
 
     recorder.ondataavailable = (event) => {
@@ -7086,6 +7189,13 @@
     }
 
     const blob = new Blob(chunks, { type: mimeType });
+    if (blob.size === 0) {
+      statusText.textContent = "Export produced an empty file in this browser. Try a different format or browser.";
+      exportButton.disabled = false;
+      isExporting = false;
+      updateCompatibilityNotice(state);
+      return;
+    }
     if (currentObjectUrl) {
       URL.revokeObjectURL(currentObjectUrl);
     }
@@ -7116,11 +7226,16 @@
     autoDownload.href = currentObjectUrl;
     autoDownload.download = filename;
     document.body.appendChild(autoDownload);
-    autoDownload.click();
+    try {
+      autoDownload.click();
+    } catch {
+      statusText.textContent = "Export ready. Use the Download video link to save the file.";
+    }
     autoDownload.remove();
 
     exportButton.disabled = false;
     isExporting = false;
+    updateCompatibilityNotice(state);
   }
 
   function bindControls() {
@@ -7159,6 +7274,7 @@
           enforceCustomStartConstraints();
           updateOutputs();
           refreshText();
+          updateCompatibilityNotice(cloneState());
           statusText.textContent = READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
@@ -7374,6 +7490,7 @@
         }
         updateOutputs();
         refreshText();
+        updateCompatibilityNotice(cloneState());
         statusText.textContent = READY_STATUS;
         drawFrame(cloneState(), 0, ctx);
       });
@@ -7414,6 +7531,7 @@
 
     window.addEventListener("resize", () => {
       drawFrame(cloneState(), 0, ctx);
+      updateCompatibilityNotice(cloneState());
     });
   }
 
