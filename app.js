@@ -170,14 +170,14 @@
     markerMode:
       "Changes: optional cue drawn only when Overlap / Gap is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
     ballRadius: "Changes: object size. Use for: scaling the balls while keeping the same motion logic.",
-    contextBallRadius: "Changes: context object size. Use for: matching the original balls or testing size mismatch between rows.",
+    contextBallRadius: "Changes: Context 1 object size. New multi-pair defaults shrink automatically so added rows fit.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
     contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
-      "Changes: how many context pairs are drawn. New pairs copy the original when added; later original edits do not update existing copied pairs.",
+      "Changes: how many context pairs are drawn. New pairs copy the original when added, with smaller default radii as pair count grows.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
     contextOffsetMs: "Changes: context timing relative to the original event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
     contextDirection: "Changes: context motion direction. Same matches the original event; opposite mirrors it.",
@@ -856,6 +856,7 @@
   let sharedPresetKeys = [];
   let customPresetKeys = [];
   let hiddenBuiltInPresetKeys = [];
+  let lastContextPairCount = 1;
 
   function resizePreviewCanvas() {
     const rect = canvas.getBoundingClientRect();
@@ -1267,6 +1268,45 @@
     return clamp(Math.round(Number(state.contextPairCount) || 1), 1, 4);
   }
 
+  function getAutoContextPairRadius(baseRadius, pairCount) {
+    const scales = {
+      1: 1,
+      2: 0.84,
+      3: 0.72,
+      4: 0.62
+    };
+    const radius = Number(baseRadius) || stimulusDefaults.contextBallRadius;
+    const scale = scales[clamp(Math.round(Number(pairCount) || 1), 1, 4)] || 1;
+    return clamp(Math.round(radius * scale), 12, 60);
+  }
+
+  function shouldReplaceAutoContextRadius(value, baseRadius, previousPairCount) {
+    const current = Math.round(Number(value));
+    const base = Math.round(Number(baseRadius));
+    const previousAuto = getAutoContextPairRadius(baseRadius, previousPairCount);
+    return current === base || current === previousAuto;
+  }
+
+  function applyAutoContextPairRadii(previousPairCount, nextPairCount) {
+    const baseRadius = Number(controls.ballRadius.value) || stimulusDefaults.contextBallRadius;
+    const nextAutoRadius = getAutoContextPairRadius(baseRadius, nextPairCount);
+
+    if (shouldReplaceAutoContextRadius(controls.contextBallRadius.value, baseRadius, previousPairCount)) {
+      controls.contextBallRadius.value = nextAutoRadius;
+    }
+
+    const snapshots = parseContextPairSnapshots(controls.contextPairSnapshots.value).map((snapshot) => {
+      if (!shouldReplaceAutoContextRadius(snapshot.ballRadius, baseRadius, previousPairCount)) {
+        return snapshot;
+      }
+      return {
+        ...snapshot,
+        ballRadius: nextAutoRadius
+      };
+    });
+    controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
+  }
+
   function getDefaultContextPairOffset(state, pairIndex) {
     const sign = state.contextYOffset < 0 ? -1 : 1;
     const spacing = clamp(Math.abs(state.contextYOffset) || 112, 56, 170);
@@ -1280,7 +1320,7 @@
     return {
       laneY,
       yOffset: getDefaultContextPairOffset(state, pairIndex),
-      ballRadius: state.ballRadius,
+      ballRadius: getAutoContextPairRadius(state.ballRadius, getContextPairCount(state) || state.contextPairCount || 1),
       leadInMs: state.leadInMs,
       launcherSpeed: state.launcherSpeed,
       launcherAccel: state.launcherAccel,
@@ -1901,6 +1941,7 @@
     syncContextControlVisibility();
     syncContextPairSnapshots();
     renderContextPairEditors();
+    lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
     syncStartDragUi();
     syncSpecialDragUi();
     enforceCustomStartConstraints();
@@ -5217,6 +5258,7 @@
           syncContextControlVisibility();
           syncContextPairSnapshots();
           renderContextPairEditors();
+          lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
           enforceCustomStartConstraints();
           updateOutputs();
           refreshText();
@@ -5228,8 +5270,11 @@
       if (id === "contextPairCount") {
         control.addEventListener("input", () => {
           activePresetKey = null;
+          const nextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
+          applyAutoContextPairRadii(lastContextPairCount, nextPairCount);
           syncContextPairSnapshots();
           renderContextPairEditors();
+          lastContextPairCount = nextPairCount;
           updateOutputs();
           refreshText();
           statusText.textContent = "Context pair count updated.";
