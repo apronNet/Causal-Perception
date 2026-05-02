@@ -2177,7 +2177,7 @@
     updateOutputs();
     refreshText();
     statusText.textContent = `Context ${snapshotIndex + 2} updated.`;
-    drawFrame(cloneState(), 0, ctx);
+    drawIdlePreview();
   }
 
   function writeCoordinateControl(xId, yId, x, y) {
@@ -2810,7 +2810,7 @@
     updateOutputs();
     refreshText();
     updateCompatibilityNotice(cloneState());
-    drawFrame(cloneState(), 0, ctx);
+    drawIdlePreview();
   }
 
   // Presets can omit context-specific fields; this keeps Context 1 symmetric with the original pair.
@@ -4353,7 +4353,7 @@
     updateOutputs();
     refreshText();
     statusText.textContent = `${getTrajectoryTargetLabel(trajectoryDragTarget.id)} vector updated.`;
-    drawFrame(cloneState(), 0, ctx);
+    drawIdlePreview();
   }
 
   function findTrajectoryTarget(state, point) {
@@ -4778,6 +4778,16 @@
     }
   }
 
+  function getIdlePreviewTime(state = cloneState()) {
+    const blinkMs = getPreBallBlinkMs(state);
+    const needsVisibleEditHandles = Boolean(state.railEnabled || state.trajectoryEditEnabled || state.customStartEnabled);
+    return blinkMs > 0 && needsVisibleEditHandles ? blinkMs + 1 : 0;
+  }
+
+  function drawIdlePreview(state = cloneState()) {
+    drawFrame(state, getIdlePreviewTime(state), ctx);
+  }
+
   function getStagePoint(event) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -4869,7 +4879,7 @@
     updateOutputs();
     refreshText();
     statusText.textContent = "Special feature moved.";
-    drawFrame(cloneState(), 0, ctx);
+    drawIdlePreview();
   }
 
   function getStartDragHandles(state) {
@@ -5060,7 +5070,7 @@
     updateOutputs();
     refreshText();
     statusText.textContent = "Start position updated.";
-    drawFrame(cloneState(), 0, ctx);
+    drawIdlePreview();
   }
 
   function bindStartDragging() {
@@ -5093,7 +5103,7 @@
       if (trajectoryTarget) {
         stopPreview();
         beginTrajectoryDrag(trajectoryTarget, state);
-        drawFrame(cloneState(), 0, ctx);
+        drawIdlePreview();
         canvas.setPointerCapture?.(event.pointerId);
         event.preventDefault();
         return;
@@ -7276,7 +7286,7 @@
           refreshText();
           updateCompatibilityNotice(cloneState());
           statusText.textContent = READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7292,7 +7302,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = "Context pair count updated.";
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7303,7 +7313,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = "Context spacing updated.";
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7319,7 +7329,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7330,7 +7340,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = "Rail count updated.";
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7345,7 +7355,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7361,7 +7371,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7373,7 +7383,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = control.checked ? "Drag a trajectory vector in the preview." : READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7388,7 +7398,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = `${getTrajectoryTargetLabel(controls.selectedTrajectoryBall.value)} trajectory updated.`;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7407,7 +7417,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = control.checked ? "Drag start positions on." : READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7421,7 +7431,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7478,7 +7488,7 @@
           updateOutputs();
           refreshText();
           statusText.textContent = READY_STATUS;
-          drawFrame(cloneState(), 0, ctx);
+          drawIdlePreview();
         });
         return;
       }
@@ -7492,7 +7502,7 @@
         refreshText();
         updateCompatibilityNotice(cloneState());
         statusText.textContent = READY_STATUS;
-        drawFrame(cloneState(), 0, ctx);
+        drawIdlePreview();
       });
     });
 
@@ -7530,7 +7540,7 @@
     conditionCsvButton?.addEventListener("click", exportConditionSetCsv);
 
     window.addEventListener("resize", () => {
-      drawFrame(cloneState(), 0, ctx);
+      drawIdlePreview();
       updateCompatibilityNotice(cloneState());
     });
   }
