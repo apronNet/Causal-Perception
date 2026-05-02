@@ -4,7 +4,9 @@
   const STAGE_WIDTH = 960;
   const STAGE_HEIGHT = 540;
   const MAX_PREVIEW_PIXEL_RATIO = 3;
-  const EXPORT_SCALE = 2;
+  const DEFAULT_EXPORT_HEIGHT_PX = STAGE_HEIGHT * 2;
+  const MIN_EXPORT_HEIGHT_PX = 360;
+  const MAX_EXPORT_HEIGHT_PX = 2160;
   const CONTEXT_PAIR_MAX = 10;
   const RAIL_MAX = 6;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
@@ -71,6 +73,7 @@
   const summarySound = document.getElementById("summarySound");
   const summaryFormat = document.getElementById("summaryFormat");
   const summaryAspect = document.getElementById("summaryAspect");
+  const summaryResolution = document.getElementById("summaryResolution");
   const summaryBitrate = document.getElementById("summaryBitrate");
   const validationList = document.getElementById("validationList");
   const literatureBlurb = document.getElementById("literatureBlurb");
@@ -183,6 +186,7 @@
     "soundVolume",
     "outputFormat",
     "aspectRatio",
+    "exportHeightPx",
     "fps",
     "videoBitrate",
     "fileLabel"
@@ -278,6 +282,8 @@
     outputFormat: "Changes: requested movie container and codec preference for the exported file. PsychoPy usually accepts MP4/H.264 most easily, but Safari may provide MP4 while other browsers may fall back to WebM.",
     aspectRatio:
       "Changes: exported movie frame shape. The stimulus is centered without stretching the balls; non-16:9 exports add background padding.",
+    exportHeightPx:
+      "Changes: exported movie height in pixels. Width is calculated from Aspect ratio, so 16:9 at 1080 px becomes 1920 x 1080.",
     fps: "Changes: the frame rate written into the exported movie and the saved PsychoPy CSV. The browser preview is close, but the exported file is the source of truth for timing checks.",
     videoBitrate: "Changes: compression quality for the exported movie. Higher values preserve cleaner disc edges and grouping lines, at the cost of larger stimulus files.",
     fileLabel: "Changes: the base filename. Exports add timing, speed, gap, context, and month/day tags automatically.",
@@ -888,6 +894,7 @@
     soundVolume: 0.35,
     outputFormat: "lab",
     aspectRatio: "16:9",
+    exportHeightPx: DEFAULT_EXPORT_HEIGHT_PX,
     videoBitrate: 8
   };
   const controls = {};
@@ -1097,6 +1104,7 @@
       soundVolume: Number(controls.soundVolume.value),
       outputFormat: controls.outputFormat.value,
       aspectRatio: controls.aspectRatio.value,
+      exportHeightPx: Number(controls.exportHeightPx.value),
       fps: Number(controls.fps.value),
       videoBitrate: Number(controls.videoBitrate.value),
       fileLabel: controls.fileLabel.value.trim() || "causal-launching"
@@ -1246,7 +1254,7 @@
       unitBadge.className = "unit-label";
       label.appendChild(unitBadge);
     }
-    unitBadge.textContent = unit;
+    unitBadge.textContent = ` ${unit}`;
   }
 
   function enhanceRangePrecision() {
@@ -2843,6 +2851,10 @@
     }
     if (summaryAspect) {
       summaryAspect.textContent = state.aspectRatio;
+    }
+    if (summaryResolution) {
+      const exportSize = getExportCanvasSize(state);
+      summaryResolution.textContent = `${exportSize.width} x ${exportSize.height}`;
     }
     if (summaryBitrate) {
       summaryBitrate.textContent = `${Number(state.videoBitrate).toFixed(1)} Mbps`;
@@ -4774,10 +4786,12 @@
   }
 
   function getExportFilenameBase(state) {
+    const exportSize = getExportCanvasSize(state);
     const parts = [
       sanitizeLabel(state.fileLabel),
       `dur${compactNumber(state.durationMs)}ms`,
       `fps${compactNumber(state.fps)}`,
+      `res${exportSize.width}x${exportSize.height}`,
       `v${compactNumber(state.launcherSpeed)}pxs`,
       `delay${compactNumber(state.delayMs)}ms`,
       getGapFilenamePart(state),
@@ -4868,9 +4882,17 @@
     return ratios[value] || ratios["16:9"];
   }
 
+  function getExportHeightPx(state) {
+    return clamp(
+      Math.round(Number(state.exportHeightPx) || DEFAULT_EXPORT_HEIGHT_PX),
+      MIN_EXPORT_HEIGHT_PX,
+      MAX_EXPORT_HEIGHT_PX
+    );
+  }
+
   function getExportCanvasSize(state) {
     const [ratioWidth, ratioHeight] = getAspectRatioParts(state.aspectRatio);
-    const targetHeight = STAGE_HEIGHT * EXPORT_SCALE;
+    const targetHeight = getExportHeightPx(state);
     const width = Math.max(320, Math.round((targetHeight * ratioWidth) / ratioHeight));
     return {
       width,
@@ -4878,10 +4900,18 @@
     };
   }
 
+  function getStageExportCanvasSize(state) {
+    const targetHeight = getExportHeightPx(state);
+    return {
+      width: Math.round((targetHeight * STAGE_WIDTH) / STAGE_HEIGHT),
+      height: targetHeight
+    };
+  }
+
   function getEncodedDimensions(exportDetails = {}) {
     return {
-      width: exportDetails.width || STAGE_WIDTH * EXPORT_SCALE,
-      height: exportDetails.height || STAGE_HEIGHT * EXPORT_SCALE
+      width: exportDetails.width || STAGE_WIDTH * 2,
+      height: exportDetails.height || DEFAULT_EXPORT_HEIGHT_PX
     };
   }
 
@@ -4892,8 +4922,9 @@
     }
 
     const stageCanvas = scratchCanvas || document.createElement("canvas");
-    stageCanvas.width = STAGE_WIDTH * EXPORT_SCALE;
-    stageCanvas.height = STAGE_HEIGHT * EXPORT_SCALE;
+    const stageSize = getStageExportCanvasSize(state);
+    stageCanvas.width = stageSize.width;
+    stageCanvas.height = stageSize.height;
     const stageCtx = stageCanvas.getContext("2d");
     drawFrame(state, time, stageCtx);
 
@@ -4985,6 +5016,10 @@
         }
       },
       aspectRatio: state.aspectRatio,
+      resolution: {
+        widthPx: encoded.width,
+        heightPx: encoded.height
+      },
       stageColor: state.stageColor,
       trajectoryOverrides: state.trajectoryOverrides,
       placement: `Put the movie in ${PSYCHOPY_STIMULI_FOLDER}/ next to the PsychoPy experiment and use the CSV as the loop conditions file.`
@@ -5008,7 +5043,9 @@
       frameCount: getExportFrameCount(state),
       widthPx: encoded.width,
       heightPx: encoded.height,
+      resolutionPx: `${encoded.width}x${encoded.height}`,
       aspectRatio: state.aspectRatio,
+      exportHeightPx: getExportHeightPx(state),
       units: "pix",
       positionXPix: 0,
       positionYPix: 0,
@@ -5219,6 +5256,7 @@
       soundType: parameters.soundType,
       soundVolume: parameters.soundVolume,
       outputFormat: parameters.outputFormat,
+      exportHeightPx: parameters.exportHeightPx ?? baseState.exportHeightPx,
       videoBitrate: parameters.videoBitrateMbps,
       fps: parameters.fps
     };
@@ -5232,7 +5270,7 @@
   function buildConditionManifest(kind, baseState, exportFormat = chooseExportFormat(baseState)) {
     const rawSet = buildConditionSet(kind, baseState);
     const baseName = `${sanitizeLabel(baseState.fileLabel)}-${sanitizeLabel(rawSet.family)}`;
-    const encoded = getEncodedDimensions(exportFormat);
+    const encoded = getEncodedDimensions(exportFormat.width ? exportFormat : getExportCanvasSize(baseState));
     const conditions = rawSet.conditions.map((condition, index) => {
       const filename = getConditionMovieName(baseName, condition, index, exportFormat.extension);
       const conditionState = stateFromConditionParameters(baseState, condition.parameters);
@@ -5254,6 +5292,7 @@
         frameCount,
         widthPx: encoded.width,
         heightPx: encoded.height,
+        resolutionPx: `${encoded.width}x${encoded.height}`,
         validationWarnings: getExperimentWarnings(conditionState),
         standards: condition.standards,
         parameters: condition.parameters
@@ -5267,6 +5306,9 @@
       requestedFormat: baseState.outputFormat,
       actualMimeType: exportFormat.mimeType,
       extension: exportFormat.extension,
+      resolutionPx: `${encoded.width}x${encoded.height}`,
+      widthPx: encoded.width,
+      heightPx: encoded.height,
       movieFolder: PSYCHOPY_STIMULI_FOLDER,
       psychopyCsv: `${baseName}-psychopy.csv`,
       instructions: "Render each listed movie, place it in stimuli/, and use the CSV as a PsychoPy loop conditions file.",
@@ -5291,6 +5333,8 @@
       frameCount: condition.frameCount,
       widthPx: condition.widthPx,
       heightPx: condition.heightPx,
+      resolutionPx: condition.resolutionPx,
+      exportHeightPx: condition.parameters.exportHeightPx,
       units: "pix",
       positionXPix: 0,
       positionYPix: 0,
@@ -5475,6 +5519,7 @@
         soundType: condition.soundType,
         soundVolume: condition.soundVolume,
         outputFormat: condition.outputFormat,
+        exportHeightPx: getExportHeightPx(condition),
         videoBitrateMbps: condition.videoBitrate,
         fps: condition.fps
       }
@@ -6344,6 +6389,7 @@
           "soundVolume",
           "outputFormat",
           "aspectRatio",
+          "exportHeightPx",
           "fps",
           "videoBitrate"
         ].includes(id)

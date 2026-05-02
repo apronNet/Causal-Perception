@@ -592,6 +592,11 @@
                 </select>
               </label>
               <label class="field">
+                <span>Resolution height</span>
+                <input id="exportHeightPx" data-format="intPx" min="360" max="2160" step="10" type="range" />
+                <output data-for="exportHeightPx"></output>
+              </label>
+              <label class="field">
                 <span>FPS</span>
                 <input id="fps" data-format="fps" min="10" max="144" step="1" type="range" />
                 <output data-for="fps"></output>
@@ -687,6 +692,7 @@
               <span><b>Sound</b><em id="summarySound">off</em></span>
               <span><b>File</b><em id="summaryFormat">MP4 preferred</em></span>
               <span><b>Aspect</b><em id="summaryAspect">16:9</em></span>
+              <span><b>Resolution</b><em id="summaryResolution">1920 x 1080</em></span>
               <span><b>Bitrate</b><em id="summaryBitrate">8.0 Mbps</em></span>
             </div>
           </details>
