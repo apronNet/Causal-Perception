@@ -217,7 +217,7 @@
     contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
-    contactOcclusionMode: "Changes: which object is painted on top during overlap. Launchee front puts the second object on top; Launcher front puts the first object on top.",
+    contactOcclusionMode: "Changes: which object is painted on top during overlap. O2 puts the second object on top; O1 puts the first object on top.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
@@ -232,7 +232,7 @@
     contextLauncherBehavior: "Changes: what the context first object does after contact. Stop is launch-like; continue is pass-like; entrain makes both context objects move together.",
     contextDelayMs: "Changes: delay between context contact and context target motion. Use for: strong immediate context versus weaker delayed context.",
     contextGapPx: "Changes: context-row spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
-    contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. Use for: setting context occlusion independently from the original-pair front-object setting.",
+    contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. O2 puts the second context object on top; O1 puts the first context object on top.",
     contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original pair event.",
     contextOccluderWidth: "Changes: context tunnel width. Wider context tunnels hide more of the context contact region.",
     contextTargetSpeedRatio: "Changes: context launchee speed as a multiple of context launcher impact speed. Use for: matching the original pair launch or making the context faster/slower.",
@@ -1802,8 +1802,8 @@
               ["entrain", "Together"]
             ])}
             ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
-              ["target-front", "Launchee"],
-              ["launcher-front", "Launcher"]
+              ["target-front", "O2"],
+              ["launcher-front", "O1"]
             ])}
             ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Launchee speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
