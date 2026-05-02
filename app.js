@@ -1909,7 +1909,8 @@
    * Context pair model
    * Context 1 is controlled by the visible "Context 1" controls. Additional
    * pairs are dynamically rendered from contextPairSnapshots so each pair can
-   * diverge after it is added. Radius and row spacing auto-fit at high counts.
+   * diverge after it is added. Rows stack downward from the original pair; radius
+   * and spacing auto-fit at high counts.
    */
   function getContextPairCount(state) {
     if (state.contextMode === "none") {
@@ -1921,27 +1922,26 @@
   function getAutoContextPairRadius(baseRadius, pairCount) {
     const requestedRadius = clamp(Math.round(Number(baseRadius) || stimulusDefaults.contextBallRadius), 8, 60);
     const visibleContextPairs = clamp(Math.round(Number(pairCount) || 1), 1, CONTEXT_PAIR_MAX);
-    const stepCount = Math.max(1, Math.ceil(visibleContextPairs / 2));
+    const totalRows = visibleContextPairs + 1;
     const desiredGap = 12;
-    const halfAvailable = STAGE_HEIGHT / 2 - 38;
-    const fitRadius = Math.floor((halfAvailable - stepCount * desiredGap) / (stepCount * 2 + 1));
+    const verticalMargin = 40;
+    const availableHeight = STAGE_HEIGHT - verticalMargin * 2;
+    const fitRadius = Math.floor((availableHeight - visibleContextPairs * desiredGap) / (totalRows * 2));
     return clamp(Math.min(requestedRadius, fitRadius), 8, 60);
   }
 
   function getAutoContextPairSpacing(radius, pairCount, preferredSpacing = 112) {
     const visibleContextPairs = clamp(Math.round(Number(pairCount) || 1), 1, CONTEXT_PAIR_MAX);
-    const visibleHalfSpan = Math.max(80, STAGE_HEIGHT / 2 - radius - 44);
-    const stepCount = Math.max(1, Math.ceil(visibleContextPairs / 2));
-    const fitSpacing = visibleHalfSpan / stepCount;
+    const verticalMargin = 40;
+    const availableCenterSpan = Math.max(radius * 2, STAGE_HEIGHT - verticalMargin * 2 - radius * 2);
+    const fitSpacing = availableCenterSpan / visibleContextPairs;
     const preferred = Math.abs(Number(preferredSpacing)) || 112;
     const minimumComfortSpacing = radius * 2 + 12;
     return Math.max(Math.min(preferred, fitSpacing), Math.min(minimumComfortSpacing, fitSpacing));
   }
 
   function getContextPairOffsetFromSpacing(pairIndex, spacing, sign = 1) {
-    const offsetMagnitude = Math.floor(pairIndex / 2) + 1;
-    const side = pairIndex % 2 === 0 ? 1 : -1;
-    return offsetMagnitude * spacing * side * sign;
+    return (pairIndex + 1) * spacing * sign;
   }
 
   function shouldReplaceAutoContextRadius(value, baseRadius, previousPairCount) {
@@ -2236,7 +2236,7 @@
         <div class="control-subgroup context-pair-editor">
           <h3 class="subgroup-title">Context ${pairNumber} position</h3>
           <div class="control-subgrid">
-            ${renderContextRange(pairNumber, "Position", "yOffset", "Vertical distance", snapshot, "signedPx", -320, 320, 1)}
+            ${renderContextRange(pairNumber, "Position", "yOffset", "Vertical distance", snapshot, "signedPx", -480, 480, 1)}
             ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
             ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
             ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
@@ -3875,24 +3875,41 @@
       }
     }
 
+    const getGeometryRowBounds = (geometry) => {
+      const radius = Math.max(2, Number(geometry.radius) || state.ballRadius || stimulusDefaults.ballRadius);
+      const horizontalPad = Math.max(18, radius * 1.45);
+      const verticalPad = Math.max(14, radius * 1.35);
+      const xs = [geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX].filter(Number.isFinite);
+      const ys = [geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY].filter(Number.isFinite);
+      return {
+        left: Math.min(...xs) - horizontalPad,
+        right: Math.max(...xs) + horizontalPad,
+        top: Math.min(...ys) - verticalPad,
+        bottom: Math.max(...ys) + verticalPad,
+        radius
+      };
+    };
+
     const getBoxBounds = (geometries) => {
+      const rowBounds = geometries.map(getGeometryRowBounds);
       const left = Math.max(
         20,
-        Math.min(...geometries.map((geometry) => Math.min(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) - geometry.radius * 1.8))
+        Math.min(...rowBounds.map((bounds) => bounds.left))
       );
       const right = Math.min(
         STAGE_WIDTH - 20,
-        Math.max(...geometries.map((geometry) => Math.max(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) + geometry.radius * 7.2))
+        Math.max(...rowBounds.map((bounds) => bounds.right))
       );
       const top = Math.max(
         20,
-        Math.min(...geometries.map((geometry) => Math.min(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) - geometry.radius * 2.3))
+        Math.min(...rowBounds.map((bounds) => bounds.top))
       );
       const bottom = Math.min(
         STAGE_HEIGHT - 20,
-        Math.max(...geometries.map((geometry) => Math.max(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) + geometry.radius * 2.3))
+        Math.max(...rowBounds.map((bounds) => bounds.bottom))
       );
-      return { left, right, top, bottom };
+      const minRadius = Math.min(...rowBounds.map((bounds) => bounds.radius));
+      return { left, right, top, bottom, minRadius };
     };
 
     const drawBox = (label, geometries, color, fallback) => {
@@ -3900,8 +3917,9 @@
       if (safeGeometries.length === 0) {
         return;
       }
-      const { left, right, top, bottom } = getBoxBounds(safeGeometries);
+      const { left, right, top, bottom, minRadius } = getBoxBounds(safeGeometries);
       const height = Math.max(12, bottom - top);
+      const cornerRadius = clamp(minRadius * 0.65, 5, 16);
       const strokeColor = hexToRgba(color, state.stageTheme === "light" ? 0.86 : 0.9, fallback);
       const fillColor = hexToRgba(color, state.stageTheme === "light" ? 0.07 : 0.045, fallback);
 
@@ -3911,7 +3929,7 @@
       drawCtx.lineWidth = 2.5;
       drawCtx.setLineDash([]);
       drawCtx.beginPath();
-      drawCtx.roundRect(left, top, right - left, height, 16);
+      drawCtx.roundRect(left, top, right - left, height, cornerRadius);
       drawCtx.fill();
       drawCtx.stroke();
       if (state.renderMode === "lab") {
@@ -5419,8 +5437,14 @@
     }
 
     const visibleContextPairs = Math.max(1, getContextPairCount(state) || 1);
-    const contextShift = Math.max(0, 52 - (visibleContextPairs - 1) * 18);
-    return STAGE_HEIGHT / 2 - contextShift + state.stimulusYOffset;
+    const originalRadius = Number(state.ballRadius) || stimulusDefaults.ballRadius;
+    const contextRadius = Number(state.contextBallRadius) || originalRadius;
+    const layoutRadius = Math.max(originalRadius, contextRadius);
+    const spacing = getAutoContextPairSpacing(layoutRadius, visibleContextPairs, state.contextYOffset);
+    const spacingSign = state.contextYOffset < 0 ? -1 : 1;
+    const stackCenterY = STAGE_HEIGHT / 2 + state.stimulusYOffset;
+    const originalLaneY = stackCenterY - (spacingSign * spacing * visibleContextPairs) / 2;
+    return clamp(originalLaneY, 40 + layoutRadius, STAGE_HEIGHT - 40 - layoutRadius);
   }
 
   function stopPreview() {
