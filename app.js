@@ -1169,13 +1169,55 @@
     }
   }
 
+  function formatUnitHint(format, value) {
+    switch (format) {
+      case "int":
+      case "ms":
+      case "signedMs":
+      case "visibilityMs":
+        return "ms";
+      case "float1":
+        return "px/s";
+      case "float2":
+      case "float3":
+        return "x";
+      case "accel":
+        return "px/s^2";
+      case "degrees":
+        return "deg";
+      case "count":
+        return Number(value) === 1 ? "pair" : "pairs";
+      case "railCount":
+        return Number(value) === 1 ? "rail" : "rails";
+      case "overlap":
+      case "intPx":
+      case "signedPx":
+        return "px";
+      case "fps":
+        return "fps";
+      case "percent":
+        return "%";
+      case "mbps":
+        return "Mbps";
+      case "pxPerDva":
+        return "px/deg";
+      case "dva":
+        return "deg";
+      case "trajectoryTarget":
+        return getTrajectoryTargetLabel(value);
+      default:
+        return "";
+    }
+  }
+
   function updateOutputs() {
     document.querySelectorAll("output[data-for]").forEach((output) => {
       const input = document.getElementById(output.dataset.for);
       if (!input) {
         return;
       }
-      output.textContent = formatValue(input.dataset.format, input.value, input.id, input);
+      output.textContent = formatUnitHint(input.dataset.format, input.value);
+      output.title = formatValue(input.dataset.format, input.value, input.id, input);
       const fineInput = input.dataset.fineControlId ? document.getElementById(input.dataset.fineControlId) : null;
       if (fineInput && document.activeElement !== fineInput) {
         fineInput.value = input.value;
@@ -2739,10 +2781,10 @@
       summaryAfter.textContent = describeLauncherBehavior(state.launcherBehavior);
     }
     if (summaryLauncherVisible) {
-      summaryLauncherVisible.textContent = formatValue(state.launcherVisibleMs, "visibilityMs");
+      summaryLauncherVisible.textContent = formatValue("visibilityMs", state.launcherVisibleMs);
     }
     if (summaryTargetVisible) {
-      summaryTargetVisible.textContent = formatValue(state.targetVisibleMs, "visibilityMs");
+      summaryTargetVisible.textContent = formatValue("visibilityMs", state.targetVisibleMs);
     }
     if (summaryContext) {
       summaryContext.textContent = contextText;

@@ -455,12 +455,14 @@ h3 {
 
 .field output {
   min-height: 1em;
-  color: var(--accent-dark);
-  font-size: 0.52rem;
+  color: var(--muted);
+  font-size: 0.46rem;
   font-weight: 800;
   line-height: 1.05;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
