@@ -5891,6 +5891,53 @@
     return getPreBallBlinkMs(state) + geometry.targetStartTime;
   }
 
+  const MAX_CACHED_EXPORT_FRAMES = 720;
+  const MAX_CACHED_EXPORT_PIXELS = 520_000_000;
+
+  function shouldCacheExportFrames(state, exportCanvas) {
+    const frameCount = getExportFrameCount(state);
+    return (
+      frameCount <= MAX_CACHED_EXPORT_FRAMES &&
+      frameCount * exportCanvas.width * exportCanvas.height <= MAX_CACHED_EXPORT_PIXELS
+    );
+  }
+
+  async function buildExportFrameCache(state, exportCanvas, aspectScratchCanvas, statusCallback = null) {
+    if (!shouldCacheExportFrames(state, exportCanvas)) {
+      return null;
+    }
+
+    const frameDuration = 1000 / state.fps;
+    const totalFrames = getExportFrameCount(state);
+    const frames = [];
+    for (let frame = 0; frame < totalFrames; frame += 1) {
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = exportCanvas.width;
+      frameCanvas.height = exportCanvas.height;
+      const frameCtx = frameCanvas.getContext("2d");
+      drawExportFrame(state, Math.min(frame * frameDuration, state.durationMs), frameCtx, frameCanvas, aspectScratchCanvas);
+      frames.push(typeof createImageBitmap === "function" ? await createImageBitmap(frameCanvas) : frameCanvas);
+      if (statusCallback) {
+        statusCallback(frame + 1, totalFrames);
+      }
+    }
+    return frames;
+  }
+
+  function drawCachedExportFrame(exportCtx, exportCanvas, frameImage) {
+    exportCtx.setTransform(1, 0, 0, 1, 0, 0);
+    exportCtx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+    exportCtx.drawImage(frameImage, 0, 0, exportCanvas.width, exportCanvas.height);
+  }
+
+  function disposeExportFrameCache(frames) {
+    (frames || []).forEach((frame) => {
+      if (typeof frame.close === "function") {
+        frame.close();
+      }
+    });
+  }
+
   function hasScheduledImpactSound(state) {
     return Boolean(state.soundEnabled && state.soundVolume > 0 && getImpactMovieTimeMs(state) < state.durationMs);
   }
@@ -7290,8 +7337,15 @@
     exportCanvas.height = exportSize.height;
     const exportCtx = exportCanvas.getContext("2d");
     const aspectScratchCanvas = state.aspectRatio === "16:9" ? null : document.createElement("canvas");
+    const frameDuration = 1000 / state.fps;
+    const totalFrames = getExportFrameCount(state);
+    const cachedFrames = await buildExportFrameCache(state, exportCanvas, aspectScratchCanvas, (frame, count) => {
+      statusText.textContent = `Rendering frame ${frame} of ${count}…`;
+    });
     const stream = exportCanvas.captureStream(state.fps);
     let exportAudioContext = null;
+    let exportAudioDestination = null;
+    let pendingImpactSoundMs = null;
 
     if (state.soundEnabled) {
       const AudioContextClass = getAudioContextClass();
@@ -7300,19 +7354,14 @@
         if (exportAudioContext.state === "suspended") {
           await exportAudioContext.resume().catch(() => {});
         }
-        const audioDestination = exportAudioContext.createMediaStreamDestination();
-        audioDestination.stream.getAudioTracks().forEach((track) => {
+        exportAudioDestination = exportAudioContext.createMediaStreamDestination();
+        exportAudioDestination.stream.getAudioTracks().forEach((track) => {
           stream.addTrack(track);
         });
         const geometry = getGeometry(state, getMainLaneY(state));
         const impactTime = getPreBallBlinkMs(state) + geometry.stopTime;
         if (impactTime < state.durationMs) {
-          scheduleImpactSound(
-            exportAudioContext,
-            state,
-            audioDestination,
-            exportAudioContext.currentTime + impactTime / 1000
-          );
+          pendingImpactSoundMs = impactTime;
         }
       } else {
         statusText.textContent = "AudioContext is unavailable; exporting silent video.";
@@ -7328,6 +7377,7 @@
 
     const recorderResult = createMediaRecorderWithFallback(stream, state, exportFormat);
     if (!recorderResult) {
+      disposeExportFrameCache(cachedFrames);
       if (exportAudioContext) {
         await exportAudioContext.close().catch(() => {});
       }
@@ -7355,18 +7405,31 @@
     });
 
     recorder.start();
+    if (exportAudioContext && exportAudioDestination && pendingImpactSoundMs !== null) {
+      scheduleImpactSound(
+        exportAudioContext,
+        state,
+        exportAudioDestination,
+        exportAudioContext.currentTime + pendingImpactSoundMs / 1000
+      );
+    }
 
-    const frameDuration = 1000 / state.fps;
-    const totalFrames = getExportFrameCount(state);
     const exportStartTime = performance.now();
     for (let frame = 0; frame < totalFrames; frame += 1) {
       const time = Math.min(frame * frameDuration, state.durationMs);
-      drawExportFrame(state, time, exportCtx, exportCanvas, aspectScratchCanvas);
+      if (cachedFrames) {
+        drawCachedExportFrame(exportCtx, exportCanvas, cachedFrames[frame]);
+      } else {
+        drawExportFrame(state, time, exportCtx, exportCanvas, aspectScratchCanvas);
+      }
       statusText.textContent = `Exporting frame ${frame + 1} of ${totalFrames}…`;
       const nextFrameTime = exportStartTime + (frame + 1) * frameDuration;
       await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, nextFrameTime - performance.now())));
     }
 
+    const finalFrameHoldUntil = exportStartTime + state.durationMs + frameDuration;
+    await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, finalFrameHoldUntil - performance.now())));
+    disposeExportFrameCache(cachedFrames);
     recorder.stop();
     await stopped;
     if (exportAudioContext) {
