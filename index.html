@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260430-no-blink" />
+    <link rel="stylesheet" href="styles.css?v=20260501-rail-context" />
   </head>
   <body>
     <div class="page-shell">
@@ -70,7 +70,7 @@
               </label>
               <label class="field context-dependent-control">
                 <span>Added pairs</span>
-                <input id="contextPairCount" data-format="count" min="1" max="4" step="1" type="range" />
+                <input id="contextPairCount" data-format="count" min="1" max="10" step="1" type="range" />
                 <output data-for="contextPairCount"></output>
               </label>
               <label class="field context-dependent-control">
@@ -92,7 +92,7 @@
                 </span>
               </label>
               <p class="context-copy-note context-dependent-control">
-                New pairs copy the original when added. More pairs start smaller; manual edits stay independent.
+                New pairs copy the original when added. Ball size stays matched unless you edit Radius.
               </p>
               <input id="contextPairSnapshots" type="hidden" />
             </div>
@@ -245,7 +245,7 @@
             </div>
             <div class="control-grid">
               <div class="control-subgroup">
-                <h3 class="subgroup-title">Original position</h3>
+                <h3 class="subgroup-title">Original pair</h3>
                 <div class="control-subgrid">
                   <label class="field">
                     <span>Radius</span>
@@ -382,9 +382,18 @@
                   <input id="crosshairEnabled" type="checkbox" />
                   <span>Crosshair</span>
                 </label>
+                <label class="field color-field crosshair-dependent-control is-retracted">
+                  <span>Crosshair color</span>
+                  <input id="crosshairColor" type="color" />
+                </label>
                 <label class="field checkbox-field">
                   <input id="railEnabled" type="checkbox" />
                   <span>Rail</span>
+                </label>
+                <label class="field rail-dependent-control is-retracted">
+                  <span>Rail count</span>
+                  <input id="railCount" data-format="railCount" min="1" max="6" step="1" type="range" />
+                  <output data-for="railCount"></output>
                 </label>
                 <label class="field checkbox-field">
                   <input id="crosshairBlinkEnabled" type="checkbox" />
@@ -392,11 +401,11 @@
                 </label>
                 <label class="field">
                   <span>Blink time</span>
-                  <input id="crosshairBlinkMs" data-format="ms" min="100" max="1500" step="50" type="range" />
+                  <input id="crosshairBlinkMs" data-format="ms" min="100" max="3000" step="50" type="range" />
                   <output data-for="crosshairBlinkMs"></output>
                 </label>
                 <p class="special-note">
-                  Crosshair and rail are draggable in the preview. Blink hides balls before launch.
+                  Crosshair and rails are draggable in the preview. Blink hides balls before launch.
                 </p>
                 <input id="crosshairX" type="hidden" />
                 <input id="crosshairY" type="hidden" />
@@ -404,6 +413,7 @@
                 <input id="railStartY" type="hidden" />
                 <input id="railEndX" type="hidden" />
                 <input id="railEndY" type="hidden" />
+                <input id="railSegments" type="hidden" />
               </div>
             </div>
           </details>
@@ -634,6 +644,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260430-no-blink"></script>
+    <script src="app.js?v=20260501-rail-context"></script>
   </body>
 </html>

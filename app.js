@@ -5,6 +5,8 @@
   const STAGE_HEIGHT = 540;
   const MAX_PREVIEW_PIXEL_RATIO = 3;
   const EXPORT_SCALE = 2;
+  const CONTEXT_PAIR_MAX = 10;
+  const RAIL_MAX = 6;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
@@ -110,11 +112,14 @@
     "crosshairEnabled",
     "crosshairX",
     "crosshairY",
+    "crosshairColor",
     "railEnabled",
+    "railCount",
     "railStartX",
     "railStartY",
     "railEndX",
     "railEndY",
+    "railSegments",
     "crosshairBlinkEnabled",
     "crosshairBlinkMs",
     "customStartEnabled",
@@ -170,14 +175,14 @@
     markerMode:
       "Changes: optional cue drawn only when Overlap / Gap is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
     ballRadius: "Changes: object size. Use for: scaling the balls while keeping the same motion logic.",
-    contextBallRadius: "Changes: Context 1 object size. New multi-pair defaults shrink automatically so added rows fit.",
+    contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size unless edited separately.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
     contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
-      "Changes: how many context pairs are drawn. New pairs copy the original when added, with smaller default radii as pair count grows.",
+      "Changes: how many context pairs are drawn, up to 10. New pairs copy the original when added; ball size stays matched unless Radius is edited.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
     contextOffsetMs: "Changes: context timing relative to the original event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
     contextDirection: "Changes: context motion direction. Same matches the original event; opposite mirrors it.",
@@ -204,10 +209,14 @@
     groupingMode: "Changes: solid boxes around original row, context row, or both. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
-    railEnabled: "Changes: adds a draggable rail line. By default it connects the original pair centers before motion starts.",
+    crosshairColor: "Changes: crosshair line color in preview and export.",
+    railEnabled: "Changes: adds one or more draggable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
+    railCount:
+      "Changes: number of rail lines drawn. Extra rails start parallel to Rail 1 and can then be dragged independently in the preview.",
     crosshairBlinkEnabled:
-      "Changes: makes the crosshair blink before launching starts. During the blink window the balls are hidden.",
-    crosshairBlinkMs: "Changes: duration of the pre-launch crosshair blink window.",
+      "Changes: makes the crosshair blink before balls appear. During this pre-ball window the event clock has not started.",
+    crosshairBlinkMs:
+      "Changes: duration of the pre-ball crosshair blink. If this is long, increase Video duration so the launch still has time to play after the blink.",
     customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1, O2, C1, and C2 start positions manually; exports use the positions but hide the rings.",
     customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position; C1 and C2 share one y-position when context is shown.",
     customStartAlignStartsVertical: "Changes: keeps the two first objects on one vertical line. Use for: O1 and C1 share one x-position when context is shown.",
@@ -791,11 +800,14 @@
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
+    crosshairColor: "#f4f0df",
     railEnabled: false,
+    railCount: 1,
     railStartX: 92,
     railStartY: STAGE_HEIGHT / 2,
     railEndX: STAGE_WIDTH * 0.58,
     railEndY: STAGE_HEIGHT / 2,
+    railSegments: "[]",
     crosshairBlinkEnabled: false,
     crosshairBlinkMs: 600,
     colorChangeMode: "none",
@@ -835,6 +847,8 @@
   });
   const contextDependentControls = Array.from(document.querySelectorAll(".context-dependent-control"));
   const customStartDependentControls = Array.from(document.querySelectorAll(".custom-start-dependent-control"));
+  const railDependentControls = Array.from(document.querySelectorAll(".rail-dependent-control"));
+  const crosshairDependentControls = Array.from(document.querySelectorAll(".crosshair-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
   let activePresetKey = "canonical";
@@ -899,6 +913,22 @@
     return JSON.stringify(Array.isArray(snapshots) ? snapshots : []);
   }
 
+  function parseRailSegments(value) {
+    if (!value) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function serializeRailSegments(segments) {
+    return JSON.stringify(Array.isArray(segments) ? segments : []);
+  }
+
   function cloneState() {
     return {
       durationMs: Number(controls.durationMs.value),
@@ -948,11 +978,14 @@
       crosshairEnabled: controls.crosshairEnabled.checked,
       crosshairX: Number(controls.crosshairX.value),
       crosshairY: Number(controls.crosshairY.value),
+      crosshairColor: controls.crosshairColor.value,
       railEnabled: controls.railEnabled.checked,
+      railCount: Number(controls.railCount.value),
       railStartX: Number(controls.railStartX.value),
       railStartY: Number(controls.railStartY.value),
       railEndX: Number(controls.railEndX.value),
       railEndY: Number(controls.railEndY.value),
+      railSegments: parseRailSegments(controls.railSegments.value),
       crosshairBlinkEnabled: controls.crosshairBlinkEnabled.checked,
       crosshairBlinkMs: Number(controls.crosshairBlinkMs.value),
       customStartEnabled: controls.customStartEnabled.checked,
@@ -1008,6 +1041,8 @@
         return `${Math.round(number)} ms`;
       case "count":
         return `${Math.round(number)} ${Math.round(number) === 1 ? "pair" : "pairs"}`;
+      case "railCount":
+        return `${Math.round(number)} ${Math.round(number) === 1 ? "rail" : "rails"}`;
       case "visibilityMs": {
         const videoDuration = controls.durationMs ? Number(controls.durationMs.value) : 0;
         const suffix = number > videoDuration ? " no cut" : "";
@@ -1265,19 +1300,12 @@
     if (state.contextMode === "none") {
       return 0;
     }
-    return clamp(Math.round(Number(state.contextPairCount) || 1), 1, 4);
+    return clamp(Math.round(Number(state.contextPairCount) || 1), 1, CONTEXT_PAIR_MAX);
   }
 
   function getAutoContextPairRadius(baseRadius, pairCount) {
-    const scales = {
-      1: 1,
-      2: 0.84,
-      3: 0.72,
-      4: 0.62
-    };
     const radius = Number(baseRadius) || stimulusDefaults.contextBallRadius;
-    const scale = scales[clamp(Math.round(Number(pairCount) || 1), 1, 4)] || 1;
-    return clamp(Math.round(radius * scale), 12, 60);
+    return clamp(Math.round(radius), 12, 60);
   }
 
   function shouldReplaceAutoContextRadius(value, baseRadius, previousPairCount) {
@@ -1309,9 +1337,16 @@
 
   function getDefaultContextPairOffset(state, pairIndex) {
     const sign = state.contextYOffset < 0 ? -1 : 1;
-    const spacing = clamp(Math.abs(state.contextYOffset) || 112, 56, 170);
-    const offsetPattern = [1, -1, 2, -2];
-    return (offsetPattern[pairIndex] || pairIndex + 1) * spacing * sign;
+    const pairCount = Math.max(getContextPairCount(state) || Math.round(Number(state.contextPairCount) || 1), pairIndex + 1, 1);
+    const radius = Number(state.contextBallRadius) || Number(state.ballRadius) || stimulusDefaults.contextBallRadius;
+    const preferredSpacing = Math.abs(state.contextYOffset) || 112;
+    const visibleHalfSpan = Math.max(80, STAGE_HEIGHT / 2 - radius - 28);
+    const stepCount = Math.max(1, Math.ceil(pairCount / 2));
+    const fitSpacing = visibleHalfSpan / stepCount;
+    const spacing = Math.max(Math.min(preferredSpacing, fitSpacing), Math.min(radius * 1.55, preferredSpacing));
+    const offsetMagnitude = Math.floor(pairIndex / 2) + 1;
+    const side = pairIndex % 2 === 0 ? 1 : -1;
+    return offsetMagnitude * spacing * side * sign;
   }
 
   function makeContextPairSnapshotFromOriginal(state, pairIndex = 1) {
@@ -1320,7 +1355,7 @@
     return {
       laneY,
       yOffset: getDefaultContextPairOffset(state, pairIndex),
-      ballRadius: getAutoContextPairRadius(state.ballRadius, getContextPairCount(state) || state.contextPairCount || 1),
+      ballRadius: getAutoContextPairRadius(state.contextBallRadius || state.ballRadius, getContextPairCount(state) || state.contextPairCount || 1),
       leadInMs: state.leadInMs,
       launcherSpeed: state.launcherSpeed,
       launcherAccel: state.launcherAccel,
@@ -1606,6 +1641,27 @@
     }
   }
 
+  function syncCrosshairControlVisibility() {
+    const enabled = Boolean(controls.crosshairEnabled.checked);
+    crosshairDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !enabled);
+    });
+  }
+
+  function syncRailControlVisibility() {
+    const enabled = Boolean(controls.railEnabled.checked);
+    railDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !enabled);
+    });
+  }
+
+  function getRailCount(state) {
+    if (!state.railEnabled) {
+      return 0;
+    }
+    return clamp(Math.round(Number(state.railCount) || 1), 1, RAIL_MAX);
+  }
+
   function getDefaultRailEndpoints(state = cloneState()) {
     const laneY = getMainLaneY({ ...state, customStartEnabled: false });
     const geometry = getGeometry({ ...state, customStartEnabled: false }, laneY, { scope: "original", directionSign: 1 });
@@ -1615,14 +1671,95 @@
     };
   }
 
-  function initializeRailEndpoints(force = false) {
-    if (!force && Number(controls.railStartX.value) && Number(controls.railEndX.value)) {
+  function getDefaultRailOffset(railIndex) {
+    const offsets = [0, 42, -42, 84, -84, 126];
+    return offsets[railIndex] ?? railIndex * 42;
+  }
+
+  function getDefaultRailSegment(state = cloneState(), railIndex = 0) {
+    const endpoints = getDefaultRailEndpoints(state);
+    const yOffset = getDefaultRailOffset(railIndex);
+    return {
+      startX: endpoints.start.x,
+      startY: clamp(endpoints.start.y + yOffset, 0, STAGE_HEIGHT),
+      endX: endpoints.end.x,
+      endY: clamp(endpoints.end.y + yOffset, 0, STAGE_HEIGHT)
+    };
+  }
+
+  function normalizeRailSegment(segment, fallback) {
+    const source = segment || {};
+    const fallbackSegment = fallback || getDefaultRailSegment(cloneState(), 0);
+    return {
+      startX: clamp(getFeatureCoordinate(source.startX, fallbackSegment.startX), 0, STAGE_WIDTH),
+      startY: clamp(getFeatureCoordinate(source.startY, fallbackSegment.startY), 0, STAGE_HEIGHT),
+      endX: clamp(getFeatureCoordinate(source.endX, fallbackSegment.endX), 0, STAGE_WIDTH),
+      endY: clamp(getFeatureCoordinate(source.endY, fallbackSegment.endY), 0, STAGE_HEIGHT)
+    };
+  }
+
+  function getRailSegments(state) {
+    const count = getRailCount(state);
+    if (!count) {
+      return [];
+    }
+
+    const firstFallback = getDefaultRailSegment(state, 0);
+    const segments = [
+      normalizeRailSegment(
+        {
+          startX: state.railStartX,
+          startY: state.railStartY,
+          endX: state.railEndX,
+          endY: state.railEndY
+        },
+        firstFallback
+      )
+    ];
+    const storedSegments = Array.isArray(state.railSegments) ? state.railSegments : [];
+    for (let railIndex = 1; railIndex < count; railIndex += 1) {
+      segments.push(normalizeRailSegment(storedSegments[railIndex - 1], getDefaultRailSegment(state, railIndex)));
+    }
+    return segments;
+  }
+
+  function writeRailSegment(railIndex, segment) {
+    const normalizedSegment = normalizeRailSegment(segment, getDefaultRailSegment(cloneState(), railIndex));
+    if (railIndex === 0) {
+      writeCoordinateControl("railStartX", "railStartY", normalizedSegment.startX, normalizedSegment.startY);
+      writeCoordinateControl("railEndX", "railEndY", normalizedSegment.endX, normalizedSegment.endY);
       return;
     }
 
-    const endpoints = getDefaultRailEndpoints();
-    writeCoordinateControl("railStartX", "railStartY", endpoints.start.x, endpoints.start.y);
-    writeCoordinateControl("railEndX", "railEndY", endpoints.end.x, endpoints.end.y);
+    const state = cloneState();
+    const count = getRailCount(state);
+    const segments = [...state.railSegments].slice(0, Math.max(0, count - 1));
+    while (segments.length < railIndex) {
+      segments.push(getDefaultRailSegment(state, segments.length + 1));
+    }
+    segments[railIndex - 1] = normalizedSegment;
+    controls.railSegments.value = serializeRailSegments(segments);
+  }
+
+  function syncRailSegments() {
+    const state = cloneState();
+    const count = getRailCount(state);
+    if (!count) {
+      return;
+    }
+
+    const segments = getRailSegments(state).slice(1);
+    controls.railSegments.value = serializeRailSegments(segments);
+  }
+
+  function initializeRailEndpoints(force = false) {
+    const hasStart = controls.railStartX.value !== "" && Number.isFinite(Number(controls.railStartX.value));
+    const hasEnd = controls.railEndX.value !== "" && Number.isFinite(Number(controls.railEndX.value));
+    if (!force && hasStart && hasEnd) {
+      return;
+    }
+
+    writeRailSegment(0, getDefaultRailSegment());
   }
 
   function getPreset(presetKey) {
@@ -1930,6 +2067,8 @@
           ? normalizeOcclusionMode(value)
           : key === "contextPairSnapshots" && Array.isArray(value)
             ? serializeContextPairSnapshots(value)
+            : key === "railSegments" && Array.isArray(value)
+              ? serializeRailSegments(value)
             : value;
       if (control.type === "checkbox") {
         control.checked = Boolean(normalizedValue);
@@ -1943,6 +2082,9 @@
     renderContextPairEditors();
     lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
     syncStartDragUi();
+    syncCrosshairControlVisibility();
+    syncRailControlVisibility();
+    syncRailSegments();
     syncSpecialDragUi();
     enforceCustomStartConstraints();
     updateOutputs();
@@ -2243,8 +2385,8 @@
     if (state.soundEnabled) {
       warnings.push("Audio export depends on browser encoding. Check the saved movie in PsychoPy.");
     }
-    if (state.crosshairBlinkEnabled && state.crosshairEnabled && state.leadInMs <= 0) {
-      warnings.push("Crosshair blink needs Lead-in above 0 ms; otherwise the blink has no pre-launch window.");
+    if (getPreBallBlinkMs(state) >= state.durationMs) {
+      warnings.push("Blink time is at least as long as the video. Increase Video duration if the balls should appear.");
     }
     return warnings;
   }
@@ -3229,20 +3371,19 @@
       return;
     }
 
-    const startX = getFeatureCoordinate(state.railStartX, 92);
-    const startY = getFeatureCoordinate(state.railStartY, STAGE_HEIGHT / 2);
-    const endX = getFeatureCoordinate(state.railEndX, STAGE_WIDTH * 0.58);
-    const endY = getFeatureCoordinate(state.railEndY, STAGE_HEIGHT / 2);
+    const segments = getRailSegments(state);
 
     drawCtx.save();
     drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(20, 20, 18, 0.72)" : "rgba(245, 244, 235, 0.78)";
     drawCtx.lineWidth = 2.4;
     drawCtx.setLineDash([]);
     drawCtx.lineCap = "round";
-    drawCtx.beginPath();
-    drawCtx.moveTo(startX, startY);
-    drawCtx.lineTo(endX, endY);
-    drawCtx.stroke();
+    segments.forEach((segment) => {
+      drawCtx.beginPath();
+      drawCtx.moveTo(segment.startX, segment.startY);
+      drawCtx.lineTo(segment.endX, segment.endY);
+      drawCtx.stroke();
+    });
     drawCtx.restore();
   }
 
@@ -3255,10 +3396,8 @@
     const y = getFeatureCoordinate(state.crosshairY, STAGE_HEIGHT / 2);
     const arm = 24;
     const gap = 5;
-    const color =
-      state.stageTheme === "light"
-        ? `rgba(20, 20, 18, ${0.74 * alpha})`
-        : `rgba(245, 244, 235, ${0.84 * alpha})`;
+    const fallback = state.stageTheme === "light" ? "#11110f" : "#f5f4eb";
+    const color = hexToRgba(state.crosshairColor, (state.stageTheme === "light" ? 0.74 : 0.84) * alpha, fallback);
 
     drawCtx.save();
     drawCtx.strokeStyle = color;
@@ -3279,12 +3418,14 @@
   }
 
   function isCrosshairBlinkWindow(state, t) {
-    return Boolean(
-      state.crosshairBlinkEnabled &&
-        state.crosshairEnabled &&
-        state.leadInMs > 0 &&
-        t < Math.min(state.crosshairBlinkMs, state.leadInMs)
-    );
+    return getPreBallBlinkMs(state) > 0 && t < getPreBallBlinkMs(state);
+  }
+
+  function getPreBallBlinkMs(state) {
+    if (!state.crosshairBlinkEnabled || !state.crosshairEnabled) {
+      return 0;
+    }
+    return Math.max(0, Number(state.crosshairBlinkMs) || 0);
   }
 
   function shouldShowBlinkCrosshair(t) {
@@ -3306,14 +3447,15 @@
       return;
     }
 
+    const stimulusT = Math.max(0, t - getPreBallBlinkMs(state));
     drawRailFeature(drawCtx, state);
 
     const laneY = getMainLaneY(state);
 
-    const eventState = getMainEventState(state, t, laneY);
+    const eventState = getMainEventState(state, stimulusT, laneY);
     drawGroupingBoxes(drawCtx, state, eventState);
     drawContactGuides(drawCtx, state, eventState);
-    drawContextEvent(drawCtx, state, t, eventState);
+    drawContextEvent(drawCtx, state, stimulusT, eventState);
     drawSpatialMarker(drawCtx, state, eventState);
     const occluderBounds = drawOccluder(drawCtx, state, laneY);
 
@@ -3336,7 +3478,7 @@
       drawCtx.save();
       drawCtx.font = '500 14px "Avenir Next", "Segoe UI", sans-serif';
       drawCtx.fillStyle = "rgba(240, 245, 245, 0.7)";
-      drawCtx.fillText(`t = ${Math.round(t)} ms`, STAGE_WIDTH - 116, STAGE_HEIGHT - 28);
+      drawCtx.fillText(`t = ${Math.round(stimulusT)} ms`, STAGE_WIDTH - 116, STAGE_HEIGHT - 28);
       drawCtx.restore();
     }
   }
@@ -3374,26 +3516,25 @@
     }
 
     if (state.railEnabled) {
-      const start = {
-        x: getFeatureCoordinate(state.railStartX, 92),
-        y: getFeatureCoordinate(state.railStartY, STAGE_HEIGHT / 2)
-      };
-      const end = {
-        x: getFeatureCoordinate(state.railEndX, STAGE_WIDTH * 0.58),
-        y: getFeatureCoordinate(state.railEndY, STAGE_HEIGHT / 2)
-      };
-      if (Math.hypot(point.x - start.x, point.y - start.y) <= 18) {
-        return { type: "railStart" };
-      }
-      if (Math.hypot(point.x - end.x, point.y - end.y) <= 18) {
-        return { type: "railEnd" };
-      }
-      if (distanceToSegment(point, start, end) <= 12) {
-        return {
-          type: "railLine",
-          startOffset: { x: start.x - point.x, y: start.y - point.y },
-          endOffset: { x: end.x - point.x, y: end.y - point.y }
-        };
+      const railSegments = getRailSegments(state);
+      for (let railIndex = 0; railIndex < railSegments.length; railIndex += 1) {
+        const segment = railSegments[railIndex];
+        const start = { x: segment.startX, y: segment.startY };
+        const end = { x: segment.endX, y: segment.endY };
+        if (Math.hypot(point.x - start.x, point.y - start.y) <= 18) {
+          return { type: "railStart", railIndex };
+        }
+        if (Math.hypot(point.x - end.x, point.y - end.y) <= 18) {
+          return { type: "railEnd", railIndex };
+        }
+        if (distanceToSegment(point, start, end) <= 12) {
+          return {
+            type: "railLine",
+            railIndex,
+            startOffset: { x: start.x - point.x, y: start.y - point.y },
+            endOffset: { x: end.x - point.x, y: end.y - point.y }
+          };
+        }
       }
     }
 
@@ -3404,12 +3545,18 @@
     if (target.type === "crosshair") {
       writeCoordinateControl("crosshairX", "crosshairY", point.x, point.y);
     } else if (target.type === "railStart") {
-      writeCoordinateControl("railStartX", "railStartY", point.x, point.y);
+      const segment = getRailSegments(cloneState())[target.railIndex] || getDefaultRailSegment(cloneState(), target.railIndex);
+      writeRailSegment(target.railIndex, { ...segment, startX: point.x, startY: point.y });
     } else if (target.type === "railEnd") {
-      writeCoordinateControl("railEndX", "railEndY", point.x, point.y);
+      const segment = getRailSegments(cloneState())[target.railIndex] || getDefaultRailSegment(cloneState(), target.railIndex);
+      writeRailSegment(target.railIndex, { ...segment, endX: point.x, endY: point.y });
     } else if (target.type === "railLine") {
-      writeCoordinateControl("railStartX", "railStartY", point.x + target.startOffset.x, point.y + target.startOffset.y);
-      writeCoordinateControl("railEndX", "railEndY", point.x + target.endOffset.x, point.y + target.endOffset.y);
+      writeRailSegment(target.railIndex, {
+        startX: point.x + target.startOffset.x,
+        startY: point.y + target.startOffset.y,
+        endX: point.x + target.endOffset.x,
+        endY: point.y + target.endOffset.y
+      });
     }
   }
 
@@ -3816,10 +3963,13 @@
         audioContext.resume().catch(() => {});
       }
       const geometry = getGeometry(state, getMainLaneY(state));
-      impactSoundTimer = window.setTimeout(() => {
-        playImpactSound(state);
-        impactSoundTimer = null;
-      }, Math.max(0, Math.min(geometry.stopTime, state.durationMs)));
+      const impactTime = getPreBallBlinkMs(state) + geometry.stopTime;
+      if (impactTime < state.durationMs) {
+        impactSoundTimer = window.setTimeout(() => {
+          playImpactSound(state);
+          impactSoundTimer = null;
+        }, Math.max(0, impactTime));
+      }
     }
     previewStart = 0;
     previewHandle = requestAnimationFrame(tickPreview);
@@ -3926,7 +4076,8 @@
       parts.push(`cross${compactNumber(state.crosshairX)}x${compactNumber(state.crosshairY)}`);
     }
     if (state.railEnabled) {
-      parts.push(`rail${compactNumber(state.railStartX)}-${compactNumber(state.railEndX)}px`);
+      const railCount = getRailCount(state);
+      parts.push(`${railCount > 1 ? `rails${railCount}` : "rail"}${compactNumber(state.railStartX)}-${compactNumber(state.railEndX)}px`);
     }
     return sanitizeLabel(parts.join("-"));
   }
@@ -4183,11 +4334,14 @@
       crosshairEnabled: state.crosshairEnabled,
       crosshairX: state.crosshairX,
       crosshairY: state.crosshairY,
+      crosshairColor: state.crosshairColor,
       railEnabled: state.railEnabled,
+      railCount: getRailCount(state),
       railStartX: state.railStartX,
       railStartY: state.railStartY,
       railEndX: state.railEndX,
       railEndY: state.railEndY,
+      railSegments: JSON.stringify(getRailSegments(state).slice(1)),
       crosshairBlinkEnabled: state.crosshairBlinkEnabled,
       crosshairBlinkMs: state.crosshairBlinkMs,
       customStartEnabled: state.customStartEnabled,
@@ -5128,12 +5282,15 @@
           stream.addTrack(track);
         });
         const geometry = getGeometry(state, getMainLaneY(state));
-        scheduleImpactSound(
-          exportAudioContext,
-          state,
-          audioDestination,
-          exportAudioContext.currentTime + Math.min(geometry.stopTime, state.durationMs) / 1000
-        );
+        const impactTime = getPreBallBlinkMs(state) + geometry.stopTime;
+        if (impactTime < state.durationMs) {
+          scheduleImpactSound(
+            exportAudioContext,
+            state,
+            audioDestination,
+            exportAudioContext.currentTime + impactTime / 1000
+          );
+        }
       } else {
         statusText.textContent = "AudioContext is unavailable; exporting silent video.";
       }
@@ -5287,7 +5444,9 @@
           activePresetKey = null;
           if (control.checked) {
             initializeRailEndpoints(true);
+            syncRailSegments();
           }
+          syncRailControlVisibility();
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
@@ -5296,9 +5455,21 @@
         });
         return;
       }
+      if (id === "railCount") {
+        control.addEventListener("input", () => {
+          activePresetKey = null;
+          syncRailSegments();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = "Rail count updated.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
       if (id === "crosshairEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
+          syncCrosshairControlVisibility();
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
@@ -5313,6 +5484,7 @@
           if (control.checked) {
             controls.crosshairEnabled.checked = true;
           }
+          syncCrosshairControlVisibility();
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
@@ -5358,7 +5530,7 @@
         id.endsWith("StartX") ||
         id.endsWith("StartY") ||
         id === "contextPairSnapshots" ||
-        ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY"].includes(id)
+        ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)
       ) {
         return;
       }
@@ -5373,6 +5545,7 @@
           "groupingMode",
           "contactGuideMode",
           "crosshairBlinkMs",
+          "crosshairColor",
           "colorChangeMode",
           "colorChangeColor",
           "launcherColor",
