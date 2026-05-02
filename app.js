@@ -3273,12 +3273,6 @@
     if (state.colorChangeMode !== "none") {
       warnings.push("Color-change cue is visible at contact. Keep only if feature change is part of the condition.");
     }
-    if (state.crosshairEnabled) {
-      warnings.push("Crosshair is visible in export. Use Fixation mode instead unless the crosshair itself is a stimulus feature.");
-    }
-    if (state.railEnabled) {
-      warnings.push("Rail lines are visible in export. Keep only if rail geometry is part of the condition.");
-    }
     if (state.trajectoryEditEnabled && Object.keys(state.trajectoryOverrides || {}).length > 0) {
       warnings.push("Manual trajectory edits are active. Verify the PsychoPy CSV and metadata before reusing this condition.");
     }
