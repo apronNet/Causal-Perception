@@ -1008,14 +1008,20 @@
     }
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((snapshot) => snapshot && typeof snapshot === "object" && !Array.isArray(snapshot))
+        : [];
     } catch {
       return [];
     }
   }
 
   function serializeContextPairSnapshots(snapshots) {
-    return JSON.stringify(Array.isArray(snapshots) ? snapshots : []);
+    return JSON.stringify(
+      Array.isArray(snapshots)
+        ? snapshots.filter((snapshot) => snapshot && typeof snapshot === "object" && !Array.isArray(snapshot))
+        : []
+    );
   }
 
   function parseRailSegments(value) {
@@ -1024,14 +1030,20 @@
     }
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((segment) => segment && typeof segment === "object" && !Array.isArray(segment))
+        : [];
     } catch {
       return [];
     }
   }
 
   function serializeRailSegments(segments) {
-    return JSON.stringify(Array.isArray(segments) ? segments : []);
+    return JSON.stringify(
+      Array.isArray(segments)
+        ? segments.filter((segment) => segment && typeof segment === "object" && !Array.isArray(segment))
+        : []
+    );
   }
 
   function parseTrajectoryOverrides(value) {
@@ -1057,9 +1069,64 @@
     return JSON.stringify(parseTrajectoryOverrides(overrides));
   }
 
+  function getHiddenJsonControlValue(key, value) {
+    if (key === "contextPairSnapshots") {
+      return serializeContextPairSnapshots(typeof value === "string" ? parseContextPairSnapshots(value) : value);
+    }
+    if (key === "railSegments") {
+      return serializeRailSegments(typeof value === "string" ? parseRailSegments(value) : value);
+    }
+    if (key === "trajectoryOverrides") {
+      return serializeTrajectoryOverrides(value);
+    }
+    return value;
+  }
+
+  function normalizeSnapshotNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function normalizeContextPairSnapshotsForState(state) {
+    const pairCount = getContextPairCount(state);
+    if (pairCount <= 1) {
+      return [];
+    }
+
+    const snapshots = (Array.isArray(state.contextPairSnapshots) ? state.contextPairSnapshots : []).slice(0, pairCount - 1);
+    while (snapshots.length < pairCount - 1) {
+      snapshots.push(makeContextPairSnapshotFromOriginal(state, snapshots.length + 1));
+    }
+
+    return snapshots.map((snapshot, index) => {
+      const normalized = normalizeContextPairSnapshot(snapshot, state, index + 1);
+      return {
+        ...normalized,
+        yOffset: normalizeSnapshotNumber(normalized.yOffset, getDefaultContextPairOffset(state, index + 1)),
+        ballRadius: clamp(Math.round(normalizeSnapshotNumber(normalized.ballRadius, state.contextBallRadius)), 8, 60),
+        leadInMs: Math.max(0, normalizeSnapshotNumber(normalized.leadInMs, state.contextLeadInMs)),
+        launcherSpeed: Math.max(0, normalizeSnapshotNumber(normalized.launcherSpeed, state.contextLauncherSpeed)),
+        launcherAccel: normalizeSnapshotNumber(normalized.launcherAccel, state.contextLauncherAccel),
+        launcherBehavior: ["stop", "continue", "entrain"].includes(normalized.launcherBehavior)
+          ? normalized.launcherBehavior
+          : state.contextLauncherBehavior,
+        delayMs: Math.max(0, normalizeSnapshotNumber(normalized.delayMs, state.contextDelayMs)),
+        gapPx: normalizeSnapshotNumber(normalized.gapPx, state.contextGapPx),
+        contactOcclusionMode: normalizeOcclusionMode(normalized.contactOcclusionMode),
+        occluderEnabled: Boolean(normalized.occluderEnabled),
+        occluderWidth: Math.max(0, normalizeSnapshotNumber(normalized.occluderWidth, state.contextOccluderWidth)),
+        targetSpeedRatio: Math.max(0, normalizeSnapshotNumber(normalized.targetSpeedRatio, state.contextTargetSpeedRatio)),
+        targetAccel: normalizeSnapshotNumber(normalized.targetAccel, state.contextTargetAccel),
+        targetAngle: clamp(Math.round(normalizeSnapshotNumber(normalized.targetAngle, state.contextTargetAngle)), -90, 90),
+        launcherVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.launcherVisibleMs, state.contextLauncherVisibleMs)),
+        targetVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.targetVisibleMs, state.contextTargetVisibleMs))
+      };
+    });
+  }
+
   // Canonical state snapshot used by preview, export, metadata, and condition sets.
   function cloneState() {
-    return {
+    const state = {
       durationMs: Number(controls.durationMs.value),
       leadInMs: Number(controls.leadInMs.value),
       launcherSpeed: Number(controls.launcherSpeed.value),
@@ -1157,6 +1224,11 @@
       videoBitrate: Number(controls.videoBitrate.value),
       fileLabel: controls.fileLabel.value.trim() || "causal-launching"
     };
+    state.contextPairCount = getContextPairCount(state);
+    state.contextPairSnapshots = normalizeContextPairSnapshotsForState(state);
+    state.railSegments = state.railEnabled ? getRailSegments(state).slice(1) : [];
+    state.trajectoryOverrides = parseTrajectoryOverrides(state.trajectoryOverrides);
+    return state;
   }
 
   function formatValue(format, value, inputId = "", input = null) {
@@ -2174,6 +2246,21 @@
     };
   }
 
+  function translateRailSegmentWithinStage(segment, deltaX, deltaY) {
+    const minX = Math.min(segment.startX, segment.endX);
+    const maxX = Math.max(segment.startX, segment.endX);
+    const minY = Math.min(segment.startY, segment.endY);
+    const maxY = Math.max(segment.startY, segment.endY);
+    const safeDeltaX = clamp(deltaX, -minX, STAGE_WIDTH - maxX);
+    const safeDeltaY = clamp(deltaY, -minY, STAGE_HEIGHT - maxY);
+    return {
+      startX: segment.startX + safeDeltaX,
+      startY: segment.startY + safeDeltaY,
+      endX: segment.endX + safeDeltaX,
+      endY: segment.endY + safeDeltaY
+    };
+  }
+
   function getRailSegmentLength(segment) {
     return Math.hypot(segment.endX - segment.startX, segment.endY - segment.startY);
   }
@@ -2590,13 +2677,7 @@
       const normalizedValue =
         key === "contactOcclusionMode" || key === "contextContactOcclusionMode"
           ? normalizeOcclusionMode(value)
-          : key === "contextPairSnapshots" && Array.isArray(value)
-            ? serializeContextPairSnapshots(value)
-            : key === "railSegments" && Array.isArray(value)
-              ? serializeRailSegments(value)
-              : key === "trajectoryOverrides" && value && typeof value === "object"
-                ? serializeTrajectoryOverrides(value)
-                : value;
+          : getHiddenJsonControlValue(key, value);
       if (control.type === "checkbox") {
         control.checked = Boolean(normalizedValue);
       } else {
@@ -2946,6 +3027,18 @@
     }
     if (state.fractureEnabled) {
       warnings.push("Fracture marks are visible on O2 after impact. Keep only if this cue is part of the condition.");
+    }
+    if (state.colorChangeMode !== "none") {
+      warnings.push("Color-change cue is visible at contact. Keep only if feature change is part of the condition.");
+    }
+    if (state.crosshairEnabled) {
+      warnings.push("Crosshair is visible in export. Use Fixation mode instead unless the crosshair itself is a stimulus feature.");
+    }
+    if (state.railEnabled) {
+      warnings.push("Rail lines are visible in export. Keep only if rail geometry is part of the condition.");
+    }
+    if (state.trajectoryEditEnabled && Object.keys(state.trajectoryOverrides || {}).length > 0) {
+      warnings.push("Manual trajectory edits are active. Verify the PsychoPy CSV and metadata before reusing this condition.");
     }
     if (state.markerMode !== "none" && state.gapPx > 0) {
       warnings.push("Marker is on: the exported video will show a visible gap cue. Set Marker to None unless this cue is part of the condition.");
@@ -4336,37 +4429,22 @@
   function drawOccludedEvent(drawCtx, state, eventState, occluderBounds) {
     const radius = state.ballRadius;
     const palette = getPaletteAtTime(state, eventState);
-
-    if (isObjectVisibleAt(eventState.time, state.launcherVisibleMs) && eventState.launcherX + radius < occluderBounds.left) {
-      drawObject(
-        drawCtx,
-        state,
-        eventState.launcherX,
-        eventState.launcherY,
-        radius,
-        palette.launcher.fill,
-        palette.launcher.outline
-      );
-    }
-
-    if (
-      isObjectVisibleAt(eventState.time, state.targetVisibleMs) &&
-      eventState.targetX - radius > occluderBounds.right &&
-      eventState.targetX < STAGE_WIDTH + radius
-    ) {
-      drawRenderedObject(
-        drawCtx,
-        state,
-        {
-          x: eventState.targetX,
-          y: eventState.targetY,
-          fill: palette.target.fill,
-          outline: palette.target.outline,
-          cracked: shouldDrawFracture(state, eventState)
-        },
-        radius
-      );
-    }
+    const launcher = {
+      x: eventState.launcherX,
+      y: eventState.launcherY,
+      fill: palette.launcher.fill,
+      outline: palette.launcher.outline,
+      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs)
+    };
+    const target = {
+      x: eventState.targetX,
+      y: eventState.targetY,
+      fill: palette.target.fill,
+      outline: palette.target.outline,
+      visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs),
+      cracked: shouldDrawFracture(state, eventState)
+    };
+    drawOccludedObjectPair(drawCtx, state, launcher, target, radius, occluderBounds);
   }
 
   function drawLegend(drawCtx, state) {
@@ -4582,12 +4660,13 @@
       updateRailLengthFromSegment(nextSegment);
       writeRailSegment(target.railIndex, nextSegment);
     } else if (target.type === "railLine") {
-      writeRailSegment(target.railIndex, {
-        startX: point.x + target.startOffset.x,
-        startY: point.y + target.startOffset.y,
-        endX: point.x + target.endOffset.x,
-        endY: point.y + target.endOffset.y
-      });
+      const segment = getRailSegments(cloneState())[target.railIndex] || getDefaultRailSegment(cloneState(), target.railIndex);
+      const desiredStartX = point.x + target.startOffset.x;
+      const desiredStartY = point.y + target.startOffset.y;
+      writeRailSegment(
+        target.railIndex,
+        translateRailSegmentWithinStage(segment, desiredStartX - segment.startX, desiredStartY - segment.startY)
+      );
     }
   }
 
@@ -4985,6 +5064,7 @@
       cancelAnimationFrame(previewHandle);
       previewHandle = null;
     }
+    previewStart = 0;
     if (impactSoundTimer !== null) {
       window.clearTimeout(impactSoundTimer);
       impactSoundTimer = null;
@@ -5519,6 +5599,7 @@
       fractureEnabled: state.fractureEnabled,
       trajectoryEditEnabled: state.trajectoryEditEnabled,
       selectedTrajectoryBall: state.selectedTrajectoryBall,
+      selectedTrajectoryAngle: state.selectedTrajectoryAngle,
       trajectoryOverrides: JSON.stringify(state.trajectoryOverrides),
       customStartEnabled: state.customStartEnabled,
       customStartKeepRowsHorizontal: state.customStartKeepRowsHorizontal,
@@ -5666,77 +5747,138 @@
     lastGeneratedExportDetails = null;
   }
 
+  function readConditionParameter(parameters, key, fallback) {
+    return Object.prototype.hasOwnProperty.call(parameters, key) && parameters[key] !== undefined
+      ? parameters[key]
+      : fallback;
+  }
+
   function stateFromConditionParameters(baseState, parameters) {
     return {
       ...baseState,
-      durationMs: parameters.durationMs,
-      leadInMs: parameters.leadInMs,
-      launcherSpeed: parameters.launcherSpeedPxPerSec,
-      launcherAccel: parameters.launcherAccelerationPxPerSec2,
-      targetSpeedRatio: parameters.targetSpeedRatio,
-      targetAccel: parameters.targetAccelerationPxPerSec2,
-      launcherBehavior: parameters.launcherBehavior,
-      targetAngle: parameters.targetAngleDegrees,
-      launcherVisibleMs: parameters.launcherVisibleMs ?? baseState.launcherVisibleMs,
-      targetVisibleMs: parameters.targetVisibleMs ?? baseState.targetVisibleMs,
-      delayMs: parameters.contactDelayMs,
-      gapPx: parameters.gapPx,
-      markerMode: parameters.markerMode,
-      ballRadius: parameters.ballRadiusPx,
-      occluderEnabled: parameters.occluderEnabled,
-      occluderWidth: parameters.occluderWidthPx,
-      contactOcclusionMode: parameters.contactOcclusionMode,
-      contextMode: parameters.contextMode,
-      contextPairCount: parameters.contextPairCount ?? baseState.contextPairCount,
-      contextPairSnapshots: parameters.contextPairSnapshots ?? baseState.contextPairSnapshots,
-      contextDurationMs: parameters.contextDurationMs,
-      contextOffsetMs: parameters.contextOffsetMs,
-      contextDirection: parameters.contextDirection,
-      contextYOffset: parameters.contextYOffsetPx,
-      contextBallRadius: parameters.contextBallRadiusPx ?? parameters.ballRadiusPx ?? baseState.contextBallRadius,
-      contextLeadInMs: parameters.contextLeadInMs,
-      contextLauncherSpeed: parameters.contextLauncherSpeedPxPerSec,
-      contextLauncherAccel: parameters.contextLauncherAccelerationPxPerSec2,
-      contextLauncherBehavior: parameters.contextLauncherBehavior,
-      contextDelayMs: parameters.contextDelayMs,
-      contextGapPx: parameters.contextGapPx,
-      contextContactOcclusionMode: parameters.contextContactOcclusionMode,
-      contextOccluderEnabled: parameters.contextOccluderEnabled ?? baseState.contextOccluderEnabled,
-      contextOccluderWidth: parameters.contextOccluderWidthPx ?? baseState.contextOccluderWidth,
-      contextTargetSpeedRatio: parameters.contextTargetSpeedRatio,
-      contextTargetAccel: parameters.contextTargetAccelerationPxPerSec2,
-      contextTargetAngle: parameters.contextTargetAngleDegrees,
-      contextLauncherVisibleMs: parameters.contextLauncherVisibleMs ?? baseState.contextLauncherVisibleMs,
-      contextTargetVisibleMs: parameters.contextTargetVisibleMs ?? baseState.contextTargetVisibleMs,
-      renderMode: parameters.renderMode,
-      stageTheme: parameters.stageTheme,
-      stageColor: parameters.stageColor ?? baseState.stageColor,
-      objectStyle: parameters.objectStyle,
-      groupingMode: parameters.groupingMode,
-      contactGuideMode: parameters.contactGuideMode,
-      fractureEnabled: parameters.fractureEnabled ?? baseState.fractureEnabled,
-      trajectoryEditEnabled: parameters.trajectoryEditEnabled ?? baseState.trajectoryEditEnabled,
-      selectedTrajectoryBall: parameters.selectedTrajectoryBall ?? baseState.selectedTrajectoryBall,
-      trajectoryOverrides: parameters.trajectoryOverrides ?? baseState.trajectoryOverrides,
-      colorChangeMode: parameters.colorChangeMode,
-      colorChangeColor: parameters.colorChangeColor,
-      launcherColor: parameters.launcherColor,
-      targetColor: parameters.targetColor,
-      contextColor: parameters.contextColor,
-      contextTargetColor: parameters.contextTargetColor,
-      groupingOriginalColor: parameters.groupingOriginalColor,
-      groupingContextColor: parameters.groupingContextColor,
-      pxPerDva: parameters.pxPerDva,
-      fixationDva: parameters.fixationDva,
-      stimulusXOffset: parameters.stimulusXOffsetPx,
-      stimulusYOffset: parameters.stimulusYOffsetPx,
-      soundEnabled: parameters.soundEnabled,
-      soundType: parameters.soundType,
-      soundVolume: parameters.soundVolume,
-      outputFormat: parameters.outputFormat,
-      exportHeightPx: parameters.exportHeightPx ?? baseState.exportHeightPx,
-      videoBitrate: parameters.videoBitrateMbps,
-      fps: parameters.fps
+      durationMs: readConditionParameter(parameters, "durationMs", baseState.durationMs),
+      leadInMs: readConditionParameter(parameters, "leadInMs", baseState.leadInMs),
+      launcherSpeed: readConditionParameter(parameters, "launcherSpeedPxPerSec", baseState.launcherSpeed),
+      launcherAccel: readConditionParameter(parameters, "launcherAccelerationPxPerSec2", baseState.launcherAccel),
+      targetSpeedRatio: readConditionParameter(parameters, "targetSpeedRatio", baseState.targetSpeedRatio),
+      targetAccel: readConditionParameter(parameters, "targetAccelerationPxPerSec2", baseState.targetAccel),
+      launcherBehavior: readConditionParameter(parameters, "launcherBehavior", baseState.launcherBehavior),
+      targetAngle: readConditionParameter(parameters, "targetAngleDegrees", baseState.targetAngle),
+      launcherVisibleMs: readConditionParameter(parameters, "launcherVisibleMs", baseState.launcherVisibleMs),
+      targetVisibleMs: readConditionParameter(parameters, "targetVisibleMs", baseState.targetVisibleMs),
+      delayMs: readConditionParameter(parameters, "contactDelayMs", baseState.delayMs),
+      gapPx: readConditionParameter(parameters, "gapPx", baseState.gapPx),
+      markerMode: readConditionParameter(parameters, "markerMode", baseState.markerMode),
+      ballRadius: readConditionParameter(parameters, "ballRadiusPx", baseState.ballRadius),
+      occluderEnabled: readConditionParameter(parameters, "occluderEnabled", baseState.occluderEnabled),
+      occluderWidth: readConditionParameter(parameters, "occluderWidthPx", baseState.occluderWidth),
+      contactOcclusionMode: readConditionParameter(parameters, "contactOcclusionMode", baseState.contactOcclusionMode),
+      contextMode: readConditionParameter(parameters, "contextMode", baseState.contextMode),
+      contextPairCount: readConditionParameter(parameters, "contextPairCount", baseState.contextPairCount),
+      contextPairSnapshots: readConditionParameter(parameters, "contextPairSnapshots", baseState.contextPairSnapshots),
+      contextDurationMs: readConditionParameter(parameters, "contextDurationMs", baseState.contextDurationMs),
+      contextOffsetMs: readConditionParameter(parameters, "contextOffsetMs", baseState.contextOffsetMs),
+      contextDirection: readConditionParameter(parameters, "contextDirection", baseState.contextDirection),
+      contextYOffset: readConditionParameter(parameters, "contextYOffsetPx", baseState.contextYOffset),
+      contextBallRadius: readConditionParameter(
+        parameters,
+        "contextBallRadiusPx",
+        readConditionParameter(parameters, "ballRadiusPx", baseState.contextBallRadius)
+      ),
+      contextLeadInMs: readConditionParameter(parameters, "contextLeadInMs", baseState.contextLeadInMs),
+      contextLauncherSpeed: readConditionParameter(parameters, "contextLauncherSpeedPxPerSec", baseState.contextLauncherSpeed),
+      contextLauncherAccel: readConditionParameter(
+        parameters,
+        "contextLauncherAccelerationPxPerSec2",
+        baseState.contextLauncherAccel
+      ),
+      contextLauncherBehavior: readConditionParameter(parameters, "contextLauncherBehavior", baseState.contextLauncherBehavior),
+      contextDelayMs: readConditionParameter(parameters, "contextDelayMs", baseState.contextDelayMs),
+      contextGapPx: readConditionParameter(parameters, "contextGapPx", baseState.contextGapPx),
+      contextContactOcclusionMode: readConditionParameter(
+        parameters,
+        "contextContactOcclusionMode",
+        baseState.contextContactOcclusionMode
+      ),
+      contextOccluderEnabled: readConditionParameter(parameters, "contextOccluderEnabled", baseState.contextOccluderEnabled),
+      contextOccluderWidth: readConditionParameter(parameters, "contextOccluderWidthPx", baseState.contextOccluderWidth),
+      contextTargetSpeedRatio: readConditionParameter(parameters, "contextTargetSpeedRatio", baseState.contextTargetSpeedRatio),
+      contextTargetAccel: readConditionParameter(
+        parameters,
+        "contextTargetAccelerationPxPerSec2",
+        baseState.contextTargetAccel
+      ),
+      contextTargetAngle: readConditionParameter(parameters, "contextTargetAngleDegrees", baseState.contextTargetAngle),
+      contextLauncherVisibleMs: readConditionParameter(
+        parameters,
+        "contextLauncherVisibleMs",
+        baseState.contextLauncherVisibleMs
+      ),
+      contextTargetVisibleMs: readConditionParameter(parameters, "contextTargetVisibleMs", baseState.contextTargetVisibleMs),
+      renderMode: readConditionParameter(parameters, "renderMode", baseState.renderMode),
+      stageTheme: readConditionParameter(parameters, "stageTheme", baseState.stageTheme),
+      stageColor: readConditionParameter(parameters, "stageColor", baseState.stageColor),
+      objectStyle: readConditionParameter(parameters, "objectStyle", baseState.objectStyle),
+      groupingMode: readConditionParameter(parameters, "groupingMode", baseState.groupingMode),
+      contactGuideMode: readConditionParameter(parameters, "contactGuideMode", baseState.contactGuideMode),
+      fractureEnabled: readConditionParameter(parameters, "fractureEnabled", baseState.fractureEnabled),
+      crosshairEnabled: readConditionParameter(parameters, "crosshairEnabled", baseState.crosshairEnabled),
+      crosshairX: readConditionParameter(parameters, "crosshairX", baseState.crosshairX),
+      crosshairY: readConditionParameter(parameters, "crosshairY", baseState.crosshairY),
+      crosshairColor: readConditionParameter(parameters, "crosshairColor", baseState.crosshairColor),
+      railEnabled: readConditionParameter(parameters, "railEnabled", baseState.railEnabled),
+      railCount: readConditionParameter(parameters, "railCount", baseState.railCount),
+      railLength: readConditionParameter(parameters, "railLengthPx", baseState.railLength),
+      railStartX: readConditionParameter(parameters, "railStartX", baseState.railStartX),
+      railStartY: readConditionParameter(parameters, "railStartY", baseState.railStartY),
+      railEndX: readConditionParameter(parameters, "railEndX", baseState.railEndX),
+      railEndY: readConditionParameter(parameters, "railEndY", baseState.railEndY),
+      railSegments: readConditionParameter(parameters, "railSegments", baseState.railSegments),
+      crosshairBlinkEnabled: readConditionParameter(parameters, "crosshairBlinkEnabled", baseState.crosshairBlinkEnabled),
+      crosshairBlinkMs: readConditionParameter(parameters, "crosshairBlinkMs", baseState.crosshairBlinkMs),
+      trajectoryEditEnabled: readConditionParameter(parameters, "trajectoryEditEnabled", baseState.trajectoryEditEnabled),
+      selectedTrajectoryBall: readConditionParameter(parameters, "selectedTrajectoryBall", baseState.selectedTrajectoryBall),
+      selectedTrajectoryAngle: readConditionParameter(parameters, "selectedTrajectoryAngle", baseState.selectedTrajectoryAngle),
+      trajectoryOverrides: readConditionParameter(parameters, "trajectoryOverrides", baseState.trajectoryOverrides),
+      customStartEnabled: readConditionParameter(parameters, "customStartEnabled", baseState.customStartEnabled),
+      customStartKeepRowsHorizontal: readConditionParameter(
+        parameters,
+        "customStartKeepRowsHorizontal",
+        baseState.customStartKeepRowsHorizontal
+      ),
+      customStartAlignStartsVertical: readConditionParameter(
+        parameters,
+        "customStartAlignStartsVertical",
+        baseState.customStartAlignStartsVertical
+      ),
+      originalLauncherStartX: readConditionParameter(parameters, "originalLauncherStartX", baseState.originalLauncherStartX),
+      originalLauncherStartY: readConditionParameter(parameters, "originalLauncherStartY", baseState.originalLauncherStartY),
+      originalTargetStartX: readConditionParameter(parameters, "originalTargetStartX", baseState.originalTargetStartX),
+      originalTargetStartY: readConditionParameter(parameters, "originalTargetStartY", baseState.originalTargetStartY),
+      contextLauncherStartX: readConditionParameter(parameters, "contextLauncherStartX", baseState.contextLauncherStartX),
+      contextLauncherStartY: readConditionParameter(parameters, "contextLauncherStartY", baseState.contextLauncherStartY),
+      contextTargetStartX: readConditionParameter(parameters, "contextTargetStartX", baseState.contextTargetStartX),
+      contextTargetStartY: readConditionParameter(parameters, "contextTargetStartY", baseState.contextTargetStartY),
+      colorChangeMode: readConditionParameter(parameters, "colorChangeMode", baseState.colorChangeMode),
+      colorChangeColor: readConditionParameter(parameters, "colorChangeColor", baseState.colorChangeColor),
+      launcherColor: readConditionParameter(parameters, "launcherColor", baseState.launcherColor),
+      targetColor: readConditionParameter(parameters, "targetColor", baseState.targetColor),
+      contextColor: readConditionParameter(parameters, "contextColor", baseState.contextColor),
+      contextTargetColor: readConditionParameter(parameters, "contextTargetColor", baseState.contextTargetColor),
+      groupingOriginalColor: readConditionParameter(parameters, "groupingOriginalColor", baseState.groupingOriginalColor),
+      groupingContextColor: readConditionParameter(parameters, "groupingContextColor", baseState.groupingContextColor),
+      pxPerDva: readConditionParameter(parameters, "pxPerDva", baseState.pxPerDva),
+      fixationDva: readConditionParameter(parameters, "fixationDva", baseState.fixationDva),
+      stimulusXOffset: readConditionParameter(parameters, "stimulusXOffsetPx", baseState.stimulusXOffset),
+      stimulusYOffset: readConditionParameter(parameters, "stimulusYOffsetPx", baseState.stimulusYOffset),
+      soundEnabled: readConditionParameter(parameters, "soundEnabled", baseState.soundEnabled),
+      soundType: readConditionParameter(parameters, "soundType", baseState.soundType),
+      soundVolume: readConditionParameter(parameters, "soundVolume", baseState.soundVolume),
+      outputFormat: readConditionParameter(parameters, "outputFormat", baseState.outputFormat),
+      aspectRatio: readConditionParameter(parameters, "aspectRatio", baseState.aspectRatio),
+      exportHeightPx: readConditionParameter(parameters, "exportHeightPx", baseState.exportHeightPx),
+      videoBitrate: readConditionParameter(parameters, "videoBitrateMbps", baseState.videoBitrate),
+      fps: readConditionParameter(parameters, "fps", baseState.fps)
     };
   }
 
@@ -5832,7 +5974,11 @@
       targetVisibleMs: condition.parameters.targetVisibleMs,
       contactDelayMs: condition.parameters.contactDelayMs,
       gapPx: condition.parameters.gapPx,
+      markerMode: condition.parameters.markerMode,
       ballRadiusPx: condition.parameters.ballRadiusPx,
+      occluderEnabled: condition.parameters.occluderEnabled,
+      occluderWidthPx: condition.parameters.occluderWidthPx,
+      contactOcclusionMode: condition.parameters.contactOcclusionMode,
       overlapPercent: condition.standards.overlapPercent,
       impactMs: condition.standards.impactMs,
       targetOnsetMs: condition.standards.targetOnsetMs,
@@ -5844,18 +5990,74 @@
       contextDirection: condition.parameters.contextDirection,
       contextSeparationPx: condition.parameters.contextYOffsetPx,
       contextBallRadiusPx: condition.parameters.contextBallRadiusPx,
+      contextLeadInMs: condition.parameters.contextLeadInMs,
+      contextLauncherSpeedPxPerSec: condition.parameters.contextLauncherSpeedPxPerSec,
+      contextLauncherAccelerationPxPerSec2: condition.parameters.contextLauncherAccelerationPxPerSec2,
       contextLauncherBehavior: condition.parameters.contextLauncherBehavior,
+      contextDelayMs: condition.parameters.contextDelayMs,
       contextGapPx: condition.parameters.contextGapPx,
+      contextContactOcclusionMode: condition.parameters.contextContactOcclusionMode,
       contextOccluderEnabled: condition.parameters.contextOccluderEnabled,
       contextOccluderWidthPx: condition.parameters.contextOccluderWidthPx,
+      contextTargetSpeedRatio: condition.parameters.contextTargetSpeedRatio,
+      contextTargetAccelerationPxPerSec2: condition.parameters.contextTargetAccelerationPxPerSec2,
+      contextTargetAngleDegrees: condition.parameters.contextTargetAngleDegrees,
       contextLauncherVisibleMs: condition.parameters.contextLauncherVisibleMs,
       contextTargetVisibleMs: condition.parameters.contextTargetVisibleMs,
       renderMode: condition.parameters.renderMode,
       stageTheme: condition.parameters.stageTheme,
       stageColor: condition.parameters.stageColor,
+      objectStyle: condition.parameters.objectStyle,
       groupingMode: condition.parameters.groupingMode,
       contactGuideMode: condition.parameters.contactGuideMode,
+      crosshairEnabled: condition.parameters.crosshairEnabled,
+      crosshairX: condition.parameters.crosshairX,
+      crosshairY: condition.parameters.crosshairY,
+      crosshairColor: condition.parameters.crosshairColor,
+      railEnabled: condition.parameters.railEnabled,
+      railCount: condition.parameters.railCount,
+      railLengthPx: condition.parameters.railLengthPx,
+      railStartX: condition.parameters.railStartX,
+      railStartY: condition.parameters.railStartY,
+      railEndX: condition.parameters.railEndX,
+      railEndY: condition.parameters.railEndY,
+      railSegments: JSON.stringify(condition.parameters.railSegments || []),
+      crosshairBlinkEnabled: condition.parameters.crosshairBlinkEnabled,
+      crosshairBlinkMs: condition.parameters.crosshairBlinkMs,
       fractureEnabled: condition.parameters.fractureEnabled,
+      trajectoryEditEnabled: condition.parameters.trajectoryEditEnabled,
+      selectedTrajectoryBall: condition.parameters.selectedTrajectoryBall,
+      selectedTrajectoryAngle: condition.parameters.selectedTrajectoryAngle,
+      trajectoryOverrides: JSON.stringify(condition.parameters.trajectoryOverrides || {}),
+      customStartEnabled: condition.parameters.customStartEnabled,
+      customStartKeepRowsHorizontal: condition.parameters.customStartKeepRowsHorizontal,
+      customStartAlignStartsVertical: condition.parameters.customStartAlignStartsVertical,
+      originalLauncherStartX: condition.parameters.originalLauncherStartX,
+      originalLauncherStartY: condition.parameters.originalLauncherStartY,
+      originalTargetStartX: condition.parameters.originalTargetStartX,
+      originalTargetStartY: condition.parameters.originalTargetStartY,
+      contextLauncherStartX: condition.parameters.contextLauncherStartX,
+      contextLauncherStartY: condition.parameters.contextLauncherStartY,
+      contextTargetStartX: condition.parameters.contextTargetStartX,
+      contextTargetStartY: condition.parameters.contextTargetStartY,
+      colorChangeMode: condition.parameters.colorChangeMode,
+      colorChangeColor: condition.parameters.colorChangeColor,
+      launcherColor: condition.parameters.launcherColor,
+      targetColor: condition.parameters.targetColor,
+      contextColor: condition.parameters.contextColor,
+      contextTargetColor: condition.parameters.contextTargetColor,
+      groupingOriginalColor: condition.parameters.groupingOriginalColor,
+      groupingContextColor: condition.parameters.groupingContextColor,
+      pxPerDva: condition.parameters.pxPerDva,
+      fixationDva: condition.parameters.fixationDva,
+      stimulusXOffsetPx: condition.parameters.stimulusXOffsetPx,
+      stimulusYOffsetPx: condition.parameters.stimulusYOffsetPx,
+      soundEnabled: condition.parameters.soundEnabled,
+      soundType: condition.parameters.soundType,
+      soundVolume: condition.parameters.soundVolume,
+      outputFormat: condition.parameters.outputFormat,
+      aspectRatio: condition.parameters.aspectRatio,
+      videoBitrateMbps: condition.parameters.videoBitrateMbps,
       validationWarnings: condition.validationWarnings.join(" | ")
     }));
     if (rows.length === 0) {
@@ -5926,8 +6128,10 @@
         ? lastGeneratedExportDetails
         : exportFormat;
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportDetails), getPsychopyCsvName(filename));
+    setMetadataDownload(buildPsychopyMetadata(state, filename, exportDetails), getMetadataJsonName(filename));
+    updateArtifactChecklist(state, filename, exportDetails);
     rememberGeneratedMovie(state, filename, exportDetails);
-    statusText.textContent = "PsychoPy CSV ready.";
+    statusText.textContent = "PsychoPy CSV and metadata ready.";
   }
 
   function withCondition(baseState, overrides) {
@@ -5991,12 +6195,35 @@
         groupingMode: condition.groupingMode,
         contactGuideMode: condition.contactGuideMode,
         fractureEnabled: condition.fractureEnabled,
+        crosshairEnabled: condition.crosshairEnabled,
+        crosshairX: condition.crosshairX,
+        crosshairY: condition.crosshairY,
+        crosshairColor: condition.crosshairColor,
+        railEnabled: condition.railEnabled,
+        railCount: condition.railCount,
+        railLengthPx: condition.railLength,
+        railStartX: condition.railStartX,
+        railStartY: condition.railStartY,
+        railEndX: condition.railEndX,
+        railEndY: condition.railEndY,
+        railSegments: condition.railSegments,
+        crosshairBlinkEnabled: condition.crosshairBlinkEnabled,
+        crosshairBlinkMs: condition.crosshairBlinkMs,
         trajectoryEditEnabled: condition.trajectoryEditEnabled,
         selectedTrajectoryBall: condition.selectedTrajectoryBall,
+        selectedTrajectoryAngle: condition.selectedTrajectoryAngle,
         trajectoryOverrides: condition.trajectoryOverrides,
         customStartEnabled: condition.customStartEnabled,
         customStartKeepRowsHorizontal: condition.customStartKeepRowsHorizontal,
         customStartAlignStartsVertical: condition.customStartAlignStartsVertical,
+        originalLauncherStartX: condition.originalLauncherStartX,
+        originalLauncherStartY: condition.originalLauncherStartY,
+        originalTargetStartX: condition.originalTargetStartX,
+        originalTargetStartY: condition.originalTargetStartY,
+        contextLauncherStartX: condition.contextLauncherStartX,
+        contextLauncherStartY: condition.contextLauncherStartY,
+        contextTargetStartX: condition.contextTargetStartX,
+        contextTargetStartY: condition.contextTargetStartY,
         colorChangeMode: condition.colorChangeMode,
         colorChangeColor: condition.colorChangeColor,
         launcherColor: condition.launcherColor,
@@ -6013,6 +6240,7 @@
         soundType: condition.soundType,
         soundVolume: condition.soundVolume,
         outputFormat: condition.outputFormat,
+        aspectRatio: condition.aspectRatio,
         exportHeightPx: getExportHeightPx(condition),
         videoBitrateMbps: condition.videoBitrate,
         fps: condition.fps
@@ -6677,7 +6905,7 @@
     }
     currentObjectUrl = URL.createObjectURL(blob);
 
-    const filename = getExportMovieFilename(state, exportFormat.extension);
+    const filename = getReusableMovieFilename(state, exportFormat.extension);
     const psychopyFilename = getPsychopyCsvName(filename);
     downloadLink.href = currentObjectUrl;
     downloadLink.download = filename;
