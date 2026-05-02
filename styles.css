@@ -52,9 +52,8 @@ body {
   gap: 20px;
   width: min(100%, var(--content-max));
   margin: 0 auto 14px;
-  padding: 14px 0;
-  border-top: 4px solid var(--line);
-  border-bottom: 2px solid var(--line);
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--line);
 }
 
 .topbar,
@@ -94,7 +93,6 @@ h1 {
   position: relative;
   display: block;
   overflow: hidden;
-  border: 2px solid var(--line);
 }
 
 .michotte-card img {
