@@ -1501,12 +1501,34 @@
     contextDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", contextIsOff);
     });
+    syncOccluderWidthVisibility();
 
     if (contextIsOff) {
       hideParameterTooltip();
     } else if (controls.customStartEnabled.checked && controls.customStartAlignStartsVertical.checked) {
       enforceCustomStartConstraints();
     }
+  }
+
+  function syncOccluderWidthField(enabledControl, widthControl) {
+    const field = widthControl?.closest(".field");
+    if (!field) {
+      return;
+    }
+    field.classList.add("occluder-width-field");
+    field.classList.toggle("is-retracted", !enabledControl?.checked);
+  }
+
+  function syncOccluderWidthVisibility() {
+    syncOccluderWidthField(controls.occluderEnabled, controls.occluderWidth);
+    syncOccluderWidthField(controls.contextOccluderEnabled, controls.contextOccluderWidth);
+
+    document.querySelectorAll('[data-pair-field="occluderWidth"]').forEach((widthControl) => {
+      const enabledControl = document.querySelector(
+        `[data-pair-index="${widthControl.dataset.pairIndex}"][data-pair-field="occluderEnabled"]`
+      );
+      syncOccluderWidthField(enabledControl, widthControl);
+    });
   }
 
   function getContextPairCount(state) {
@@ -1842,6 +1864,7 @@
     contextColorPairList.innerHTML = colorCards.join("");
     enhanceRangePrecision();
     syncAllChoiceControlButtons();
+    syncOccluderWidthVisibility();
     updateOutputs();
   }
 
@@ -1871,6 +1894,7 @@
     };
     controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
     activePresetKey = null;
+    syncOccluderWidthVisibility();
     updateOutputs();
     refreshText();
     statusText.textContent = `Context ${snapshotIndex + 2} updated.`;
@@ -6557,6 +6581,9 @@
       const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
       control.addEventListener(eventName, () => {
         activePresetKey = null;
+        if (id === "occluderEnabled" || id === "contextOccluderEnabled") {
+          syncOccluderWidthVisibility();
+        }
         updateOutputs();
         refreshText();
         statusText.textContent = READY_STATUS;

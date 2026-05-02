@@ -333,7 +333,8 @@ h3 {
 .custom-start-dependent-control.is-retracted,
 .rail-dependent-control.is-retracted,
 .crosshair-dependent-control.is-retracted,
-.trajectory-dependent-control.is-retracted {
+.trajectory-dependent-control.is-retracted,
+.occluder-width-field.is-retracted {
   display: none;
 }
 
