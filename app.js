@@ -216,7 +216,7 @@
     contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
-    contactOcclusionMode: "Changes: which original-pair object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
+    contactOcclusionMode: "Changes: which object is painted on top during overlap. Launchee front puts the second object on top; Launcher front puts the first object on top.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
@@ -954,7 +954,7 @@
   }
 
   function normalizeOcclusionMode(value) {
-    return value === "launcher-front" || value === "alternate" ? value : "target-front";
+    return value === "launcher-front" ? value : "target-front";
   }
 
   function parseContextPairSnapshots(value) {
@@ -1730,8 +1730,7 @@
             ])}
             ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
               ["target-front", "Launchee"],
-              ["launcher-front", "Launcher"],
-              ["alternate", "Alt"]
+              ["launcher-front", "Launcher"]
             ])}
             ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Target ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
@@ -3986,9 +3985,6 @@
     if (isOverlapping) {
       if (occlusionMode === "launcher-front") {
         drawOrder = [target, launcher];
-      } else if (occlusionMode === "alternate") {
-        const phase = Math.floor(Math.max(0, eventState.time - eventState.geometry.targetStartTime) / 80);
-        drawOrder = phase % 2 === 0 ? [target, launcher] : [launcher, target];
       }
     }
 
