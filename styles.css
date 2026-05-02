@@ -307,6 +307,19 @@ h3 {
   display: none;
 }
 
+.context-copy-note,
+.special-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 5px 7px;
+  border-left: 3px solid var(--accent);
+  background: var(--paper-soft);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .field > .choice-row {
   display: grid;
   gap: 4px;
@@ -320,7 +333,7 @@ h3 {
 }
 
 .context-choice-row {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .two-choice-row {
@@ -349,6 +362,12 @@ h3 {
   padding: 6px;
   border: 1px solid var(--line);
   background: var(--paper-soft);
+}
+
+.context-pair-list {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
 }
 
 .subgroup-title {
@@ -715,7 +734,12 @@ canvas.start-drag-enabled {
   cursor: grab;
 }
 
-canvas.start-drag-enabled:active {
+canvas.special-drag-enabled {
+  cursor: crosshair;
+}
+
+canvas.start-drag-enabled:active,
+canvas.special-drag-enabled:active {
   cursor: grabbing;
 }
 

@@ -58,6 +58,9 @@
   const categoryMetric = document.getElementById("categoryMetric");
   const captureMetric = document.getElementById("captureMetric");
   const timingMetric = document.getElementById("timingMetric");
+  const contextMovementPairList = document.getElementById("contextMovementPairList");
+  const contextPositionPairList = document.getElementById("contextPositionPairList");
+  const contextColorPairList = document.getElementById("contextColorPairList");
 
   const controlIds = [
     "durationMs",
@@ -78,6 +81,8 @@
     "occluderWidth",
     "contactOcclusionMode",
     "contextMode",
+    "contextPairCount",
+    "contextPairSnapshots",
     "contextDurationMs",
     "contextOffsetMs",
     "contextDirection",
@@ -102,6 +107,16 @@
     "objectStyle",
     "groupingMode",
     "contactGuideMode",
+    "crosshairEnabled",
+    "crosshairX",
+    "crosshairY",
+    "railEnabled",
+    "railStartX",
+    "railStartY",
+    "railEndX",
+    "railEndY",
+    "crosshairBlinkEnabled",
+    "crosshairBlinkMs",
     "customStartEnabled",
     "customStartKeepRowsHorizontal",
     "customStartAlignStartsVertical",
@@ -129,6 +144,7 @@
     "soundType",
     "soundVolume",
     "outputFormat",
+    "aspectRatio",
     "fps",
     "videoBitrate",
     "fileLabel"
@@ -158,7 +174,10 @@
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
     contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
-    contextMode: "Changes: whether a nearby context event is shown. None shows only the judged event; Nearby launch tests capture; Single object controls for motion; Pass context gives continuous motion without a launch.",
+    contextMode:
+      "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
+    contextPairCount:
+      "Changes: how many context pairs are drawn. New pairs copy the original when added; later original edits do not update existing copied pairs.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
     contextOffsetMs: "Changes: context timing relative to the original event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
     contextDirection: "Changes: context motion direction. Same matches the original event; opposite mirrors it.",
@@ -184,6 +203,11 @@
     objectStyle: "Changes: visual rendering of the balls. Simple discs are more controlled; 3D balls are more pictorial.",
     groupingMode: "Changes: solid boxes around original row, context row, or both. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
+    crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
+    railEnabled: "Changes: adds a draggable rail line. By default it connects the original pair centers before motion starts.",
+    crosshairBlinkEnabled:
+      "Changes: makes the crosshair blink before launching starts. During the blink window the balls are hidden.",
+    crosshairBlinkMs: "Changes: duration of the pre-launch crosshair blink window.",
     customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1, O2, C1, and C2 start positions manually; exports use the positions but hide the rings.",
     customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position; C1 and C2 share one y-position when context is shown.",
     customStartAlignStartsVertical: "Changes: keeps the two first objects on one vertical line. Use for: O1 and C1 share one x-position when context is shown.",
@@ -203,6 +227,8 @@
     soundType: "Changes: contact sound shape. Click is sharp; thud is softer; tone is less impact-like.",
     soundVolume: "Changes: contact sound level. Keep fixed unless sound strength is a condition.",
     outputFormat: "Changes: requested movie container and codec preference for the exported file. PsychoPy usually accepts MP4/H.264 most easily, but Safari may provide MP4 while other browsers may fall back to WebM.",
+    aspectRatio:
+      "Changes: exported movie frame shape. The stimulus is centered without stretching the balls; non-16:9 exports add background padding.",
     fps: "Changes: the frame rate written into the exported movie and the saved PsychoPy CSV. The browser preview is close, but the exported file is the source of truth for timing checks.",
     videoBitrate: "Changes: compression quality for the exported movie. Higher values preserve cleaner disc edges and grouping lines, at the cost of larger stimulus files.",
     fileLabel: "Changes: the base filename. Exports add timing, speed, gap, context, and month/day tags automatically.",
@@ -736,6 +762,8 @@
     targetAccel: 0,
     launcherVisibleMs: 9000,
     targetVisibleMs: 9000,
+    contextPairCount: 1,
+    contextPairSnapshots: "[]",
     contextDurationMs: 750,
     contextLeadInMs: 200,
     contextBallRadius: 28,
@@ -760,6 +788,16 @@
     objectStyle: "flat",
     groupingMode: "none",
     contactGuideMode: "none",
+    crosshairEnabled: false,
+    crosshairX: STAGE_WIDTH / 2,
+    crosshairY: STAGE_HEIGHT / 2,
+    railEnabled: false,
+    railStartX: 92,
+    railStartY: STAGE_HEIGHT / 2,
+    railEndX: STAGE_WIDTH * 0.58,
+    railEndY: STAGE_HEIGHT / 2,
+    crosshairBlinkEnabled: false,
+    crosshairBlinkMs: 600,
     colorChangeMode: "none",
     colorChangeColor: "#f2d94e",
     launcherColor: "#e53935",
@@ -787,6 +825,7 @@
     soundType: "click",
     soundVolume: 0.35,
     outputFormat: "lab",
+    aspectRatio: "16:9",
     videoBitrate: 8
   };
   const controls = {};
@@ -812,6 +851,7 @@
   let previewStart = 0;
   let isExporting = false;
   let startDragTarget = null;
+  let specialDragTarget = null;
   let customStartPositionsInitialized = false;
   let sharedPresetKeys = [];
   let customPresetKeys = [];
@@ -842,6 +882,22 @@
     return value === "launcher-front" || value === "alternate" ? value : "target-front";
   }
 
+  function parseContextPairSnapshots(value) {
+    if (!value) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function serializeContextPairSnapshots(snapshots) {
+    return JSON.stringify(Array.isArray(snapshots) ? snapshots : []);
+  }
+
   function cloneState() {
     return {
       durationMs: Number(controls.durationMs.value),
@@ -862,6 +918,8 @@
       occluderWidth: Number(controls.occluderWidth.value),
       contactOcclusionMode: normalizeOcclusionMode(controls.contactOcclusionMode.value),
       contextMode: controls.contextMode.value,
+      contextPairCount: Number(controls.contextPairCount.value),
+      contextPairSnapshots: parseContextPairSnapshots(controls.contextPairSnapshots.value),
       contextDurationMs: Number(controls.contextDurationMs.value),
       contextOffsetMs: Number(controls.contextOffsetMs.value),
       contextDirection: controls.contextDirection.value,
@@ -886,6 +944,16 @@
       objectStyle: controls.objectStyle.value,
       groupingMode: controls.groupingMode.value,
       contactGuideMode: controls.contactGuideMode.value,
+      crosshairEnabled: controls.crosshairEnabled.checked,
+      crosshairX: Number(controls.crosshairX.value),
+      crosshairY: Number(controls.crosshairY.value),
+      railEnabled: controls.railEnabled.checked,
+      railStartX: Number(controls.railStartX.value),
+      railStartY: Number(controls.railStartY.value),
+      railEndX: Number(controls.railEndX.value),
+      railEndY: Number(controls.railEndY.value),
+      crosshairBlinkEnabled: controls.crosshairBlinkEnabled.checked,
+      crosshairBlinkMs: Number(controls.crosshairBlinkMs.value),
       customStartEnabled: controls.customStartEnabled.checked,
       customStartKeepRowsHorizontal: controls.customStartKeepRowsHorizontal.checked,
       customStartAlignStartsVertical: controls.customStartAlignStartsVertical.checked,
@@ -913,13 +981,14 @@
       soundType: controls.soundType.value,
       soundVolume: Number(controls.soundVolume.value),
       outputFormat: controls.outputFormat.value,
+      aspectRatio: controls.aspectRatio.value,
       fps: Number(controls.fps.value),
       videoBitrate: Number(controls.videoBitrate.value),
       fileLabel: controls.fileLabel.value.trim() || "causal-launching"
     };
   }
 
-  function formatValue(format, value, inputId = "") {
+  function formatValue(format, value, inputId = "", input = null) {
     const number = Number(value);
     switch (format) {
       case "int":
@@ -936,6 +1005,8 @@
         return `${number >= 0 ? "+" : ""}${Math.round(number)}°`;
       case "ms":
         return `${Math.round(number)} ms`;
+      case "count":
+        return `${Math.round(number)} ${Math.round(number) === 1 ? "pair" : "pairs"}`;
       case "visibilityMs": {
         const videoDuration = controls.durationMs ? Number(controls.durationMs.value) : 0;
         const suffix = number > videoDuration ? " no cut" : "";
@@ -946,8 +1017,13 @@
       case "signedPx":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} px`;
       case "overlap": {
+        const pairIndex = input?.dataset?.pairIndex;
+        const snapshots = parseContextPairSnapshots(controls.contextPairSnapshots?.value);
+        const dynamicRadius =
+          pairIndex !== undefined && snapshots[Number(pairIndex)] ? Number(snapshots[Number(pairIndex)].ballRadius) : null;
         const radiusControl = inputId === "contextGapPx" ? controls.contextBallRadius : controls.ballRadius;
-        const radius = radiusControl ? Number(radiusControl.value) : 28;
+        const fallbackRadius = radiusControl ? Number(radiusControl.value) : 28;
+        const radius = Number.isFinite(dynamicRadius) ? dynamicRadius : fallbackRadius;
         if (number < 0) {
           const overlap = clamp((-number / Math.max(1, radius * 2)) * 100, 0, 100);
           return `${Math.round(overlap)}% overlap`;
@@ -977,7 +1053,10 @@
   function updateOutputs() {
     document.querySelectorAll("output[data-for]").forEach((output) => {
       const input = document.getElementById(output.dataset.for);
-      output.textContent = formatValue(input.dataset.format, input.value, input.id);
+      if (!input) {
+        return;
+      }
+      output.textContent = formatValue(input.dataset.format, input.value, input.id, input);
       const fineInput = input.dataset.fineControlId ? document.getElementById(input.dataset.fineControlId) : null;
       if (fineInput && document.activeElement !== fineInput) {
         fineInput.value = input.value;
@@ -1112,12 +1191,58 @@
     syncChoiceButtons(contextDirectionButtons, "contextDirection", controls.contextDirection.value);
   }
 
+  function setControlValue(control, value) {
+    if (!control) {
+      return;
+    }
+    if (control.type === "checkbox") {
+      control.checked = Boolean(value);
+    } else {
+      control.value = value;
+    }
+  }
+
+  function copyOriginalToContextControls() {
+    const pairs = [
+      ["contextLeadInMs", "leadInMs"],
+      ["contextBallRadius", "ballRadius"],
+      ["contextLauncherSpeed", "launcherSpeed"],
+      ["contextLauncherAccel", "launcherAccel"],
+      ["contextLauncherBehavior", "launcherBehavior"],
+      ["contextDelayMs", "delayMs"],
+      ["contextGapPx", "gapPx"],
+      ["contextContactOcclusionMode", "contactOcclusionMode"],
+      ["contextOccluderEnabled", "occluderEnabled"],
+      ["contextOccluderWidth", "occluderWidth"],
+      ["contextTargetSpeedRatio", "targetSpeedRatio"],
+      ["contextTargetAccel", "targetAccel"],
+      ["contextTargetAngle", "targetAngle"],
+      ["contextLauncherVisibleMs", "launcherVisibleMs"],
+      ["contextTargetVisibleMs", "targetVisibleMs"],
+      ["contextColor", "launcherColor"],
+      ["contextTargetColor", "targetColor"],
+      ["groupingContextColor", "groupingOriginalColor"]
+    ];
+
+    pairs.forEach(([contextId, originalId]) => {
+      setControlValue(controls[contextId], controls[originalId]?.type === "checkbox" ? controls[originalId].checked : controls[originalId]?.value);
+    });
+
+    controls.contextPairCount.value = 1;
+    controls.contextPairSnapshots.value = "[]";
+    updateOutputs();
+  }
+
   function applyContextChoice(control, value) {
     if (!control || control.value === value) {
       return;
     }
 
+    const previousValue = control.value;
     control.value = value;
+    if (control.id === "contextMode" && previousValue === "none" && value !== "none") {
+      copyOriginalToContextControls();
+    }
     control.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
@@ -1135,6 +1260,223 @@
     }
   }
 
+  function getContextPairCount(state) {
+    if (state.contextMode === "none") {
+      return 0;
+    }
+    return clamp(Math.round(Number(state.contextPairCount) || 1), 1, 4);
+  }
+
+  function getDefaultContextPairOffset(state, pairIndex) {
+    const sign = state.contextYOffset < 0 ? -1 : 1;
+    const spacing = clamp(Math.abs(state.contextYOffset) || 112, 56, 170);
+    const offsetPattern = [1, -1, 2, -2];
+    return (offsetPattern[pairIndex] || pairIndex + 1) * spacing * sign;
+  }
+
+  function makeContextPairSnapshotFromOriginal(state, pairIndex = 1) {
+    const laneY = getMainLaneY(state);
+    const geometry = getGeometry(state, laneY, { scope: "original", directionSign: 1 });
+    return {
+      laneY,
+      yOffset: getDefaultContextPairOffset(state, pairIndex),
+      ballRadius: state.ballRadius,
+      leadInMs: state.leadInMs,
+      launcherSpeed: state.launcherSpeed,
+      launcherAccel: state.launcherAccel,
+      launcherBehavior: state.launcherBehavior,
+      delayMs: state.delayMs,
+      gapPx: state.gapPx,
+      contactOcclusionMode: state.contactOcclusionMode,
+      occluderEnabled: state.occluderEnabled,
+      occluderWidth: state.occluderWidth,
+      targetSpeedRatio: state.targetSpeedRatio,
+      targetAccel: state.targetAccel,
+      targetAngle: state.targetAngle,
+      launcherVisibleMs: state.launcherVisibleMs,
+      targetVisibleMs: state.targetVisibleMs,
+      launcherColor: state.launcherColor,
+      targetColor: state.targetColor,
+      groupingColor: state.groupingOriginalColor,
+      launcherStartX: geometry.launcherStartX,
+      launcherStartY: geometry.launcherStartY,
+      targetStartX: geometry.targetBaseX,
+      targetStartY: geometry.targetBaseY
+    };
+  }
+
+  function syncContextPairSnapshots() {
+    const state = cloneState();
+    const pairCount = getContextPairCount(state);
+    const neededSnapshots = Math.max(0, pairCount - 1);
+    const snapshots = [...state.contextPairSnapshots].slice(0, neededSnapshots);
+
+    while (snapshots.length < neededSnapshots) {
+      snapshots.push(
+        makeContextPairSnapshotFromOriginal(
+          { ...state, customStartEnabled: Boolean(state.customStartEnabled) },
+          snapshots.length + 1
+        )
+      );
+    }
+
+    controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
+  }
+
+  function normalizeContextPairSnapshot(snapshot, state, pairIndex) {
+    return {
+      ...makeContextPairSnapshotFromOriginal(state, pairIndex),
+      ...(snapshot || {})
+    };
+  }
+
+  function getContextLaneY(state, mainLaneY, pairIndex, snapshot = null) {
+    const storedOffset = pairIndex === 0 ? state.contextYOffset : Number(snapshot?.yOffset);
+    const offset = Number.isFinite(storedOffset) ? storedOffset : getDefaultContextPairOffset(state, pairIndex);
+    return clamp(mainLaneY + offset, 44, STAGE_HEIGHT - 44);
+  }
+
+  function contextPairFieldId(pairNumber, group, field) {
+    return `context${pairNumber}${group}${field.charAt(0).toUpperCase()}${field.slice(1)}`;
+  }
+
+  function renderContextRange(pairNumber, group, field, label, snapshot, format, min, max, step, extra = "") {
+    const id = contextPairFieldId(pairNumber, group, field);
+    const value = snapshot[field];
+    return `<label class="field"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" data-format="${format}" ${extra} min="${min}" max="${max}" step="${step}" type="range" value="${value}" /><output data-for="${id}"></output></label>`;
+  }
+
+  function renderContextSelect(pairNumber, group, field, label, snapshot, options) {
+    const id = contextPairFieldId(pairNumber, group, field);
+    const renderedOptions = options
+      .map(
+        ([value, text]) =>
+          `<option value="${value}"${snapshot[field] === value ? " selected" : ""}>${text}</option>`
+      )
+      .join("");
+    return `<label class="field"><span>${label}</span><select id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}">${renderedOptions}</select></label>`;
+  }
+
+  function renderContextCheckbox(pairNumber, group, field, label, snapshot) {
+    const id = contextPairFieldId(pairNumber, group, field);
+    return `<label class="field checkbox-field"><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="checkbox"${snapshot[field] ? " checked" : ""} /><span>${label}</span></label>`;
+  }
+
+  function renderContextColor(pairNumber, group, field, label, snapshot) {
+    const id = contextPairFieldId(pairNumber, group, field);
+    return `<label class="field color-field"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="color" value="${snapshot[field]}" /></label>`;
+  }
+
+  function renderContextPairEditors() {
+    const containers = [contextMovementPairList, contextPositionPairList, contextColorPairList];
+    if (containers.some((container) => !container)) {
+      return;
+    }
+
+    const state = cloneState();
+    const pairCount = getContextPairCount(state);
+    if (pairCount <= 1) {
+      containers.forEach((container) => {
+        container.replaceChildren();
+      });
+      return;
+    }
+
+    const snapshots = state.contextPairSnapshots || [];
+    const movementCards = [];
+    const positionCards = [];
+    const colorCards = [];
+
+    for (let pairNumber = 2; pairNumber <= pairCount; pairNumber += 1) {
+      const snapshot = normalizeContextPairSnapshot(snapshots[pairNumber - 2], state, pairNumber - 1);
+      movementCards.push(`
+        <div class="control-subgroup context-pair-editor">
+          <h3 class="subgroup-title">Context ${pairNumber} movement</h3>
+          <div class="control-subgrid">
+            ${renderContextRange(pairNumber, "Movement", "leadInMs", "Lead-in", snapshot, "int", 0, 1800, 10)}
+            ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "Speed", snapshot, "float1", 80, 6500, 1)}
+            ${renderContextRange(pairNumber, "Movement", "launcherAccel", "Acceleration", snapshot, "accel", -1500, 3000, 50)}
+            ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "After contact", snapshot, [
+              ["stop", "Stops: launching"],
+              ["continue", "Continues: pass/slip"],
+              ["entrain", "Continues with target"]
+            ])}
+            ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
+              ["target-front", "Second object front"],
+              ["launcher-front", "First object front"],
+              ["alternate", "Alternate"]
+            ])}
+            ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
+            ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Target ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
+            ${renderContextRange(pairNumber, "Movement", "targetAccel", "Target accel.", snapshot, "accel", -1500, 3000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "targetAngle", "Target angle", snapshot, "degrees", -90, 90, 1)}
+            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "C1 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
+            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "C2 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
+          </div>
+        </div>`);
+
+      positionCards.push(`
+        <div class="control-subgroup context-pair-editor">
+          <h3 class="subgroup-title">Context ${pairNumber} position</h3>
+          <div class="control-subgrid">
+            ${renderContextRange(pairNumber, "Position", "yOffset", "Vertical distance", snapshot, "signedPx", -320, 320, 1)}
+            ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 12, 60, 1)}
+            ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
+            ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
+            ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
+          </div>
+        </div>`);
+
+      colorCards.push(`
+        <div class="control-subgroup context-pair-editor">
+          <h3 class="subgroup-title">Context ${pairNumber} color</h3>
+          <div class="control-subgrid">
+            ${renderContextColor(pairNumber, "Color", "launcherColor", "Launcher", snapshot)}
+            ${renderContextColor(pairNumber, "Color", "targetColor", "Target", snapshot)}
+            ${renderContextColor(pairNumber, "Color", "groupingColor", "Grouping box", snapshot)}
+          </div>
+        </div>`);
+    }
+
+    contextMovementPairList.innerHTML = movementCards.join("");
+    contextPositionPairList.innerHTML = positionCards.join("");
+    contextColorPairList.innerHTML = colorCards.join("");
+    enhanceRangePrecision();
+    updateOutputs();
+  }
+
+  function updateContextPairSnapshotFromControl(control) {
+    const snapshotIndex = Number(control.dataset.pairIndex);
+    const field = control.dataset.pairField;
+    if (!Number.isInteger(snapshotIndex) || !field) {
+      return;
+    }
+
+    const state = cloneState();
+    const snapshots = [...state.contextPairSnapshots];
+    while (snapshots.length <= snapshotIndex) {
+      snapshots.push(makeContextPairSnapshotFromOriginal(state, snapshots.length + 1));
+    }
+
+    let value = control.value;
+    if (control.type === "checkbox") {
+      value = control.checked;
+    } else if (control.type === "range" || control.type === "number") {
+      value = Number(control.value);
+    }
+
+    snapshots[snapshotIndex] = {
+      ...normalizeContextPairSnapshot(snapshots[snapshotIndex], state, snapshotIndex + 1),
+      [field]: field === "contactOcclusionMode" ? normalizeOcclusionMode(value) : value
+    };
+    controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = `Context ${snapshotIndex + 2} updated.`;
+    drawFrame(cloneState(), 0, ctx);
+  }
+
   function writeCoordinateControl(xId, yId, x, y) {
     controls[xId].value = Number(clamp(x, 0, STAGE_WIDTH).toFixed(1));
     controls[yId].value = Number(clamp(y, 0, STAGE_HEIGHT).toFixed(1));
@@ -1149,7 +1491,7 @@
     const laneY = getMainLaneY(automaticState);
     const originalGeometry = getGeometry(automaticState, laneY, { scope: "original", directionSign: 1 });
     const contextState = getContextMotionState(automaticState);
-    const contextGeometry = getGeometry(contextState, laneY + automaticState.contextYOffset, {
+    const contextGeometry = getGeometry(contextState, getContextLaneY(automaticState, laneY, 0), {
       scope: "context",
       directionSign: originalGeometry.contextDirectionSign
     });
@@ -1214,6 +1556,33 @@
       startDragTarget = null;
       hideParameterTooltip();
     }
+  }
+
+  function syncSpecialDragUi() {
+    const enabled = Boolean(controls.crosshairEnabled.checked || controls.railEnabled.checked);
+    canvas.classList.toggle("special-drag-enabled", enabled);
+    if (!enabled) {
+      specialDragTarget = null;
+    }
+  }
+
+  function getDefaultRailEndpoints(state = cloneState()) {
+    const laneY = getMainLaneY({ ...state, customStartEnabled: false });
+    const geometry = getGeometry({ ...state, customStartEnabled: false }, laneY, { scope: "original", directionSign: 1 });
+    return {
+      start: { x: geometry.launcherStartX, y: geometry.launcherStartY },
+      end: { x: geometry.targetBaseX, y: geometry.targetBaseY }
+    };
+  }
+
+  function initializeRailEndpoints(force = false) {
+    if (!force && Number(controls.railStartX.value) && Number(controls.railEndX.value)) {
+      return;
+    }
+
+    const endpoints = getDefaultRailEndpoints();
+    writeCoordinateControl("railStartX", "railStartY", endpoints.start.x, endpoints.start.y);
+    writeCoordinateControl("railEndX", "railEndY", endpoints.end.x, endpoints.end.y);
   }
 
   function getPreset(presetKey) {
@@ -1505,13 +1874,23 @@
   }
 
   function setControls(values) {
-    Object.entries(values).forEach(([key, value]) => {
+    const normalizedValues = { ...values };
+    if (normalizedValues.contextMode === "pass") {
+      normalizedValues.contextMode = "launch";
+      normalizedValues.contextLauncherBehavior = "continue";
+    }
+
+    Object.entries(normalizedValues).forEach(([key, value]) => {
       const control = controls[key];
       if (!control) {
         return;
       }
       const normalizedValue =
-        key === "contactOcclusionMode" || key === "contextContactOcclusionMode" ? normalizeOcclusionMode(value) : value;
+        key === "contactOcclusionMode" || key === "contextContactOcclusionMode"
+          ? normalizeOcclusionMode(value)
+          : key === "contextPairSnapshots" && Array.isArray(value)
+            ? serializeContextPairSnapshots(value)
+            : value;
       if (control.type === "checkbox") {
         control.checked = Boolean(normalizedValue);
       } else {
@@ -1520,7 +1899,10 @@
     });
     customStartPositionsInitialized = Boolean(controls.customStartEnabled.checked);
     syncContextControlVisibility();
+    syncContextPairSnapshots();
+    renderContextPairEditors();
     syncStartDragUi();
+    syncSpecialDragUi();
     enforceCustomStartConstraints();
     updateOutputs();
     refreshText();
@@ -1660,7 +2042,7 @@
     if (state.contextMode !== "none") {
       const offset = Math.abs(state.contextOffsetMs);
       const contextLabel =
-        state.contextMode === "launch" ? "launch context" : state.contextMode === "single" ? "single context" : "pass context";
+        state.contextMode === "launch" ? "launch context" : state.contextMode === "single" ? "single context" : "context";
       if (offset <= 50) {
         capture = "synchronized";
       } else if (offset <= 90) {
@@ -1676,6 +2058,9 @@
       }
       if (state.contextDirection === "opposite") {
         capture += ", opposite";
+      }
+      if (getContextPairCount(state) > 1) {
+        capture += `, ${getContextPairCount(state)} pairs`;
       }
     }
 
@@ -1742,13 +2127,15 @@
     const labels = {
       launch: "nearby launch",
       single: "single object",
-      pass: "pass context"
+      pass: "continuous context"
     };
     const timing =
       state.contextOffsetMs === 0
         ? "sync"
         : `${Math.abs(state.contextOffsetMs)} ms ${state.contextOffsetMs < 0 ? "early" : "late"}`;
-    return `${labels[state.contextMode] || state.contextMode}, ${timing}`;
+    const pairCount = getContextPairCount(state);
+    const pairText = pairCount > 1 ? `, ${pairCount} pairs` : "";
+    return `${labels[state.contextMode] || state.contextMode}, ${timing}${pairText}`;
   }
 
   function describeOutputFormat(value) {
@@ -1814,6 +2201,9 @@
     }
     if (state.soundEnabled) {
       warnings.push("Audio export depends on browser encoding. Check the saved movie in PsychoPy.");
+    }
+    if (state.crosshairBlinkEnabled && state.crosshairEnabled && state.leadInMs <= 0) {
+      warnings.push("Crosshair blink needs Lead-in above 0 ms; otherwise the blink has no pre-launch window.");
     }
     return warnings;
   }
@@ -1942,6 +2332,14 @@
     const g = parseInt(safeHex.slice(2, 4), 16);
     const b = parseInt(safeHex.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`;
+  }
+
+  function getObjectPalette(color, fallback = "#7fd0c8") {
+    const fill = normalizeHexColor(color, fallback);
+    return {
+      fill,
+      outline: shadeHexColor(fill, -0.48)
+    };
   }
 
   function getPalette(state) {
@@ -2076,13 +2474,17 @@
     drawCtx.stroke();
   }
 
-  function drawStageBackground(drawCtx, state) {
+  function getStageThemeColors(state) {
     const themes = {
       dark: ["#0a1516", "rgba(48, 87, 86, 0.18)", "rgba(237, 244, 244, 0.18)"],
       midgray: ["#7a7f7d", "rgba(255, 255, 255, 0.12)", "rgba(255, 255, 255, 0.2)"],
       light: ["#f4f5ef", "rgba(31, 103, 98, 0.08)", "rgba(23, 34, 32, 0.16)"]
     };
-    const theme = themes[state.stageTheme] || themes.dark;
+    return themes[state.stageTheme] || themes.dark;
+  }
+
+  function drawStageBackground(drawCtx, state) {
+    const theme = getStageThemeColors(state);
     drawCtx.fillStyle = theme[0];
     drawCtx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
     return theme;
@@ -2169,7 +2571,7 @@
 
     const adjustedTime = time - state.contextOffsetMs;
     const contextWindowMs = Number(state.contextDurationMs) || 750;
-    const contextGeometry = getGeometry(getContextMotionState(state), mainGeometry.laneY + state.contextYOffset, {
+    const contextGeometry = getGeometry(getContextMotionState(state), getContextLaneY(state, mainGeometry.laneY, 0), {
       scope: "context",
       directionSign: mainGeometry.contextDirectionSign
     });
@@ -2187,7 +2589,7 @@
       isContextEventVisible(state, eventState.time, eventState.geometry) &&
       rowGap > 0;
     const contextState = getContextMotionState(state);
-    const contextLaneY = eventState.geometry.laneY + state.contextYOffset;
+    const contextLaneY = getContextLaneY(state, eventState.geometry.laneY, 0);
     const contextGeometry = getGeometry(contextState, contextLaneY, {
       scope: "context",
       directionSign: eventState.geometry.contextDirectionSign
@@ -2258,7 +2660,7 @@
     }
     if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
       const contextState = getContextMotionState(state);
-      const contextGeometry = getGeometry(contextState, eventState.geometry.laneY + state.contextYOffset, {
+      const contextGeometry = getGeometry(contextState, getContextLaneY(state, eventState.geometry.laneY, 0), {
         scope: "context",
         directionSign: eventState.geometry.contextDirectionSign
       });
@@ -2420,19 +2822,22 @@
       leadInMs: state.contextLeadInMs,
       launcherSpeed: state.contextLauncherSpeed,
       launcherAccel: state.contextLauncherAccel,
-      launcherBehavior: state.contextMode === "pass" ? "continue" : state.contextLauncherBehavior,
+      launcherBehavior: state.contextLauncherBehavior,
       delayMs: state.contextDelayMs,
       gapPx: state.contextGapPx,
       occluderEnabled: state.contextOccluderEnabled,
       occluderWidth: state.contextOccluderWidth,
       targetSpeedRatio: state.contextTargetSpeedRatio,
       targetAccel: state.contextTargetAccel,
-      targetAngle: state.contextTargetAngle
+      targetAngle: state.contextTargetAngle,
+      contactOcclusionMode: state.contextContactOcclusionMode,
+      launcherVisibleMs: state.contextLauncherVisibleMs,
+      targetVisibleMs: state.contextTargetVisibleMs
     };
   }
 
-  function getDirectedEventState(eventState, t, laneY, directionSign) {
-    const geometry = getGeometry(eventState, laneY, { scope: "context", directionSign });
+  function getDirectedEventState(eventState, t, laneY, directionSign, scope = "context") {
+    const geometry = getGeometry(eventState, laneY, { scope, directionSign });
     const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
     const approachDistance = Math.min(
       geometry.launcherDistance,
@@ -2473,8 +2878,8 @@
     };
   }
 
-  function getDirectedSingleEventState(eventState, t, laneY, directionSign) {
-    const geometry = getGeometry(eventState, laneY, { scope: "context", directionSign });
+  function getDirectedSingleEventState(eventState, t, laneY, directionSign, scope = "context") {
+    const geometry = getGeometry(eventState, laneY, { scope, directionSign });
     const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
     const approachDistance = Math.min(
       geometry.launcherDistance,
@@ -2498,55 +2903,134 @@
     };
   }
 
-  function drawContextEvent(drawCtx, state, t, mainEvent) {
-    if (!isContextEventVisible(state, t, mainEvent.geometry)) {
-      return;
-    }
+  function getContextPairSnapshotState(snapshot, baseState, laneY) {
+    const sourceLaneY = Number(snapshot.laneY) || getMainLaneY(baseState);
+    const yShift = laneY - sourceLaneY;
+    return {
+      ...baseState,
+      ballRadius: Number(snapshot.ballRadius) || baseState.ballRadius,
+      leadInMs: Number(snapshot.leadInMs) || 0,
+      launcherSpeed: Number(snapshot.launcherSpeed) || baseState.launcherSpeed,
+      launcherAccel: Number(snapshot.launcherAccel) || 0,
+      launcherBehavior: snapshot.launcherBehavior || baseState.launcherBehavior,
+      delayMs: Number(snapshot.delayMs) || 0,
+      gapPx: Number(snapshot.gapPx) || 0,
+      contactOcclusionMode: normalizeOcclusionMode(snapshot.contactOcclusionMode),
+      occluderEnabled: Boolean(snapshot.occluderEnabled),
+      occluderWidth: Number(snapshot.occluderWidth) || baseState.occluderWidth,
+      targetSpeedRatio: Number(snapshot.targetSpeedRatio) || baseState.targetSpeedRatio,
+      targetAccel: Number(snapshot.targetAccel) || 0,
+      targetAngle: Number(snapshot.targetAngle) || 0,
+      launcherVisibleMs: Number(snapshot.launcherVisibleMs) || baseState.launcherVisibleMs,
+      targetVisibleMs: Number(snapshot.targetVisibleMs) || baseState.targetVisibleMs,
+      originalLauncherStartX: Number(snapshot.launcherStartX) || baseState.originalLauncherStartX,
+      originalLauncherStartY: (Number(snapshot.launcherStartY) || baseState.originalLauncherStartY) + yShift,
+      originalTargetStartX: Number(snapshot.targetStartX) || baseState.originalTargetStartX,
+      originalTargetStartY: (Number(snapshot.targetStartY) || baseState.originalTargetStartY) + yShift,
+      customStartEnabled: true
+    };
+  }
 
-    const palette = getPalette(state);
-    const laneY = mainEvent.geometry.laneY + state.contextYOffset;
-    const directionSign = mainEvent.geometry.contextDirectionSign;
-    const adjustedTime = t - state.contextOffsetMs;
-    const contextState = getContextMotionState(state);
-
+  function drawContextPair(drawCtx, state, eventState, t, laneY, directionSign, colors, scope = "context") {
     if (state.contextMode === "single") {
-      const singleEvent = getDirectedSingleEventState(contextState, adjustedTime, laneY, directionSign);
-      const singlePalette = adjustedTime < singleEvent.geometry.stopTime ? palette.context : palette.contextTarget;
+      const singleEvent = getDirectedSingleEventState(eventState, t, laneY, directionSign, scope);
+      const singlePalette = t < singleEvent.geometry.stopTime ? colors.launcher : colors.target;
       const radius = singleEvent.geometry.radius;
-      const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
+      const contextOccluderBounds = drawTunnelOccluder(
+        drawCtx,
+        laneY,
+        radius,
+        eventState.occluderEnabled,
+        eventState.occluderWidth
+      );
       if (
-        isObjectVisibleAt(adjustedTime, state.contextLauncherVisibleMs) &&
-        (!state.contextOccluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds))
+        isObjectVisibleAt(t, eventState.launcherVisibleMs) &&
+        (!eventState.occluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds))
       ) {
         drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, radius, singlePalette.fill, singlePalette.outline);
       }
       return;
     }
 
-    const contextEvent = getDirectedEventState(contextState, adjustedTime, laneY, directionSign);
+    const contextEvent = getDirectedEventState(eventState, t, laneY, directionSign, scope);
     const launcher = {
       x: contextEvent.launcherX,
       y: contextEvent.launcherY,
-      fill: palette.context.fill,
-      outline: palette.context.outline,
-      visible: isObjectVisibleAt(adjustedTime, state.contextLauncherVisibleMs)
+      fill: colors.launcher.fill,
+      outline: colors.launcher.outline,
+      visible: isObjectVisibleAt(t, eventState.launcherVisibleMs)
     };
     const target = {
       x: contextEvent.targetX,
       y: contextEvent.targetY,
-      fill: palette.contextTarget.fill,
-      outline: palette.contextTarget.outline,
-      visible: isObjectVisibleAt(adjustedTime, state.contextTargetVisibleMs)
+      fill: colors.target.fill,
+      outline: colors.target.outline,
+      visible: isObjectVisibleAt(t, eventState.targetVisibleMs)
     };
-    const contextOccluderBounds = drawContextOccluder(drawCtx, state, laneY);
+    const contextOccluderBounds = drawTunnelOccluder(
+      drawCtx,
+      laneY,
+      contextEvent.geometry.radius,
+      eventState.occluderEnabled,
+      eventState.occluderWidth
+    );
     const radius = contextEvent.geometry.radius;
 
-    if (state.contextOccluderEnabled) {
+    if (eventState.occluderEnabled) {
       drawOccludedObjectPair(drawCtx, state, launcher, target, radius, contextOccluderBounds);
       return;
     }
 
-    drawObjectPair(drawCtx, state, contextEvent, launcher, target, radius, state.contextContactOcclusionMode);
+    drawObjectPair(drawCtx, state, contextEvent, launcher, target, radius, eventState.contactOcclusionMode);
+  }
+
+  function drawContextEvent(drawCtx, state, t, mainEvent) {
+    if (!isContextEventVisible(state, t, mainEvent.geometry)) {
+      return;
+    }
+
+    const palette = getPalette(state);
+    const pairCount = getContextPairCount(state);
+    const directionSign = mainEvent.geometry.contextDirectionSign;
+    const adjustedTime = t - state.contextOffsetMs;
+    const contextState = getContextMotionState(state);
+    const snapshots = state.contextPairSnapshots || [];
+
+    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+      const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
+      const laneY = getContextLaneY(state, mainEvent.geometry.laneY, pairIndex, snapshot);
+      if (pairIndex === 0) {
+        drawContextPair(
+          drawCtx,
+          state,
+          contextState,
+          adjustedTime,
+          laneY,
+          directionSign,
+          {
+            launcher: palette.context,
+            target: palette.contextTarget
+          },
+          "context"
+        );
+        continue;
+      }
+
+      const snapshotState = getContextPairSnapshotState(snapshot, state, laneY);
+      drawContextPair(
+        drawCtx,
+        state,
+        snapshotState,
+        adjustedTime,
+        laneY,
+        directionSign,
+        {
+          launcher: getObjectPalette(snapshot.launcherColor || state.launcherColor, state.launcherColor),
+          target: getObjectPalette(snapshot.targetColor || state.targetColor, state.targetColor)
+        },
+        "original"
+      );
+    }
   }
 
   function drawTunnelOccluder(drawCtx, laneY, radius, enabled, width) {
@@ -2694,6 +3178,78 @@
     drawCtx.restore();
   }
 
+  function getFeatureCoordinate(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function drawRailFeature(drawCtx, state) {
+    if (!state.railEnabled) {
+      return;
+    }
+
+    const startX = getFeatureCoordinate(state.railStartX, 92);
+    const startY = getFeatureCoordinate(state.railStartY, STAGE_HEIGHT / 2);
+    const endX = getFeatureCoordinate(state.railEndX, STAGE_WIDTH * 0.58);
+    const endY = getFeatureCoordinate(state.railEndY, STAGE_HEIGHT / 2);
+
+    drawCtx.save();
+    drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(20, 20, 18, 0.72)" : "rgba(245, 244, 235, 0.78)";
+    drawCtx.lineWidth = 2.4;
+    drawCtx.setLineDash([]);
+    drawCtx.lineCap = "round";
+    drawCtx.beginPath();
+    drawCtx.moveTo(startX, startY);
+    drawCtx.lineTo(endX, endY);
+    drawCtx.stroke();
+    drawCtx.restore();
+  }
+
+  function drawCrosshairFeature(drawCtx, state, alpha = 1) {
+    if (!state.crosshairEnabled) {
+      return;
+    }
+
+    const x = getFeatureCoordinate(state.crosshairX, STAGE_WIDTH / 2);
+    const y = getFeatureCoordinate(state.crosshairY, STAGE_HEIGHT / 2);
+    const arm = 24;
+    const gap = 5;
+    const color =
+      state.stageTheme === "light"
+        ? `rgba(20, 20, 18, ${0.74 * alpha})`
+        : `rgba(245, 244, 235, ${0.84 * alpha})`;
+
+    drawCtx.save();
+    drawCtx.strokeStyle = color;
+    drawCtx.lineWidth = 2;
+    drawCtx.setLineDash([]);
+    drawCtx.lineCap = "square";
+    drawCtx.beginPath();
+    drawCtx.moveTo(x - arm, y);
+    drawCtx.lineTo(x - gap, y);
+    drawCtx.moveTo(x + gap, y);
+    drawCtx.lineTo(x + arm, y);
+    drawCtx.moveTo(x, y - arm);
+    drawCtx.lineTo(x, y - gap);
+    drawCtx.moveTo(x, y + gap);
+    drawCtx.lineTo(x, y + arm);
+    drawCtx.stroke();
+    drawCtx.restore();
+  }
+
+  function isCrosshairBlinkWindow(state, t) {
+    return Boolean(
+      state.crosshairBlinkEnabled &&
+        state.crosshairEnabled &&
+        state.leadInMs > 0 &&
+        t < Math.min(state.crosshairBlinkMs, state.leadInMs)
+    );
+  }
+
+  function shouldShowBlinkCrosshair(t) {
+    return Math.floor(t / 120) % 2 === 0;
+  }
+
   function drawFrame(state, t, drawCtx) {
     if (drawCtx === ctx) {
       resizePreviewCanvas();
@@ -2701,6 +3257,15 @@
     prepareFrameContext(drawCtx);
     drawCtx.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
     drawStageBackground(drawCtx, state);
+
+    if (isCrosshairBlinkWindow(state, t)) {
+      if (shouldShowBlinkCrosshair(t)) {
+        drawCrosshairFeature(drawCtx, state, 1);
+      }
+      return;
+    }
+
+    drawRailFeature(drawCtx, state);
 
     const laneY = getMainLaneY(state);
 
@@ -2718,6 +3283,7 @@
     }
 
     drawFixation(drawCtx, state);
+    drawCrosshairFeature(drawCtx, state, 1);
 
     if (drawCtx === ctx) {
       drawStartDragHandles(drawCtx, state);
@@ -2740,6 +3306,82 @@
       x: clamp(((event.clientX - rect.left) / rect.width) * STAGE_WIDTH, 0, STAGE_WIDTH),
       y: clamp(((event.clientY - rect.top) / rect.height) * STAGE_HEIGHT, 0, STAGE_HEIGHT)
     };
+  }
+
+  function distanceToSegment(point, start, end) {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSq = dx * dx + dy * dy;
+    if (lengthSq <= 0.001) {
+      return Math.hypot(point.x - start.x, point.y - start.y);
+    }
+    const t = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq, 0, 1);
+    const projectionX = start.x + t * dx;
+    const projectionY = start.y + t * dy;
+    return Math.hypot(point.x - projectionX, point.y - projectionY);
+  }
+
+  function findSpecialDragTarget(state, point) {
+    if (state.crosshairEnabled) {
+      const crosshair = {
+        x: getFeatureCoordinate(state.crosshairX, STAGE_WIDTH / 2),
+        y: getFeatureCoordinate(state.crosshairY, STAGE_HEIGHT / 2)
+      };
+      if (Math.hypot(point.x - crosshair.x, point.y - crosshair.y) <= 22) {
+        return { type: "crosshair" };
+      }
+    }
+
+    if (state.railEnabled) {
+      const start = {
+        x: getFeatureCoordinate(state.railStartX, 92),
+        y: getFeatureCoordinate(state.railStartY, STAGE_HEIGHT / 2)
+      };
+      const end = {
+        x: getFeatureCoordinate(state.railEndX, STAGE_WIDTH * 0.58),
+        y: getFeatureCoordinate(state.railEndY, STAGE_HEIGHT / 2)
+      };
+      if (Math.hypot(point.x - start.x, point.y - start.y) <= 18) {
+        return { type: "railStart" };
+      }
+      if (Math.hypot(point.x - end.x, point.y - end.y) <= 18) {
+        return { type: "railEnd" };
+      }
+      if (distanceToSegment(point, start, end) <= 12) {
+        return {
+          type: "railLine",
+          startOffset: { x: start.x - point.x, y: start.y - point.y },
+          endOffset: { x: end.x - point.x, y: end.y - point.y }
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function writeDraggedSpecialFeature(target, point) {
+    if (target.type === "crosshair") {
+      writeCoordinateControl("crosshairX", "crosshairY", point.x, point.y);
+    } else if (target.type === "railStart") {
+      writeCoordinateControl("railStartX", "railStartY", point.x, point.y);
+    } else if (target.type === "railEnd") {
+      writeCoordinateControl("railEndX", "railEndY", point.x, point.y);
+    } else if (target.type === "railLine") {
+      writeCoordinateControl("railStartX", "railStartY", point.x + target.startOffset.x, point.y + target.startOffset.y);
+      writeCoordinateControl("railEndX", "railEndY", point.x + target.endOffset.x, point.y + target.endOffset.y);
+    }
+  }
+
+  function updateDraggedSpecialFeature(event) {
+    if (!specialDragTarget) {
+      return;
+    }
+    writeDraggedSpecialFeature(specialDragTarget, getStagePoint(event));
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = "Special feature moved.";
+    drawFrame(cloneState(), 0, ctx);
   }
 
   function getStartDragHandles(state) {
@@ -2767,7 +3409,7 @@
     ];
 
     if (state.contextMode !== "none") {
-      const contextGeometry = getGeometry(getContextMotionState(state), laneY + state.contextYOffset, {
+      const contextGeometry = getGeometry(getContextMotionState(state), getContextLaneY(state, laneY, 0), {
         scope: "context",
         directionSign: originalGeometry.contextDirectionSign
       });
@@ -2936,12 +3578,22 @@
   function bindStartDragging() {
     canvas.addEventListener("pointerdown", (event) => {
       const state = cloneState();
+      const point = getStagePoint(event);
+      const specialTarget = findSpecialDragTarget(state, point);
+      if (specialTarget) {
+        stopPreview();
+        specialDragTarget = specialTarget;
+        canvas.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+
       if (!state.customStartEnabled) {
         return;
       }
 
       initializeCustomStartPositions();
-      const handle = findStartDragHandle(cloneState(), getStagePoint(event));
+      const handle = findStartDragHandle(cloneState(), point);
       if (!handle) {
         return;
       }
@@ -2953,6 +3605,10 @@
     });
 
     canvas.addEventListener("pointermove", (event) => {
+      if (specialDragTarget) {
+        updateDraggedSpecialFeature(event);
+        return;
+      }
       if (!startDragTarget) {
         return;
       }
@@ -2960,6 +3616,12 @@
     });
 
     const endDrag = (event) => {
+      if (specialDragTarget) {
+        updateDraggedSpecialFeature(event);
+        canvas.releasePointerCapture?.(event.pointerId);
+        specialDragTarget = null;
+        return;
+      }
       if (!startDragTarget) {
         return;
       }
@@ -2970,6 +3632,23 @@
 
     canvas.addEventListener("pointerup", endDrag);
     canvas.addEventListener("pointercancel", endDrag);
+  }
+
+  function bindContextPairEditors() {
+    [contextMovementPairList, contextPositionPairList, contextColorPairList].forEach((container) => {
+      if (!container) {
+        return;
+      }
+      const handleEdit = (event) => {
+        const control = event.target.closest("[data-pair-field]");
+        if (!control || !container.contains(control)) {
+          return;
+        }
+        updateContextPairSnapshotFromControl(control);
+      };
+      container.addEventListener("input", handleEdit);
+      container.addEventListener("change", handleEdit);
+    });
   }
 
   function getAudioContextClass() {
@@ -3159,6 +3838,9 @@
     if (state.contextDurationMs !== 750) {
       extraTags.push(`win${compactNumber(state.contextDurationMs)}ms`);
     }
+    if (getContextPairCount(state) > 1) {
+      extraTags.push(`pairs${getContextPairCount(state)}`);
+    }
     if (state.contextLauncherVisibleMs < state.durationMs || state.contextTargetVisibleMs < state.durationMs) {
       extraTags.push(`cvis${compactNumber(state.contextLauncherVisibleMs)}-${compactNumber(state.contextTargetVisibleMs)}ms`);
     }
@@ -3195,6 +3877,15 @@
     }
     if (state.occluderEnabled) {
       parts.push(`occ${compactNumber(state.occluderWidth)}px`);
+    }
+    if ((state.aspectRatio || "16:9") !== "16:9") {
+      parts.push(`ar${sanitizeLabel(state.aspectRatio)}`);
+    }
+    if (state.crosshairEnabled) {
+      parts.push(`cross${compactNumber(state.crosshairX)}x${compactNumber(state.crosshairY)}`);
+    }
+    if (state.railEnabled) {
+      parts.push(`rail${compactNumber(state.railStartX)}-${compactNumber(state.railEndX)}px`);
     }
     return sanitizeLabel(parts.join("-"));
   }
@@ -3248,11 +3939,58 @@
     };
   }
 
+  function getAspectRatioParts(value) {
+    const ratios = {
+      "16:9": [16, 9],
+      "4:3": [4, 3],
+      "1:1": [1, 1],
+      "3:4": [3, 4],
+      "9:16": [9, 16]
+    };
+    return ratios[value] || ratios["16:9"];
+  }
+
+  function getExportCanvasSize(state) {
+    const [ratioWidth, ratioHeight] = getAspectRatioParts(state.aspectRatio);
+    const targetHeight = STAGE_HEIGHT * EXPORT_SCALE;
+    const width = Math.max(320, Math.round((targetHeight * ratioWidth) / ratioHeight));
+    return {
+      width,
+      height: targetHeight
+    };
+  }
+
   function getEncodedDimensions(exportDetails = {}) {
     return {
       width: exportDetails.width || STAGE_WIDTH * EXPORT_SCALE,
       height: exportDetails.height || STAGE_HEIGHT * EXPORT_SCALE
     };
+  }
+
+  function drawExportFrame(state, time, exportCtx, exportCanvas, scratchCanvas = null) {
+    if ((state.aspectRatio || "16:9") === "16:9") {
+      drawFrame(state, time, exportCtx);
+      return;
+    }
+
+    const stageCanvas = scratchCanvas || document.createElement("canvas");
+    stageCanvas.width = STAGE_WIDTH * EXPORT_SCALE;
+    stageCanvas.height = STAGE_HEIGHT * EXPORT_SCALE;
+    const stageCtx = stageCanvas.getContext("2d");
+    drawFrame(state, time, stageCtx);
+
+    exportCtx.setTransform(1, 0, 0, 1, 0, 0);
+    exportCtx.imageSmoothingEnabled = true;
+    exportCtx.imageSmoothingQuality = "high";
+    exportCtx.fillStyle = getStageThemeColors(state)[0];
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    const scale = Math.min(exportCanvas.width / stageCanvas.width, exportCanvas.height / stageCanvas.height);
+    const drawWidth = stageCanvas.width * scale;
+    const drawHeight = stageCanvas.height * scale;
+    const x = (exportCanvas.width - drawWidth) / 2;
+    const y = (exportCanvas.height - drawHeight) / 2;
+    exportCtx.drawImage(stageCanvas, x, y, drawWidth, drawHeight);
   }
 
   function getExportFrameCount(state) {
@@ -3282,7 +4020,7 @@
 
   function buildPsychopyMetadata(state, filename, exportDetails = {}) {
     const standards = getStandards(state);
-    const encoded = getEncodedDimensions(exportDetails);
+    const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(state));
     const durationSec = getExportDurationSec(state);
     const movieFile = getPsychopyMoviePath(filename);
 
@@ -3321,13 +4059,14 @@
         intendedDurationSec: getIntendedDurationSec(state),
         impactSec: Number((standards.impactMs / 1000).toFixed(3)),
         targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3)),
-        objectVisibleSec: {
+      objectVisibleSec: {
           launcher: Number((state.launcherVisibleMs / 1000).toFixed(3)),
           target: Number((state.targetVisibleMs / 1000).toFixed(3)),
           contextLauncher: Number((state.contextLauncherVisibleMs / 1000).toFixed(3)),
           contextTarget: Number((state.contextTargetVisibleMs / 1000).toFixed(3))
         }
       },
+      aspectRatio: state.aspectRatio,
       placement: `Put the movie in ${PSYCHOPY_STIMULI_FOLDER}/ next to the PsychoPy experiment and use the CSV as the loop conditions file.`
     };
   }
@@ -3339,7 +4078,7 @@
 
   function buildPsychopyCsv(state, filename, exportDetails = {}) {
     const standards = getStandards(state);
-    const encoded = getEncodedDimensions(exportDetails);
+    const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(state));
     const row = {
       movieFile: getPsychopyMoviePath(filename),
       conditionName: getConditionName(),
@@ -3349,6 +4088,7 @@
       frameCount: getExportFrameCount(state),
       widthPx: encoded.width,
       heightPx: encoded.height,
+      aspectRatio: state.aspectRatio,
       units: "pix",
       positionXPix: 0,
       positionYPix: 0,
@@ -3377,6 +4117,7 @@
       targetOnsetMs: standards.targetOnsetMs,
       contactOcclusionMode: state.contactOcclusionMode,
       contextMode: state.contextMode,
+      contextPairCount: getContextPairCount(state),
       contextDurationMs: state.contextDurationMs,
       contextOffsetMs: state.contextOffsetMs,
       contextDirection: state.contextDirection,
@@ -3398,6 +4139,16 @@
       contextTargetVisibleMs: state.contextTargetVisibleMs,
       groupingMode: state.groupingMode,
       contactGuideMode: state.contactGuideMode,
+      crosshairEnabled: state.crosshairEnabled,
+      crosshairX: state.crosshairX,
+      crosshairY: state.crosshairY,
+      railEnabled: state.railEnabled,
+      railStartX: state.railStartX,
+      railStartY: state.railStartY,
+      railEndX: state.railEndX,
+      railEndY: state.railEndY,
+      crosshairBlinkEnabled: state.crosshairBlinkEnabled,
+      crosshairBlinkMs: state.crosshairBlinkMs,
       customStartEnabled: state.customStartEnabled,
       customStartKeepRowsHorizontal: state.customStartKeepRowsHorizontal,
       customStartAlignStartsVertical: state.customStartAlignStartsVertical,
@@ -3893,18 +4644,24 @@
     }
 
     if (kind === "captureContext") {
-      const contexts = ["none", "single", "launch", "pass"];
+      const contexts = [
+        { contextMode: "none", label: "no-context" },
+        { contextMode: "single", label: "single-object-context" },
+        { contextMode: "launch", label: "launch-context" },
+        { contextMode: "launch", contextLauncherBehavior: "continue", label: "continuous-context" }
+      ];
       return {
         family: "Scholl/Nakayama context types",
-        note: "Full-overlap test event paired with no context, single-object motion, pass context, or a synchronized launch context.",
-        conditions: contexts.map((contextMode) =>
+        note: "Full-overlap test event paired with no context, single-object motion, continuous two-object motion, or a synchronized launch context.",
+        conditions: contexts.map((context) =>
           withCondition(base, {
-            label: `full-overlap-${contextMode}-context`,
+            label: `full-overlap-${context.label}`,
             gapPx: -base.ballRadius * 2,
             launcherBehavior: "stop",
             targetSpeedRatio: 1,
             delayMs: 0,
-            contextMode,
+            contextMode: context.contextMode,
+            contextLauncherBehavior: context.contextLauncherBehavior || base.contextLauncherBehavior,
             contextDurationMs: 750,
             contextOffsetMs: 0,
             fps: 60
@@ -4210,7 +4967,12 @@
       const contexts = [
         { contextMode: "none", label: "no-context", role: "local-detector-test" },
         { contextMode: "launch", label: "launch-context", role: "capture-positive-context" },
-        { contextMode: "pass", label: "pass-context", role: "capture-negative-context" }
+        {
+          contextMode: "launch",
+          contextLauncherBehavior: "continue",
+          label: "continuous-context",
+          role: "capture-negative-context"
+        }
       ];
       return {
         family: "Context after adaptation",
@@ -4242,11 +5004,11 @@
                 role: context.role,
                 pairId: "context-after-adaptation",
                 prediction:
-                  context.contextMode === "launch"
+                  context.contextLauncherBehavior === "continue"
+                    ? "Continuous context should decrease launch reports relative to no-context trials."
+                    : context.contextMode === "launch"
                     ? "Launch context should increase launch reports even when the local ambiguous event is adapted."
-                    : context.contextMode === "pass"
-                      ? "Pass context should decrease launch reports relative to no-context trials."
-                      : "No-context trials should reveal the local adaptation aftereffect most directly.",
+                    : "No-context trials should reveal the local adaptation aftereffect most directly.",
                 literatureAnchor: "Causal capture and context-after-adaptation results.",
                 durationMs: 700,
                 leadInMs: 0,
@@ -4256,6 +5018,7 @@
                 delayMs: 0,
                 gapPx: -base.ballRadius,
                 contextMode: context.contextMode,
+                contextLauncherBehavior: context.contextLauncherBehavior || base.contextLauncherBehavior,
                 contextOffsetMs: 0,
                 fps: 60
               })
@@ -4303,10 +5066,12 @@
     statusText.textContent = "Preparing export…";
 
     const state = cloneState();
+    const exportSize = getExportCanvasSize(state);
     const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = STAGE_WIDTH * EXPORT_SCALE;
-    exportCanvas.height = STAGE_HEIGHT * EXPORT_SCALE;
+    exportCanvas.width = exportSize.width;
+    exportCanvas.height = exportSize.height;
     const exportCtx = exportCanvas.getContext("2d");
+    const aspectScratchCanvas = state.aspectRatio === "16:9" ? null : document.createElement("canvas");
     const stream = exportCanvas.captureStream(state.fps);
     let exportAudioContext = null;
 
@@ -4380,7 +5145,7 @@
     const exportStartTime = performance.now();
     for (let frame = 0; frame < totalFrames; frame += 1) {
       const time = Math.min(frame * frameDuration, state.durationMs);
-      drawFrame(state, time, exportCtx);
+      drawExportFrame(state, time, exportCtx, exportCanvas, aspectScratchCanvas);
       statusText.textContent = `Exporting frame ${frame + 1} of ${totalFrames}…`;
       const nextFrameTime = exportStartTime + (frame + 1) * frameDuration;
       await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, nextFrameTime - performance.now())));
@@ -4450,7 +5215,60 @@
         control.addEventListener("change", () => {
           activePresetKey = null;
           syncContextControlVisibility();
+          syncContextPairSnapshots();
+          renderContextPairEditors();
           enforceCustomStartConstraints();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = "Ready.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
+      if (id === "contextPairCount") {
+        control.addEventListener("input", () => {
+          activePresetKey = null;
+          syncContextPairSnapshots();
+          renderContextPairEditors();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = "Context pair count updated.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
+      if (id === "railEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          if (control.checked) {
+            initializeRailEndpoints(true);
+          }
+          syncSpecialDragUi();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = "Ready.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
+      if (id === "crosshairEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          syncSpecialDragUi();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = "Ready.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
+      if (id === "crosshairBlinkEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          if (control.checked) {
+            controls.crosshairEnabled.checked = true;
+          }
+          syncSpecialDragUi();
           updateOutputs();
           refreshText();
           statusText.textContent = "Ready.";
@@ -4491,7 +5309,12 @@
         });
         return;
       }
-      if (id.endsWith("StartX") || id.endsWith("StartY")) {
+      if (
+        id.endsWith("StartX") ||
+        id.endsWith("StartY") ||
+        id === "contextPairSnapshots" ||
+        ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY"].includes(id)
+      ) {
         return;
       }
       if (id === "presetSelect") {
@@ -4504,6 +5327,7 @@
           "objectStyle",
           "groupingMode",
           "contactGuideMode",
+          "crosshairBlinkMs",
           "colorChangeMode",
           "colorChangeColor",
           "launcherColor",
@@ -4520,6 +5344,7 @@
           "soundType",
           "soundVolume",
           "outputFormat",
+          "aspectRatio",
           "fps",
           "videoBitrate"
         ].includes(id)
@@ -4602,6 +5427,7 @@
   enhanceRangePrecision();
   bindParameterHelp();
   bindControls();
+  bindContextPairEditors();
   bindStartDragging();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();

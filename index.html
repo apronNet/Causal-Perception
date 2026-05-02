@@ -66,8 +66,12 @@
                   <button class="choice-button" data-context-mode="none" type="button">None</button>
                   <button class="choice-button" data-context-mode="launch" type="button">Nearby launch</button>
                   <button class="choice-button" data-context-mode="single" type="button">Single object</button>
-                  <button class="choice-button" data-context-mode="pass" type="button">Pass context</button>
                 </span>
+              </label>
+              <label class="field context-dependent-control">
+                <span>Added pairs</span>
+                <input id="contextPairCount" data-format="count" min="1" max="4" step="1" type="range" />
+                <output data-for="contextPairCount"></output>
               </label>
               <label class="field context-dependent-control">
                 <span>Window</span>
@@ -87,6 +91,10 @@
                   <button class="choice-button" data-context-direction="opposite" type="button">Opposite</button>
                 </span>
               </label>
+              <p class="context-copy-note context-dependent-control">
+                New pairs copy the original when added. Later original edits do not update them.
+              </p>
+              <input id="contextPairSnapshots" type="hidden" />
             </div>
           </section>
 
@@ -162,7 +170,7 @@
                 </div>
               </div>
               <div class="control-subgroup context-dependent-control">
-                <h3 class="subgroup-title">Context movement</h3>
+                <h3 class="subgroup-title">Context 1 movement</h3>
                 <div class="control-subgrid">
                   <label class="field">
                     <span>Lead-in</span>
@@ -227,6 +235,7 @@
                   </label>
                 </div>
               </div>
+              <div id="contextMovementPairList" class="context-pair-list context-dependent-control"></div>
             </div>
           </section>
 
@@ -260,8 +269,13 @@
                 </div>
               </div>
               <div class="control-subgroup context-dependent-control">
-                <h3 class="subgroup-title">Context position</h3>
+                <h3 class="subgroup-title">Context 1 position</h3>
                 <div class="control-subgrid">
+                  <label class="field">
+                    <span>Vertical distance</span>
+                    <input id="contextYOffset" data-format="signedPx" min="-320" max="320" step="1" type="range" />
+                    <output data-for="contextYOffset"></output>
+                  </label>
                   <label class="field">
                     <span>Radius</span>
                     <input id="contextBallRadius" data-format="intPx" min="12" max="60" step="1" type="range" />
@@ -283,11 +297,7 @@
                   </label>
                 </div>
               </div>
-              <label class="field context-dependent-control">
-                <span>Vertical distance</span>
-                <input id="contextYOffset" data-format="intPx" min="20" max="320" step="1" type="range" />
-                <output data-for="contextYOffset"></output>
-              </label>
+              <div id="contextPositionPairList" class="context-pair-list context-dependent-control"></div>
               <label class="field">
                 <span>Marker</span>
                 <select id="markerMode">
@@ -364,8 +374,42 @@
             </div>
           </section>
 
+          <details class="panel-block collapsible-panel special-panel">
+            <summary><h2>06 Special features</h2></summary>
+            <div class="panel-content">
+              <div class="control-grid">
+                <label class="field checkbox-field">
+                  <input id="crosshairEnabled" type="checkbox" />
+                  <span>Crosshair</span>
+                </label>
+                <label class="field checkbox-field">
+                  <input id="railEnabled" type="checkbox" />
+                  <span>Rail</span>
+                </label>
+                <label class="field checkbox-field">
+                  <input id="crosshairBlinkEnabled" type="checkbox" />
+                  <span>Blink before launch</span>
+                </label>
+                <label class="field">
+                  <span>Blink time</span>
+                  <input id="crosshairBlinkMs" data-format="ms" min="100" max="1500" step="50" type="range" />
+                  <output data-for="crosshairBlinkMs"></output>
+                </label>
+                <p class="special-note">
+                  Crosshair and rail are draggable in the preview. Blink hides balls before launch.
+                </p>
+                <input id="crosshairX" type="hidden" />
+                <input id="crosshairY" type="hidden" />
+                <input id="railStartX" type="hidden" />
+                <input id="railStartY" type="hidden" />
+                <input id="railEndX" type="hidden" />
+                <input id="railEndY" type="hidden" />
+              </div>
+            </div>
+          </details>
+
           <details class="panel-block collapsible-panel color-panel">
-            <summary><h2>06 Color</h2></summary>
+            <summary><h2>07 Color</h2></summary>
             <div class="panel-content">
             <div class="control-grid">
               <label class="field">
@@ -415,7 +459,7 @@
                 </div>
               </div>
               <div class="control-subgroup context-dependent-control">
-                <h3 class="subgroup-title">Context color</h3>
+                <h3 class="subgroup-title">Context 1 color</h3>
                 <div class="control-subgrid">
                   <label class="field color-field">
                     <span>Launcher</span>
@@ -431,13 +475,14 @@
                   </label>
                 </div>
               </div>
+              <div id="contextColorPairList" class="context-pair-list context-dependent-control"></div>
             </div>
             </div>
           </details>
 
           <details class="panel-block collapsible-panel psychopy-panel">
             <summary>
-              <h2>07 PsychoPy / Export</h2>
+              <h2>08 PsychoPy / Export</h2>
               <span id="statusText" class="status-text export-summary-status" aria-live="polite">Ready.</span>
               <button id="exportButton" class="accent-button summary-export-button" type="button">Export video</button>
               <a id="downloadLink" class="download-link summary-download-link hidden" download>Download video</a>
@@ -457,6 +502,16 @@
                   <option value="webm-vp9">WebM / VP9</option>
                   <option value="webm-vp8">WebM / VP8</option>
                   <option value="webm">WebM default</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Aspect ratio</span>
+                <select id="aspectRatio">
+                  <option value="16:9">16:9 wide</option>
+                  <option value="4:3">4:3 classic</option>
+                  <option value="1:1">1:1 square</option>
+                  <option value="3:4">3:4 portrait</option>
+                  <option value="9:16">9:16 vertical</option>
                 </select>
               </label>
               <label class="field">
