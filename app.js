@@ -178,27 +178,27 @@
     contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size unless edited separately.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
-    contactOcclusionMode: "Changes: which original-row object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
+    contactOcclusionMode: "Changes: which original-pair object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
-      "Changes: how many context pairs are drawn, up to 10. New pairs copy the original when added; ball size stays matched unless Radius is edited.",
+      "Changes: how many context pairs are drawn, up to 10. New pairs copy the original pair when added; ball size stays matched unless Radius is edited.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
-    contextOffsetMs: "Changes: context timing relative to the original event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
-    contextDirection: "Changes: context motion direction. Same matches the original event; opposite mirrors it.",
-    contextYOffset: "Changes: vertical distance between original and context rows. Use for: separating the rows or preventing box overlap.",
-    contextLeadInMs: "Changes: still time before the context object moves. Use for: shifting context approach timing without changing the original event.",
-    contextLauncherSpeed: "Changes: speed of the context first object. Use for: matching the original event or making the context more/less forceful.",
+    contextOffsetMs: "Changes: context timing relative to the original pair event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
+    contextDirection: "Changes: context motion direction. Same matches the original pair event; opposite mirrors it.",
+    contextYOffset: "Changes: vertical distance between original pair and context rows. Use for: separating the rows or preventing box overlap.",
+    contextLeadInMs: "Changes: still time before the context object moves. Use for: shifting context approach timing without changing the original pair event.",
+    contextLauncherSpeed: "Changes: speed of the context first object. Use for: matching the original pair event or making the context more/less forceful.",
     contextLauncherAccel: "Changes: whether the context first object speeds up or slows down before contact.",
     contextLauncherBehavior: "Changes: what the context first object does after contact. Stop is launch-like; continue is pass-like; entrain makes both context objects move together.",
     contextDelayMs: "Changes: delay between context contact and context target motion. Use for: strong immediate context versus weaker delayed context.",
     contextGapPx: "Changes: context-row spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
-    contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. Use for: setting context occlusion independently from the original-row front-object setting.",
-    contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original event.",
+    contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. Use for: setting context occlusion independently from the original-pair front-object setting.",
+    contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original pair event.",
     contextOccluderWidth: "Changes: context tunnel width. Wider context tunnels hide more of the context contact region.",
-    contextTargetSpeedRatio: "Changes: context second-object speed as a multiple of context first-object impact speed. Use for: matching the original launch or making the context faster/slower.",
+    contextTargetSpeedRatio: "Changes: context second-object speed as a multiple of context first-object impact speed. Use for: matching the original pair launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether the context second object speeds up or slows down after it starts moving.",
-    contextTargetAngle: "Changes: direction of context second-object motion. Use for: matching or mismatching the original event direction.",
+    contextTargetAngle: "Changes: direction of context second-object motion. Use for: matching or mismatching the original pair event direction.",
     contextLauncherVisibleMs:
       "Changes: how long C1 stays visible after the context event starts. Longer than Video duration means no timed cut; C1 stays until the clip ends or it moves offscreen. Shorter than Video duration makes C1 disappear on screen at that context time.",
     contextTargetVisibleMs:
@@ -206,7 +206,7 @@
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
     stageTheme: "Changes: background luminance. Use for: dark, mid-gray, or light stimulus fields.",
     objectStyle: "Changes: visual rendering of the balls. Simple discs are more controlled; 3D balls are more pictorial.",
-    groupingMode: "Changes: solid boxes around original row, context row, or both. Use for: testing perceptual grouping.",
+    groupingMode: "Changes: solid boxes around the original pair row, context row, or both. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
@@ -222,11 +222,11 @@
     customStartAlignStartsVertical: "Changes: keeps the two first objects on one vertical line. Use for: O1 and C1 share one x-position when context is shown.",
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
     colorChangeColor: "Changes: the new color used by sudden color change. Use for: setting the contact-locked feature change.",
-    launcherColor: "Changes: color of the original first object. Use for: object identity or fixed stimulus colors.",
-    targetColor: "Changes: color of the original second object. Match colors for similarity; contrast colors for distinct objects.",
-    contextColor: "Changes: color of the context first object. Use for: matching or separating context from the original row.",
+    launcherColor: "Changes: color of the original-pair first object. Use for: object identity or fixed stimulus colors.",
+    targetColor: "Changes: color of the original-pair second object. Match colors for similarity; contrast colors for distinct objects.",
+    contextColor: "Changes: color of the context first object. Use for: matching or separating context from the original pair row.",
     contextTargetColor: "Changes: color of the context second object. Use for: context object identity.",
-    groupingOriginalColor: "Changes: line color of the original-row grouping box. Use a visible color that does not dominate the balls.",
+    groupingOriginalColor: "Changes: line color of the original-pair grouping box. Use a visible color that does not dominate the balls.",
     groupingContextColor: "Changes: line color of the context-row grouping box. Match box colors to group rows, or separate colors to distinguish rows.",
     pxPerDva: "Changes: pixels per visual degree saved in metadata. Use for: PsychoPy reporting when monitor size and viewing distance are known.",
     fixationDva: "Changes: fixation mark size in degrees. Only applies in fixation mode.",
@@ -2809,7 +2809,7 @@
     };
 
     if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original set", eventState.geometry, state.groupingOriginalColor, "#e05a5a");
+      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#e05a5a");
     }
 
     if (
