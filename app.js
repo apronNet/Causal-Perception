@@ -3304,14 +3304,8 @@
     if (!validationList) {
       return;
     }
-    const warnings = getExperimentWarnings(state);
     validationList.replaceChildren();
-    validationList.classList.toggle("hidden", warnings.length === 0);
-    warnings.forEach((warning) => {
-      const item = document.createElement("li");
-      item.textContent = warning;
-      validationList.appendChild(item);
-    });
+    validationList.classList.add("hidden");
   }
 
   function refreshSummary(state, copy, standards) {
@@ -6623,9 +6617,6 @@
 
   function describeExportReview(warnings, exportFormat) {
     const notes = [];
-    if (warnings.length > 0) {
-      notes.push(warnings.length === 1 ? "read note above" : `read ${warnings.length} notes above`);
-    }
     if (exportFormat.usedFallback) {
       notes.push("format changed");
     }
