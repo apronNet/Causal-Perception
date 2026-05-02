@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260501-trajectories" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111514'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23ff2f2f'/%3E%3Ccircle cx='21' cy='16' r='5' fill='%2327c76f'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css?v=20260501-stress" />
   </head>
   <body>
     <div class="page-shell">
@@ -74,12 +75,12 @@
                 <output data-for="contextPairCount"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Window</span>
+                <span>Context duration</span>
                 <input id="contextDurationMs" data-format="ms" min="25" max="1200" step="25" type="range" />
                 <output data-for="contextDurationMs"></output>
               </label>
               <label class="field context-dependent-control">
-                <span>Timing</span>
+                <span>Context offset</span>
                 <input id="contextOffsetMs" data-format="signedMs" min="-400" max="250" step="10" type="range" />
                 <output data-for="contextOffsetMs"></output>
               </label>
@@ -127,13 +128,13 @@
                     <span class="choice-row three-choice-row" role="group" aria-label="After contact">
                       <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="stop" type="button">Stop</button>
                       <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="continue" type="button">Pass</button>
-                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Both</button>
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Together</button>
                     </span>
                   </label>
                   <label class="field wide-choice-field">
                     <span>Front object</span>
                     <input id="contactOcclusionMode" type="hidden" value="target-front" />
-                    <span class="choice-row" role="group" aria-label="Front object">
+                    <span class="choice-row two-choice-row" role="group" aria-label="Front object">
                       <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="target-front" type="button">Launchee</button>
                       <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="launcher-front" type="button">Launcher</button>
                     </span>
@@ -144,17 +145,17 @@
                     <output data-for="delayMs"></output>
                   </label>
                   <label class="field">
-                    <span>Target ratio</span>
+                    <span>Launchee speed ratio</span>
                     <input id="targetSpeedRatio" data-format="float3" min="0.2" max="2.5" step="0.001" type="range" />
                     <output data-for="targetSpeedRatio"></output>
                   </label>
                   <label class="field">
-                    <span>Target accel.</span>
+                    <span>Launchee accel.</span>
                     <input id="targetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="targetAccel"></output>
                   </label>
                   <label class="field">
-                    <span>Target angle</span>
+                    <span>Launchee angle</span>
                     <input id="targetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                     <output data-for="targetAngle"></output>
                   </label>
@@ -194,13 +195,13 @@
                     <span class="choice-row three-choice-row" role="group" aria-label="Context after contact">
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="stop" type="button">Stop</button>
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="continue" type="button">Pass</button>
-                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Both</button>
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Together</button>
                     </span>
                   </label>
                   <label class="field wide-choice-field">
                     <span>Front object</span>
                     <input id="contextContactOcclusionMode" type="hidden" value="target-front" />
-                    <span class="choice-row" role="group" aria-label="Context front object">
+                    <span class="choice-row two-choice-row" role="group" aria-label="Context front object">
                       <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="target-front" type="button">Launchee</button>
                       <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="launcher-front" type="button">Launcher</button>
                     </span>
@@ -211,17 +212,17 @@
                     <output data-for="contextDelayMs"></output>
                   </label>
                   <label class="field">
-                    <span>Target ratio</span>
+                    <span>Launchee speed ratio</span>
                     <input id="contextTargetSpeedRatio" data-format="float3" min="0.2" max="2.5" step="0.001" type="range" />
                     <output data-for="contextTargetSpeedRatio"></output>
                   </label>
                   <label class="field">
-                    <span>Target accel.</span>
+                    <span>Launchee accel.</span>
                     <input id="contextTargetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="contextTargetAccel"></output>
                   </label>
                   <label class="field">
-                    <span>Target angle</span>
+                    <span>Launchee angle</span>
                     <input id="contextTargetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                     <output data-for="contextTargetAngle"></output>
                   </label>
@@ -515,7 +516,7 @@
                 <span>Sudden color change</span>
                 <select id="colorChangeMode">
                   <option value="none">None</option>
-                  <option value="target">Target at contact</option>
+                  <option value="target">Launchee at contact</option>
                   <option value="launcher">Launcher at contact</option>
                   <option value="both">Both at contact</option>
                 </select>
@@ -532,7 +533,7 @@
                     <input id="launcherColor" type="color" />
                   </label>
                   <label class="field color-field">
-                    <span>Target</span>
+                    <span>Launchee</span>
                     <input id="targetColor" type="color" />
                   </label>
                 </div>
@@ -545,7 +546,7 @@
                     <input id="contextColor" type="color" />
                   </label>
                   <label class="field color-field">
-                    <span>Target</span>
+                    <span>Launchee</span>
                     <input id="contextTargetColor" type="color" />
                   </label>
                 </div>
@@ -558,7 +559,7 @@
           <details class="panel-block collapsible-panel psychopy-panel">
             <summary>
               <h2>08 PsychoPy / Export</h2>
-              <span id="statusText" class="status-text export-summary-status" aria-live="polite">Ready.</span>
+              <span id="statusText" class="status-text export-summary-status" aria-live="polite">Ready to export current preview.</span>
               <button id="exportButton" class="accent-button summary-export-button" type="button">Export video</button>
               <a id="downloadLink" class="download-link summary-download-link hidden" download>Download video</a>
             </summary>
@@ -652,7 +653,7 @@
         <section class="stage-panel">
           <div class="preview-bar">
             <h2>Preview</h2>
-            <button id="previewButton" class="primary-button preview-button" type="button">Play</button>
+            <button id="previewButton" class="primary-button preview-button" type="button">Play preview</button>
           </div>
           <details class="summary-details">
             <summary>
@@ -671,7 +672,7 @@
               <span><b>Launchee starts</b><em id="summaryTargetOnset">475 ms</em></span>
               <span><b>Delay</b><em id="summaryDelay">0 ms</em></span>
               <span><b>Launcher speed</b><em id="summarySpeed">876 px/s</em></span>
-              <span><b>Target ratio</b><em id="summaryTargetRatio">0.294 x</em></span>
+              <span><b>Launchee ratio</b><em id="summaryTargetRatio">0.294 x</em></span>
               <span><b>Launcher accel.</b><em id="summaryLauncherAccel">0 px/s^2</em></span>
               <span><b>Launchee accel.</b><em id="summaryTargetAccel">0 px/s^2</em></span>
               <span><b>Launchee angle</b><em id="summaryTargetAngle">0 deg</em></span>
@@ -680,7 +681,7 @@
               <span><b>Launcher visible</b><em id="summaryLauncherVisible">9000 ms</em></span>
               <span><b>Launchee visible</b><em id="summaryTargetVisible">9000 ms</em></span>
               <span><b>Context</b><em id="summaryContext">none</em></span>
-              <span><b>Context window</b><em id="summaryContextWindow">off</em></span>
+              <span><b>Context duration</b><em id="summaryContextWindow">off</em></span>
               <span><b>Context offset</b><em id="summaryContextOffset">0 ms</em></span>
               <span><b>Context direction</b><em id="summaryContextDirection">same</em></span>
               <span><b>Context pairs</b><em id="summaryContextPairs">0</em></span>
@@ -724,6 +725,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260501-trajectories"></script>
+    <script src="app.js?v=20260501-stress"></script>
   </body>
 </html>

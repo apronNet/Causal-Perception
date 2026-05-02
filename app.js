@@ -10,6 +10,7 @@
   const CONTEXT_PAIR_MAX = 10;
   const RAIL_MAX = 6;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
+  const READY_STATUS = "Ready to export current preview.";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
   const SHARED_PRESETS_URL = "shared-presets.json";
@@ -200,10 +201,10 @@
     leadInMs: "Changes: still time before the first object moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of the first object before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
     launcherAccel: "Changes: whether the first object speeds up or slows down before contact. Positive means speeding up; negative means slowing down.",
-    targetSpeedRatio: "Changes: second-object outgoing speed as a multiple of first-object impact speed. Use for: 1.00 matched launch, below 1.00 slower launch, above 1.00 trigger-like motion.",
-    targetAccel: "Changes: whether the second object speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
+    targetSpeedRatio: "Changes: launchee outgoing speed as a multiple of launcher impact speed. Use for: 1.00 matched launch, below 1.00 slower launch, above 1.00 trigger-like motion.",
+    targetAccel: "Changes: whether the launchee speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
     launcherBehavior: "Changes: what the first object does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
-    targetAngle: "Changes: direction of the second object's motion after contact. Use for: straight launch versus angled launch.",
+    targetAngle: "Changes: direction of the launchee motion after contact. Use for: straight launch versus angled launch.",
     launcherVisibleMs:
       "Changes: how long the launcher stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
     targetVisibleMs:
@@ -221,7 +222,7 @@
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
       "Changes: how many context pairs are drawn, up to 10. New pairs copy the original pair when added; high counts shrink and space all pairs to fit vertically.",
-    contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
+    contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short duration around impact.",
     contextOffsetMs: "Changes: context timing relative to the original pair event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
     contextDirection: "Changes: context motion direction. Same matches the original pair event; opposite mirrors it.",
     contextYOffset: "Changes: vertical distance between original pair and context rows. Use for: separating the rows or preventing box overlap.",
@@ -234,9 +235,9 @@
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. Use for: setting context occlusion independently from the original-pair front-object setting.",
     contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original pair event.",
     contextOccluderWidth: "Changes: context tunnel width. Wider context tunnels hide more of the context contact region.",
-    contextTargetSpeedRatio: "Changes: context second-object speed as a multiple of context first-object impact speed. Use for: matching the original pair launch or making the context faster/slower.",
-    contextTargetAccel: "Changes: whether the context second object speeds up or slows down after it starts moving.",
-    contextTargetAngle: "Changes: direction of context second-object motion. Use for: matching or mismatching the original pair event direction.",
+    contextTargetSpeedRatio: "Changes: context launchee speed as a multiple of context launcher impact speed. Use for: matching the original pair launch or making the context faster/slower.",
+    contextTargetAccel: "Changes: whether the context launchee speeds up or slows down after it starts moving.",
+    contextTargetAngle: "Changes: direction of context launchee motion. Use for: matching or mismatching the original pair event direction.",
     contextLauncherVisibleMs:
       "Changes: how long the context launcher stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     contextTargetVisibleMs:
@@ -268,9 +269,9 @@
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
     colorChangeColor: "Changes: the new color used by sudden color change. Use for: setting the contact-locked feature change.",
     launcherColor: "Changes: color of the original-pair first object. Default follows the common red/green research display.",
-    targetColor: "Changes: color of the original-pair second object. Default follows the common red/green research display.",
+    targetColor: "Changes: color of the original-pair launchee. Default follows the common red/green research display.",
     contextColor: "Changes: color of the context first object. Use for: matching or separating context from the original pair row.",
-    contextTargetColor: "Changes: color of the context second object. Use for: context object identity.",
+    contextTargetColor: "Changes: color of the context launchee. Use for: context object identity.",
     groupingOriginalColor: "Changes: line color of the original-pair grouping box. Use a visible color that does not dominate the balls.",
     groupingContextColor: "Changes: line color of the context-row grouping box. Match box colors to group rows, or separate colors to distinguish rows.",
     pxPerDva: "Changes: pixels per visual degree saved in metadata. Use for: PsychoPy reporting when monitor size and viewing distance are known.",
@@ -921,6 +922,7 @@
   let currentConditionJsonUrl = null;
   let currentConditionCsvUrl = null;
   let currentPresetJsonUrl = null;
+  let lastExportSignature = null;
   let previewHandle = null;
   let impactSoundTimer = null;
   let sharedAudioContext = null;
@@ -1236,6 +1238,13 @@
         fineInput.value = input.value;
       }
     });
+
+    if ((currentObjectUrl || currentPsychopyUrl) && lastExportSignature) {
+      const currentSignature = getExportSignature(cloneState());
+      if (currentSignature !== lastExportSignature) {
+        invalidateGeneratedExports();
+      }
+    }
   }
 
   function syncFieldUnitLabel(input) {
@@ -1540,37 +1549,80 @@
     return current === base || current === previousAuto;
   }
 
-  function applyAutoContextPairRadii(previousPairCount, nextPairCount) {
-    const baseRadius = Number(controls.ballRadius.value) || stimulusDefaults.contextBallRadius;
-    const nextAutoRadius = getAutoContextPairRadius(baseRadius, nextPairCount);
-    const shouldFitManyRows = nextPairCount >= 4;
+  function syncAutoFitRadiusControl(control, fittedRadius) {
+    if (!control) {
+      return;
+    }
+    const storedRequested = Number(control.dataset.autoFitRequestedRadius);
+    const currentRadius = Number(control.value) || stimulusDefaults.contextBallRadius;
 
-    if (shouldFitManyRows && Number(controls.ballRadius.value) > nextAutoRadius) {
-      controls.ballRadius.value = nextAutoRadius;
+    if (Number.isFinite(storedRequested) && storedRequested <= fittedRadius) {
+      control.value = storedRequested;
+      delete control.dataset.autoFitRequestedRadius;
+      return;
     }
 
+    if (currentRadius > fittedRadius) {
+      if (!Number.isFinite(storedRequested)) {
+        control.dataset.autoFitRequestedRadius = currentRadius;
+      }
+      control.value = fittedRadius;
+    }
+  }
+
+  function syncAutoFitSnapshotRadius(snapshot, fittedRadius) {
+    const nextSnapshot = { ...snapshot };
+    const storedRequested = Number(nextSnapshot.requestedBallRadius);
+    const currentRadius = Number(nextSnapshot.ballRadius) || stimulusDefaults.contextBallRadius;
+
+    if (Number.isFinite(storedRequested) && storedRequested <= fittedRadius) {
+      nextSnapshot.ballRadius = storedRequested;
+      delete nextSnapshot.requestedBallRadius;
+      return nextSnapshot;
+    }
+
+    if (currentRadius > fittedRadius) {
+      if (!Number.isFinite(storedRequested)) {
+        nextSnapshot.requestedBallRadius = currentRadius;
+      }
+      nextSnapshot.ballRadius = fittedRadius;
+    }
+
+    return nextSnapshot;
+  }
+
+  function applyAutoContextPairRadii(previousPairCount, nextPairCount) {
+    const requestedBaseRadius =
+      Number(controls.ballRadius.dataset.autoFitRequestedRadius) ||
+      Number(controls.ballRadius.value) ||
+      stimulusDefaults.contextBallRadius;
+    const requestedContextRadius =
+      Number(controls.contextBallRadius.dataset.autoFitRequestedRadius) ||
+      Number(controls.contextBallRadius.value) ||
+      requestedBaseRadius;
+    const nextAutoRadius = getAutoContextPairRadius(requestedBaseRadius, nextPairCount);
+    const nextContextAutoRadius = getAutoContextPairRadius(requestedContextRadius, nextPairCount);
+    const shouldFitManyRows = nextPairCount >= 4;
+
+    syncAutoFitRadiusControl(controls.ballRadius, nextAutoRadius);
+
     if (
-      shouldReplaceAutoContextRadius(controls.contextBallRadius.value, baseRadius, previousPairCount) ||
-      (shouldFitManyRows && Number(controls.contextBallRadius.value) > nextAutoRadius)
+      shouldReplaceAutoContextRadius(controls.contextBallRadius.value, requestedBaseRadius, previousPairCount) ||
+      shouldFitManyRows ||
+      Number.isFinite(Number(controls.contextBallRadius.dataset.autoFitRequestedRadius))
     ) {
-      controls.contextBallRadius.value = nextAutoRadius;
+      syncAutoFitRadiusControl(controls.contextBallRadius, nextContextAutoRadius);
     }
 
     const currentYOffset = Number(controls.contextYOffset.value) || 112;
     const spacingSign = currentYOffset < 0 ? -1 : 1;
-    const nextAutoSpacing = getAutoContextPairSpacing(nextAutoRadius, nextPairCount, currentYOffset);
+    const nextAutoSpacing = getAutoContextPairSpacing(nextContextAutoRadius, nextPairCount, currentYOffset);
     if (shouldFitManyRows && Math.abs(currentYOffset) > nextAutoSpacing) {
       controls.contextYOffset.value = Math.round(nextAutoSpacing * spacingSign);
     }
 
     const snapshots = parseContextPairSnapshots(controls.contextPairSnapshots.value).map((snapshot, snapshotIndex) => {
-      const nextSnapshot = { ...snapshot };
-      if (
-        shouldReplaceAutoContextRadius(snapshot.ballRadius, baseRadius, previousPairCount) ||
-        (shouldFitManyRows && Number(snapshot.ballRadius) > nextAutoRadius)
-      ) {
-        nextSnapshot.ballRadius = nextAutoRadius;
-      }
+      const nextSnapshot = syncAutoFitSnapshotRadius(snapshot, nextContextAutoRadius);
       if (shouldFitManyRows) {
         nextSnapshot.yOffset = getContextPairOffsetFromSpacing(
           snapshotIndex + 1,
@@ -1580,6 +1632,23 @@
       }
       return nextSnapshot;
     });
+    controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
+  }
+
+  function reflowContextPairOffsets() {
+    const state = cloneState();
+    const pairCount = getContextPairCount(state);
+    if (pairCount <= 1) {
+      return;
+    }
+
+    const spacingSign = state.contextYOffset < 0 ? -1 : 1;
+    const radius = Number(state.contextBallRadius) || Number(state.ballRadius) || stimulusDefaults.contextBallRadius;
+    const spacing = getAutoContextPairSpacing(radius, pairCount, state.contextYOffset);
+    const snapshots = parseContextPairSnapshots(controls.contextPairSnapshots.value).map((snapshot, snapshotIndex) => ({
+      ...snapshot,
+      yOffset: getContextPairOffsetFromSpacing(snapshotIndex + 1, spacing, spacingSign)
+    }));
     controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
   }
 
@@ -1674,7 +1743,8 @@
         )
         .join("");
       const fieldClass = field === "contactOcclusionMode" ? " field wide-choice-field" : " field";
-      return `<label class="${fieldClass.trim()}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row three-choice-row" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
+      const rowClass = options.length === 2 ? "two-choice-row" : "three-choice-row";
+      return `<label class="${fieldClass.trim()}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row ${rowClass}" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
     }
 
     const renderedOptions = options
@@ -1729,16 +1799,16 @@
             ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "After contact", snapshot, [
               ["stop", "Stop"],
               ["continue", "Pass"],
-              ["entrain", "Both"]
+              ["entrain", "Together"]
             ])}
             ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
               ["target-front", "Launchee"],
               ["launcher-front", "Launcher"]
             ])}
             ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
-            ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Target ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
-            ${renderContextRange(pairNumber, "Movement", "targetAccel", "Target accel.", snapshot, "accel", -1500, 3000, 50)}
-            ${renderContextRange(pairNumber, "Movement", "targetAngle", "Target angle", snapshot, "degrees", -90, 90, 1)}
+            ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Launchee speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
+            ${renderContextRange(pairNumber, "Movement", "targetAccel", "Launchee accel.", snapshot, "accel", -1500, 3000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "targetAngle", "Launchee angle", snapshot, "degrees", -90, 90, 1)}
             ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "Launcher on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
             ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "Launchee on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
           </div>
@@ -1761,7 +1831,7 @@
           <h3 class="subgroup-title">Context ${pairNumber} color</h3>
           <div class="control-subgrid">
             ${renderContextColor(pairNumber, "Color", "launcherColor", "Launcher", snapshot)}
-            ${renderContextColor(pairNumber, "Color", "targetColor", "Target", snapshot)}
+            ${renderContextColor(pairNumber, "Color", "targetColor", "Launchee", snapshot)}
             ${renderContextColor(pairNumber, "Color", "groupingColor", "Grouping box", snapshot)}
           </div>
         </div>`);
@@ -2366,6 +2436,9 @@
       normalizedValues.contextMode = "launch";
       normalizedValues.contextLauncherBehavior = "continue";
     }
+
+    delete controls.ballRadius?.dataset.autoFitRequestedRadius;
+    delete controls.contextBallRadius?.dataset.autoFitRequestedRadius;
 
     Object.entries(normalizedValues).forEach(([key, value]) => {
       const control = controls[key];
@@ -3037,24 +3110,30 @@
     return high;
   }
 
+  function getInsideStrokeRadius(radius, lineWidth) {
+    return Math.max(0.1, radius - lineWidth / 2);
+  }
+
   function drawBall(drawCtx, x, y, radius, fill, outline) {
+    const lineWidth = 1.5;
+    const visibleRadius = getInsideStrokeRadius(radius, lineWidth);
     const gradient = drawCtx.createRadialGradient(
-      x - radius * 0.36,
-      y - radius * 0.36,
-      radius * 0.18,
+      x - visibleRadius * 0.36,
+      y - visibleRadius * 0.36,
+      visibleRadius * 0.18,
       x,
       y,
-      radius
+      visibleRadius
     );
     gradient.addColorStop(0, "rgba(255,255,255,0.9)");
     gradient.addColorStop(0.14, fill);
     gradient.addColorStop(1, outline);
 
     drawCtx.beginPath();
-    drawCtx.arc(x, y, radius, 0, Math.PI * 2);
+    drawCtx.arc(x, y, visibleRadius, 0, Math.PI * 2);
     drawCtx.fillStyle = gradient;
     drawCtx.fill();
-    drawCtx.lineWidth = 1.5;
+    drawCtx.lineWidth = lineWidth;
     drawCtx.strokeStyle = "rgba(255,255,255,0.22)";
     drawCtx.stroke();
   }
@@ -3066,39 +3145,44 @@
     }
 
     if (state.objectStyle === "outline") {
+      const lineWidth = Math.max(2, radius * 0.08);
       drawCtx.beginPath();
-      drawCtx.arc(x, y, radius, 0, Math.PI * 2);
+      drawCtx.arc(x, y, getInsideStrokeRadius(radius, lineWidth), 0, Math.PI * 2);
       drawCtx.fillStyle = "rgba(0, 0, 0, 0)";
       drawCtx.fill();
-      drawCtx.lineWidth = Math.max(2, radius * 0.08);
+      drawCtx.lineWidth = lineWidth;
       drawCtx.strokeStyle = fill;
       drawCtx.stroke();
       return;
     }
 
     if (state.objectStyle === "ring") {
+      const outerLineWidth = Math.max(2.5, radius * 0.12);
+      const outerRadius = getInsideStrokeRadius(radius, outerLineWidth);
       drawCtx.beginPath();
-      drawCtx.arc(x, y, radius, 0, Math.PI * 2);
+      drawCtx.arc(x, y, outerRadius, 0, Math.PI * 2);
       drawCtx.fillStyle = fill;
       drawCtx.fill();
-      drawCtx.lineWidth = Math.max(2.5, radius * 0.12);
+      drawCtx.lineWidth = outerLineWidth;
       drawCtx.strokeStyle = outline;
       drawCtx.stroke();
+      const innerLineWidth = Math.max(1.5, radius * 0.06);
       drawCtx.beginPath();
-      drawCtx.arc(x, y, radius * 0.56, 0, Math.PI * 2);
+      drawCtx.arc(x, y, Math.max(0.1, outerRadius * 0.56), 0, Math.PI * 2);
       drawCtx.fillStyle = getStageThemeColors(state)[0];
       drawCtx.fill();
-      drawCtx.lineWidth = Math.max(1.5, radius * 0.06);
+      drawCtx.lineWidth = innerLineWidth;
       drawCtx.strokeStyle = outline;
       drawCtx.stroke();
       return;
     }
 
+    const lineWidth = 2;
     drawCtx.beginPath();
-    drawCtx.arc(x, y, radius, 0, Math.PI * 2);
+    drawCtx.arc(x, y, getInsideStrokeRadius(radius, lineWidth), 0, Math.PI * 2);
     drawCtx.fillStyle = fill;
     drawCtx.fill();
-    drawCtx.lineWidth = 2;
+    drawCtx.lineWidth = lineWidth;
     drawCtx.strokeStyle = outline;
     drawCtx.stroke();
   }
@@ -3231,7 +3315,7 @@
             })
           );
         } else {
-          const snapshotState = getContextPairSnapshotState(snapshot, state, laneY);
+          const snapshotState = getContextPairSnapshotState(snapshot, state, laneY, eventState.geometry.contextDirectionSign);
           contextGeometries.push(
             getGeometry(snapshotState, laneY, {
               scope: "original",
@@ -3589,9 +3673,17 @@
     };
   }
 
-  function getContextPairSnapshotState(snapshot, baseState, laneY) {
+  function getContextPairSnapshotState(snapshot, baseState, laneY, directionSign = 1) {
     const sourceLaneY = Number(snapshot.laneY) || getMainLaneY(baseState);
     const yShift = laneY - sourceLaneY;
+    const readSnapshotCoordinate = (value, fallback) => {
+      const number = Number(value);
+      return Number.isFinite(number) ? number : fallback;
+    };
+    const orientX = (value, fallback) => {
+      const x = readSnapshotCoordinate(value, fallback);
+      return directionSign === -1 ? STAGE_WIDTH - x : x;
+    };
     return {
       ...baseState,
       ballRadius: Number(snapshot.ballRadius) || baseState.ballRadius,
@@ -3609,10 +3701,10 @@
       targetAngle: Number(snapshot.targetAngle) || 0,
       launcherVisibleMs: Number(snapshot.launcherVisibleMs) || baseState.launcherVisibleMs,
       targetVisibleMs: Number(snapshot.targetVisibleMs) || baseState.targetVisibleMs,
-      originalLauncherStartX: Number(snapshot.launcherStartX) || baseState.originalLauncherStartX,
-      originalLauncherStartY: (Number(snapshot.launcherStartY) || baseState.originalLauncherStartY) + yShift,
-      originalTargetStartX: Number(snapshot.targetStartX) || baseState.originalTargetStartX,
-      originalTargetStartY: (Number(snapshot.targetStartY) || baseState.originalTargetStartY) + yShift,
+      originalLauncherStartX: orientX(snapshot.launcherStartX, baseState.originalLauncherStartX),
+      originalLauncherStartY: readSnapshotCoordinate(snapshot.launcherStartY, baseState.originalLauncherStartY) + yShift,
+      originalTargetStartX: orientX(snapshot.targetStartX, baseState.originalTargetStartX),
+      originalTargetStartY: readSnapshotCoordinate(snapshot.targetStartY, baseState.originalTargetStartY) + yShift,
       customStartEnabled: true
     };
   }
@@ -3739,7 +3831,7 @@
         targets.push(...getEventTrajectoryTargets(contextState, contextGeometry, "context", "Context 1"));
         continue;
       }
-      const snapshotState = getContextPairSnapshotState(snapshot, state, contextLaneY);
+      const snapshotState = getContextPairSnapshotState(snapshot, state, contextLaneY, directionSign);
       const trajectoryScope = `context${pairIndex + 1}`;
       const snapshotGeometry = getGeometry(snapshotState, contextLaneY, {
         scope: "original",
@@ -3910,7 +4002,7 @@
         continue;
       }
 
-      const snapshotState = getContextPairSnapshotState(snapshot, state, laneY);
+      const snapshotState = getContextPairSnapshotState(snapshot, state, laneY, directionSign);
       drawContextPair(
         drawCtx,
         state,
@@ -5191,6 +5283,52 @@
     conditionCsvLink.classList.remove("hidden");
   }
 
+  function getExportSignature(state) {
+    return JSON.stringify(state);
+  }
+
+  function clearGeneratedLink(link) {
+    if (!link) {
+      return;
+    }
+    link.removeAttribute("href");
+    link.removeAttribute("download");
+    link.classList.add("hidden");
+  }
+
+  function invalidateGeneratedExports() {
+    if (currentObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = null;
+    }
+    if (currentPsychopyUrl) {
+      URL.revokeObjectURL(currentPsychopyUrl);
+      currentPsychopyUrl = null;
+    }
+
+    clearGeneratedLink(downloadLink);
+    clearGeneratedLink(psychopyLink);
+    if (exportedVideo) {
+      exportedVideo.removeAttribute("src");
+      exportedVideo.load();
+    }
+    videoPanel?.classList.add("hidden");
+    artifactChecklist?.classList.add("hidden");
+    if (exportMeta) {
+      exportMeta.textContent = "";
+    }
+    if (artifactFilename) {
+      artifactFilename.textContent = "not exported";
+    }
+    if (artifactCsvStatus) {
+      artifactCsvStatus.textContent = "pending";
+    }
+    if (artifactWarnings) {
+      artifactWarnings.textContent = "no notes";
+    }
+    lastExportSignature = null;
+  }
+
   function stateFromConditionParameters(baseState, parameters) {
     return {
       ...baseState,
@@ -5436,6 +5574,7 @@
     const exportFormat = chooseExportFormat(state);
     const filename = getExportMovieFilename(state, exportFormat.extension);
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), getPsychopyCsvName(filename));
+    lastExportSignature = getExportSignature(state);
     statusText.textContent = "PsychoPy CSV ready.";
   }
 
@@ -6158,6 +6297,7 @@
     downloadLink.classList.remove("hidden");
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
     updateArtifactChecklist(state, filename, exportFormat);
+    lastExportSignature = getExportSignature(state);
 
     exportedVideo.src = currentObjectUrl;
     videoPanel.classList.remove("hidden");
@@ -6199,7 +6339,7 @@
       }
       if (id === "fileLabel") {
         control.addEventListener("input", () => {
-          statusText.textContent = "Ready.";
+          statusText.textContent = READY_STATUS;
         });
         return;
       }
@@ -6214,7 +6354,7 @@
           enforceCustomStartConstraints();
           updateOutputs();
           refreshText();
-          statusText.textContent = "Ready.";
+          statusText.textContent = READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6235,6 +6375,17 @@
         });
         return;
       }
+      if (id === "contextYOffset") {
+        control.addEventListener("input", () => {
+          activePresetKey = null;
+          reflowContextPairOffsets();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = "Context spacing updated.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
       if (id === "railEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
@@ -6246,7 +6397,7 @@
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = "Ready.";
+          statusText.textContent = READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6269,7 +6420,7 @@
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = "Ready.";
+          statusText.textContent = READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6284,7 +6435,7 @@
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = "Ready.";
+          statusText.textContent = READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6296,7 +6447,7 @@
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = control.checked ? "Click a ball or trajectory in the preview." : "Ready.";
+          statusText.textContent = control.checked ? "Click a ball or trajectory in the preview." : READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6330,7 +6481,7 @@
           syncStartDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = control.checked ? "Drag start positions on." : "Ready.";
+          statusText.textContent = control.checked ? "Drag start positions on." : READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6344,7 +6495,7 @@
           }
           updateOutputs();
           refreshText();
-          statusText.textContent = "Ready.";
+          statusText.textContent = READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6398,7 +6549,7 @@
         control.addEventListener(eventName, () => {
           updateOutputs();
           refreshText();
-          statusText.textContent = "Ready.";
+          statusText.textContent = READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
@@ -6408,7 +6559,7 @@
         activePresetKey = null;
         updateOutputs();
         refreshText();
-        statusText.textContent = "Ready.";
+        statusText.textContent = READY_STATUS;
         drawFrame(cloneState(), 0, ctx);
       });
     });
@@ -6426,7 +6577,7 @@
 
     applyPresetButton.addEventListener("click", () => {
       applyPreset(presetSelect.value);
-      statusText.textContent = "Ready.";
+      statusText.textContent = READY_STATUS;
     });
 
     previewButton.addEventListener("click", playPreview);
