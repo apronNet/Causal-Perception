@@ -115,6 +115,7 @@
     "crosshairColor",
     "railEnabled",
     "railCount",
+    "railLength",
     "railStartX",
     "railStartY",
     "railEndX",
@@ -213,6 +214,8 @@
     railEnabled: "Changes: adds one or more draggable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
     railCount:
       "Changes: number of rail lines drawn. Extra rails start parallel to Rail 1 and can then be dragged independently in the preview.",
+    railLength:
+      "Changes: rail length in pixels. Use for: making rails shorter or longer while preserving each rail's center and angle.",
     crosshairBlinkEnabled:
       "Changes: makes the crosshair blink before balls appear. During this pre-ball window the event clock has not started.",
     crosshairBlinkMs:
@@ -803,6 +806,7 @@
     crosshairColor: "#fbfaf1",
     railEnabled: false,
     railCount: 1,
+    railLength: 465,
     railStartX: 92,
     railStartY: STAGE_HEIGHT / 2,
     railEndX: STAGE_WIDTH * 0.58,
@@ -982,6 +986,7 @@
       crosshairColor: controls.crosshairColor.value,
       railEnabled: controls.railEnabled.checked,
       railCount: Number(controls.railCount.value),
+      railLength: Number(controls.railLength.value),
       railStartX: Number(controls.railStartX.value),
       railStartY: Number(controls.railStartY.value),
       railEndX: Number(controls.railEndX.value),
@@ -1749,6 +1754,41 @@
     };
   }
 
+  function getRailSegmentLength(segment) {
+    return Math.hypot(segment.endX - segment.startX, segment.endY - segment.startY);
+  }
+
+  function getRailLength(state, fallbackSegment) {
+    const fallbackLength = getRailSegmentLength(fallbackSegment || getDefaultRailSegment(state, 0));
+    const length = Number(state.railLength);
+    return clamp(Number.isFinite(length) && length > 0 ? length : fallbackLength, 40, 1100);
+  }
+
+  function resizeRailSegment(segment, length) {
+    const currentLength = getRailSegmentLength(segment);
+    const centerX = (segment.startX + segment.endX) / 2;
+    const centerY = (segment.startY + segment.endY) / 2;
+    const unitX = currentLength > 0.001 ? (segment.endX - segment.startX) / currentLength : 1;
+    const unitY = currentLength > 0.001 ? (segment.endY - segment.startY) / currentLength : 0;
+    const halfLength = length / 2;
+
+    return {
+      startX: clamp(centerX - unitX * halfLength, 0, STAGE_WIDTH),
+      startY: clamp(centerY - unitY * halfLength, 0, STAGE_HEIGHT),
+      endX: clamp(centerX + unitX * halfLength, 0, STAGE_WIDTH),
+      endY: clamp(centerY + unitY * halfLength, 0, STAGE_HEIGHT)
+    };
+  }
+
+  function updateRailLengthFromSegment(segment) {
+    if (!controls.railLength) {
+      return;
+    }
+    const min = Number(controls.railLength.min) || 40;
+    const max = Number(controls.railLength.max) || 1100;
+    controls.railLength.value = Math.round(clamp(getRailSegmentLength(segment), min, max) / 5) * 5;
+  }
+
   function getRailSegments(state) {
     const count = getRailCount(state);
     if (!count) {
@@ -1756,20 +1796,24 @@
     }
 
     const firstFallback = getDefaultRailSegment(state, 0);
+    const railLength = getRailLength(state, firstFallback);
     const segments = [
-      normalizeRailSegment(
-        {
-          startX: state.railStartX,
-          startY: state.railStartY,
-          endX: state.railEndX,
-          endY: state.railEndY
-        },
-        firstFallback
+      resizeRailSegment(
+        normalizeRailSegment(
+          {
+            startX: state.railStartX,
+            startY: state.railStartY,
+            endX: state.railEndX,
+            endY: state.railEndY
+          },
+          firstFallback
+        ),
+        railLength
       )
     ];
     const storedSegments = Array.isArray(state.railSegments) ? state.railSegments : [];
     for (let railIndex = 1; railIndex < count; railIndex += 1) {
-      segments.push(normalizeRailSegment(storedSegments[railIndex - 1], getDefaultRailSegment(state, railIndex)));
+      segments.push(resizeRailSegment(normalizeRailSegment(storedSegments[railIndex - 1], getDefaultRailSegment(state, railIndex)), railLength));
     }
     return segments;
   }
@@ -1810,7 +1854,9 @@
       return;
     }
 
-    writeRailSegment(0, getDefaultRailSegment());
+    const defaultSegment = getDefaultRailSegment();
+    updateRailLengthFromSegment(defaultSegment);
+    writeRailSegment(0, defaultSegment);
   }
 
   function getPreset(presetKey) {
@@ -3598,10 +3644,14 @@
       writeCoordinateControl("crosshairX", "crosshairY", point.x, point.y);
     } else if (target.type === "railStart") {
       const segment = getRailSegments(cloneState())[target.railIndex] || getDefaultRailSegment(cloneState(), target.railIndex);
-      writeRailSegment(target.railIndex, { ...segment, startX: point.x, startY: point.y });
+      const nextSegment = { ...segment, startX: point.x, startY: point.y };
+      updateRailLengthFromSegment(nextSegment);
+      writeRailSegment(target.railIndex, nextSegment);
     } else if (target.type === "railEnd") {
       const segment = getRailSegments(cloneState())[target.railIndex] || getDefaultRailSegment(cloneState(), target.railIndex);
-      writeRailSegment(target.railIndex, { ...segment, endX: point.x, endY: point.y });
+      const nextSegment = { ...segment, endX: point.x, endY: point.y };
+      updateRailLengthFromSegment(nextSegment);
+      writeRailSegment(target.railIndex, nextSegment);
     } else if (target.type === "railLine") {
       writeRailSegment(target.railIndex, {
         startX: point.x + target.startOffset.x,
@@ -4138,7 +4188,7 @@
     }
     if (state.railEnabled) {
       const railCount = getRailCount(state);
-      parts.push(`${railCount > 1 ? `rails${railCount}` : "rail"}${compactNumber(state.railStartX)}-${compactNumber(state.railEndX)}px`);
+      parts.push(`${railCount > 1 ? `rails${railCount}` : "rail"}${compactNumber(state.railLength)}px`);
     }
     return sanitizeLabel(parts.join("-"));
   }
@@ -4398,6 +4448,7 @@
       crosshairColor: state.crosshairColor,
       railEnabled: state.railEnabled,
       railCount: getRailCount(state),
+      railLengthPx: state.railLength,
       railStartX: state.railStartX,
       railStartY: state.railStartY,
       railEndX: state.railEndX,
