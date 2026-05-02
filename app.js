@@ -172,6 +172,7 @@
     "contactGuideMode",
     "physicsEngineEnabled",
     "fractureEnabled",
+    "contextFractureEnabled",
     "crosshairEnabled",
     "crosshairX",
     "crosshairY",
@@ -280,6 +281,8 @@
     groupingMode: "Changes: solid boxes that group one pair, every pair separately, or all context pairs together. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     fractureEnabled: "Changes: adds simple crack lines to O2 after impact. Use for: testing a visible contact consequence.",
+    contextFractureEnabled:
+      "Adds the visible crack cue to Context 1 O2 after its contact. Leave off unless fracture is part of the condition.",
     crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
     railEnabled: "Changes: adds one or more draggable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
@@ -890,6 +893,7 @@
     contactGuideMode: "none",
     physicsEngineEnabled: false,
     fractureEnabled: false,
+    contextFractureEnabled: false,
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
@@ -1130,7 +1134,8 @@
         targetAccel: normalizeSnapshotNumber(normalized.targetAccel, state.contextTargetAccel),
         targetAngle: clamp(Math.round(normalizeSnapshotNumber(normalized.targetAngle, state.contextTargetAngle)), -90, 90),
         launcherVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.launcherVisibleMs, state.contextLauncherVisibleMs)),
-        targetVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.targetVisibleMs, state.contextTargetVisibleMs))
+        targetVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.targetVisibleMs, state.contextTargetVisibleMs)),
+        fractureEnabled: Boolean(normalized.fractureEnabled)
       };
     });
   }
@@ -1185,6 +1190,7 @@
       contactGuideMode: controls.contactGuideMode.value,
       physicsEngineEnabled: controls.physicsEngineEnabled.value === "true",
       fractureEnabled: controls.fractureEnabled.checked,
+      contextFractureEnabled: controls.contextFractureEnabled.checked,
       crosshairEnabled: controls.crosshairEnabled.checked,
       crosshairX: Number(controls.crosshairX.value),
       crosshairY: Number(controls.crosshairY.value),
@@ -1577,6 +1583,7 @@
       ["contextTargetAngle", "targetAngle"],
       ["contextLauncherVisibleMs", "launcherVisibleMs"],
       ["contextTargetVisibleMs", "targetVisibleMs"],
+      ["contextFractureEnabled", "fractureEnabled"],
       ["contextColor", "launcherColor"],
       ["contextTargetColor", "targetColor"],
       ["groupingContextColor", "groupingOriginalColor"]
@@ -1746,6 +1753,7 @@
       contextOccluderEnabled: false,
       contextLauncherVisibleMs: contextVisibleMs,
       contextTargetVisibleMs: contextVisibleMs,
+      contextFractureEnabled: false,
       trajectoryEditEnabled: false,
       trajectoryOverrides: "{}",
       colorChangeMode: "none",
@@ -2086,6 +2094,7 @@
       targetAngle: state.targetAngle,
       launcherVisibleMs: state.launcherVisibleMs,
       targetVisibleMs: state.targetVisibleMs,
+      fractureEnabled: state.fractureEnabled,
       launcherColor: state.launcherColor,
       targetColor: state.targetColor,
       groupingColor: state.groupingOriginalColor,
@@ -2215,6 +2224,7 @@
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
             ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
             ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
+            ${renderContextCheckbox(pairNumber, "Movement", "fractureEnabled", "O2 fracture", snapshot)}
           </div>
         </div>`);
 
@@ -3238,6 +3248,15 @@
     return "contact";
   }
 
+  function hasAnyFractureEnabled(state) {
+    const contextVisible = getContextPairCount(state) > 0;
+    return Boolean(
+      state.fractureEnabled ||
+        (contextVisible &&
+          (state.contextFractureEnabled || (state.contextPairSnapshots || []).some((snapshot) => snapshot.fractureEnabled)))
+    );
+  }
+
   function getExperimentWarnings(state) {
     const warnings = [];
     const impactMovieTimeMs = getImpactMovieTimeMs(state);
@@ -3251,7 +3270,7 @@
     if (state.groupingMode !== "none") {
       warnings.push("Grouping boxes are visible to participants. Keep only if grouping is tested.");
     }
-    if (state.fractureEnabled) {
+    if (hasAnyFractureEnabled(state)) {
       warnings.push("Fracture marks are visible on O2 after impact. Keep only if this cue is part of the condition.");
     }
     if (state.colorChangeMode !== "none") {
@@ -3680,22 +3699,27 @@
   }
 
   function drawFracture(drawCtx, state, x, y, radius) {
-    const crackColor = state.stageTheme === "light" ? "rgba(35, 30, 24, 0.72)" : "rgba(255, 248, 234, 0.72)";
-    const shadowColor = state.stageTheme === "light" ? "rgba(255, 248, 234, 0.42)" : "rgba(10, 14, 13, 0.52)";
+    const crackColor = state.stageTheme === "light" ? "rgba(31, 28, 24, 0.82)" : "rgba(255, 248, 234, 0.84)";
+    const shadowColor = state.stageTheme === "light" ? "rgba(255, 248, 234, 0.42)" : "rgba(7, 15, 14, 0.64)";
+    const hairlineColor = state.stageTheme === "light" ? "rgba(12, 10, 8, 0.28)" : "rgba(255, 248, 234, 0.28)";
     const cracks = [
-      [[0, 0], [0.18, -0.18], [0.34, -0.42]],
-      [[0, 0], [-0.18, -0.12], [-0.42, -0.18]],
-      [[0, 0], [0.15, 0.2], [0.28, 0.48]],
-      [[0.15, 0.2], [0.34, 0.12], [0.52, 0.18]]
+      [[0.75, -0.68], [0.43, -0.38], [0.2, -0.14], [0.02, 0.06], [-0.15, 0.4], [-0.3, 0.92]],
+      [[0.02, 0.06], [-0.27, -0.08], [-0.63, -0.25]],
+      [[0.02, 0.06], [0.32, 0.2], [0.74, 0.4]],
+      [[0.2, -0.14], [0.39, 0.02], [0.5, 0.24]]
     ];
 
     drawCtx.save();
     drawCtx.beginPath();
-    drawCtx.arc(x, y, Math.max(0.1, radius - 2), 0, Math.PI * 2);
+    drawCtx.arc(x, y, Math.max(0.1, radius - Math.max(2, radius * 0.07)), 0, Math.PI * 2);
     drawCtx.clip();
-    [shadowColor, crackColor].forEach((strokeStyle, passIndex) => {
+    [
+      [shadowColor, Math.max(2.2, radius * 0.09)],
+      [crackColor, Math.max(1.25, radius * 0.045)],
+      [hairlineColor, Math.max(0.7, radius * 0.022)]
+    ].forEach(([strokeStyle, lineWidth]) => {
       drawCtx.strokeStyle = strokeStyle;
-      drawCtx.lineWidth = passIndex === 0 ? Math.max(2.2, radius * 0.08) : Math.max(1.2, radius * 0.045);
+      drawCtx.lineWidth = lineWidth;
       drawCtx.lineCap = "round";
       drawCtx.lineJoin = "round";
       cracks.forEach((crack) => {
@@ -4162,6 +4186,7 @@
       targetAccel: state.contextTargetAccel,
       targetAngle: state.contextTargetAngle,
       contactOcclusionMode: state.contextContactOcclusionMode,
+      fractureEnabled: state.contextFractureEnabled,
       launcherVisibleMs: state.contextLauncherVisibleMs,
       targetVisibleMs: state.contextTargetVisibleMs
     };
@@ -4266,6 +4291,7 @@
       targetSpeedRatio: Number(snapshot.targetSpeedRatio) || baseState.targetSpeedRatio,
       targetAccel: Number(snapshot.targetAccel) || 0,
       targetAngle: Number(snapshot.targetAngle) || 0,
+      fractureEnabled: Boolean(snapshot.fractureEnabled),
       launcherVisibleMs: Number(snapshot.launcherVisibleMs) || baseState.launcherVisibleMs,
       targetVisibleMs: Number(snapshot.targetVisibleMs) || baseState.targetVisibleMs,
       originalLauncherStartX: orientX(snapshot.launcherStartX, baseState.originalLauncherStartX),
@@ -4591,7 +4617,7 @@
       fill: colors.target.fill,
       outline: colors.target.outline,
       visible: isObjectVisibleAt(t, eventState.targetVisibleMs),
-      cracked: shouldDrawFracture(state, contextEvent)
+      cracked: shouldDrawFracture(eventState, contextEvent)
     };
     const contextOccluderBounds = drawTunnelOccluder(
       drawCtx,
@@ -5595,7 +5621,7 @@
       const railCount = getRailCount(state);
       parts.push(`${railCount > 1 ? `rails${railCount}` : "rail"}${compactNumber(state.railLength)}px`);
     }
-    if (state.fractureEnabled) {
+    if (hasAnyFractureEnabled(state)) {
       parts.push("fracture");
     }
     return capFilenameBase(parts.join("-"));
@@ -5959,6 +5985,7 @@
       contextPairSnapshots: state.contextPairSnapshots,
       trajectoryOverrides: state.trajectoryOverrides,
       fractureEnabled: state.fractureEnabled,
+      contextFractureEnabled: state.contextFractureEnabled,
       parameters: state,
       metadataEmbeddingNote:
         "Browser MediaRecorder exports do not reliably support embedded custom MP4/WebM metadata. Keep this JSON sidecar with the movie file.",
@@ -6055,6 +6082,7 @@
       crosshairBlinkEnabled: state.crosshairBlinkEnabled,
       crosshairBlinkMs: state.crosshairBlinkMs,
       fractureEnabled: state.fractureEnabled,
+      contextFractureEnabled: state.contextFractureEnabled,
       trajectoryEditEnabled: state.trajectoryEditEnabled,
       selectedTrajectoryBall: state.selectedTrajectoryBall,
       selectedTrajectoryAngle: state.selectedTrajectoryAngle,
@@ -6281,6 +6309,7 @@
       groupingMode: readConditionParameter(parameters, "groupingMode", baseState.groupingMode),
       contactGuideMode: readConditionParameter(parameters, "contactGuideMode", baseState.contactGuideMode),
       fractureEnabled: readConditionParameter(parameters, "fractureEnabled", baseState.fractureEnabled),
+      contextFractureEnabled: readConditionParameter(parameters, "contextFractureEnabled", baseState.contextFractureEnabled),
       crosshairEnabled: readConditionParameter(parameters, "crosshairEnabled", baseState.crosshairEnabled),
       crosshairX: readConditionParameter(parameters, "crosshairX", baseState.crosshairX),
       crosshairY: readConditionParameter(parameters, "crosshairY", baseState.crosshairY),
@@ -6487,6 +6516,7 @@
       crosshairBlinkEnabled: condition.parameters.crosshairBlinkEnabled,
       crosshairBlinkMs: condition.parameters.crosshairBlinkMs,
       fractureEnabled: condition.parameters.fractureEnabled,
+      contextFractureEnabled: condition.parameters.contextFractureEnabled,
       trajectoryEditEnabled: condition.parameters.trajectoryEditEnabled,
       selectedTrajectoryBall: condition.parameters.selectedTrajectoryBall,
       selectedTrajectoryAngle: condition.parameters.selectedTrajectoryAngle,
@@ -6662,6 +6692,7 @@
         groupingMode: condition.groupingMode,
         contactGuideMode: condition.contactGuideMode,
         fractureEnabled: condition.fractureEnabled,
+        contextFractureEnabled: condition.contextFractureEnabled,
         crosshairEnabled: condition.crosshairEnabled,
         crosshairX: condition.crosshairX,
         crosshairY: condition.crosshairY,
