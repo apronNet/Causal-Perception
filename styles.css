@@ -53,7 +53,6 @@ body {
   width: min(100%, var(--content-max));
   margin: 0 auto 14px;
   padding: 10px 0 14px;
-  border-bottom: 1px solid var(--line);
 }
 
 .topbar,
