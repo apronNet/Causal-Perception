@@ -1,18 +1,18 @@
 :root {
   color-scheme: light;
-  --bg: #e9e2d3;
-  --paper: #fff9ec;
-  --paper-soft: #f3eadb;
-  --ink: #1f211b;
-  --muted: #6f6b5d;
-  --line: #23251f;
-  --line-soft: rgba(35, 37, 31, 0.18);
-  --accent: #6f7f4f;
-  --accent-dark: #4d5b36;
-  --deep: #1f211b;
-  --deep-soft: #e0ded0;
-  --blue: #4d7b73;
-  --gold: #b18437;
+  --bg: #e9dfd0;
+  --paper: #fff8ea;
+  --paper-soft: #f3ead8;
+  --ink: #211d18;
+  --muted: #746a5e;
+  --line: #27221c;
+  --line-soft: rgba(39, 34, 28, 0.17);
+  --accent: #c45f45;
+  --accent-dark: #884231;
+  --deep: #211d18;
+  --deep-soft: #ded4c3;
+  --blue: #3f746f;
+  --gold: #c0953f;
   --shadow: none;
   --radius-lg: 0;
   --radius-md: 0;
@@ -398,7 +398,7 @@ h3 {
 
 .help-field > span {
   cursor: help;
-  text-decoration: underline dotted rgba(35, 37, 31, 0.35) 1px;
+  text-decoration: underline dotted rgba(39, 34, 28, 0.34) 1px;
   text-underline-offset: 3px;
 }
 
@@ -459,7 +459,7 @@ input[type="number"]:focus,
 select:focus,
 button:focus-visible,
 .download-link:focus-visible {
-  outline: 3px solid rgba(111, 127, 79, 0.38);
+  outline: 3px solid rgba(196, 95, 69, 0.34);
   outline-offset: 2px;
 }
 
@@ -712,7 +712,7 @@ button:disabled {
 .validation-list li {
   border-left: 4px solid var(--accent);
   padding: 5px 7px;
-  background: #efe8d6;
+  background: #f1e3cf;
   color: var(--accent-dark);
   font-size: 0.7rem;
   font-weight: 800;
@@ -724,8 +724,8 @@ button:disabled {
   overflow: hidden;
   border: 2px solid var(--line);
   background:
-    linear-gradient(180deg, rgba(8, 17, 18, 0.98), rgba(9, 22, 23, 0.96)),
-    #071314;
+    linear-gradient(180deg, rgba(20, 24, 22, 0.98), rgba(17, 21, 20, 0.96)),
+    #111514;
 }
 
 canvas {
@@ -803,7 +803,7 @@ canvas.special-drag-enabled:active {
   display: block;
   margin-top: 10px;
   border: 1px solid var(--line);
-  background: #051415;
+  background: #111514;
 }
 
 .download-link {

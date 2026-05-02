@@ -338,8 +338,8 @@
         stageTheme: "dark",
         groupingMode: "none",
         contactGuideMode: "none",
-        groupingOriginalColor: "#6f7f4f",
-        groupingContextColor: "#b18437",
+        groupingOriginalColor: "#c45f45",
+        groupingContextColor: "#3f746f",
         fps: 60,
         fileLabel: "causal-capture-scenario"
       }
@@ -803,7 +803,7 @@
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
-    crosshairColor: "#fff9ec",
+    crosshairColor: "#fff8ea",
     railEnabled: false,
     railCount: 1,
     railLength: 465,
@@ -815,13 +815,13 @@
     crosshairBlinkEnabled: false,
     crosshairBlinkMs: 600,
     colorChangeMode: "none",
-    colorChangeColor: "#f2d94e",
-    launcherColor: "#e53935",
-    targetColor: "#27c35a",
-    contextColor: "#e53935",
-    contextTargetColor: "#27c35a",
-    groupingOriginalColor: "#6f7f4f",
-    groupingContextColor: "#b18437",
+    colorChangeColor: "#e0b24a",
+    launcherColor: "#c45f45",
+    targetColor: "#3f746f",
+    contextColor: "#c45f45",
+    contextTargetColor: "#3f746f",
+    groupingOriginalColor: "#c45f45",
+    groupingContextColor: "#3f746f",
     customStartEnabled: false,
     customStartKeepRowsHorizontal: false,
     customStartAlignStartsVertical: false,
@@ -2632,7 +2632,7 @@
   }
 
   function shadeHexColor(hex, amount) {
-    const safeHex = normalizeHexColor(hex, "#7fd0c8").slice(1);
+    const safeHex = normalizeHexColor(hex, "#3f746f").slice(1);
     const target = amount < 0 ? 0 : 255;
     const weight = Math.min(1, Math.abs(amount));
     const channel = (offset) => {
@@ -2644,7 +2644,7 @@
     return `#${channel(0)}${channel(2)}${channel(4)}`;
   }
 
-  function hexToRgba(hex, alpha, fallback = "#f2d94e") {
+  function hexToRgba(hex, alpha, fallback = "#e0b24a") {
     const safeHex = normalizeHexColor(hex, fallback).slice(1);
     const r = parseInt(safeHex.slice(0, 2), 16);
     const g = parseInt(safeHex.slice(2, 4), 16);
@@ -2652,7 +2652,7 @@
     return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`;
   }
 
-  function getObjectPalette(color, fallback = "#7fd0c8") {
+  function getObjectPalette(color, fallback = "#3f746f") {
     const fill = normalizeHexColor(color, fallback);
     return {
       fill,
@@ -2661,10 +2661,10 @@
   }
 
   function getPalette(state) {
-    const launcher = normalizeHexColor(state.launcherColor, "#e53935");
-    const target = normalizeHexColor(state.targetColor, "#27c35a");
-    const context = normalizeHexColor(state.contextColor, "#e53935");
-    const contextTarget = normalizeHexColor(state.contextTargetColor, "#27c35a");
+    const launcher = normalizeHexColor(state.launcherColor, "#c45f45");
+    const target = normalizeHexColor(state.targetColor, "#3f746f");
+    const context = normalizeHexColor(state.contextColor, "#c45f45");
+    const contextTarget = normalizeHexColor(state.contextTargetColor, "#3f746f");
     return {
       launcher: {
         fill: launcher,
@@ -2691,7 +2691,7 @@
       return palette;
     }
 
-    const changed = normalizeHexColor(state.colorChangeColor, "#f2d94e");
+    const changed = normalizeHexColor(state.colorChangeColor, "#e0b24a");
     const changedStyle = {
       fill: changed,
       outline: shadeHexColor(changed, -0.48)
@@ -2794,9 +2794,9 @@
 
   function getStageThemeColors(state) {
     const themes = {
-      dark: ["#0a1516", "rgba(48, 87, 86, 0.18)", "rgba(237, 244, 244, 0.18)"],
-      midgray: ["#7a7f7d", "rgba(255, 255, 255, 0.12)", "rgba(255, 255, 255, 0.2)"],
-      light: ["#f4f5ef", "rgba(31, 103, 98, 0.08)", "rgba(23, 34, 32, 0.16)"]
+      dark: ["#111514", "rgba(196, 95, 69, 0.11)", "rgba(255, 248, 234, 0.16)"],
+      midgray: ["#837b70", "rgba(255, 248, 234, 0.11)", "rgba(255, 248, 234, 0.19)"],
+      light: ["#f6efe1", "rgba(196, 95, 69, 0.07)", "rgba(39, 34, 28, 0.15)"]
     };
     return themes[state.stageTheme] || themes.dark;
   }
@@ -2944,7 +2944,7 @@
     };
 
     if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#6f7f4f");
+      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#c45f45");
     }
 
     if (
@@ -2955,7 +2955,7 @@
         "Context set",
         contextGeometry,
         state.groupingContextColor,
-        "#b18437"
+        "#3f746f"
       );
     }
   }
@@ -2973,7 +2973,7 @@
         x: eventState.geometry.targetBaseX,
         radius: eventState.geometry.radius,
         color: state.groupingOriginalColor,
-        fallback: "#6f7f4f"
+        fallback: "#c45f45"
       });
     }
     if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
@@ -2987,7 +2987,7 @@
         x: contextGeometry.targetBaseX,
         radius: contextGeometry.radius,
         color: state.groupingContextColor,
-        fallback: "#b18437"
+        fallback: "#3f746f"
       });
     }
 
@@ -3789,7 +3789,7 @@
       drawCtx.stroke();
       drawCtx.beginPath();
       drawCtx.arc(handle.x, handle.y, handle.radius + 12, 0, Math.PI * 2);
-      drawCtx.strokeStyle = "rgba(111, 127, 79, 0.86)";
+      drawCtx.strokeStyle = "rgba(196, 95, 69, 0.84)";
       drawCtx.lineWidth = 2;
       drawCtx.stroke();
       drawCtx.fillStyle = "rgba(251, 250, 241, 0.92)";
