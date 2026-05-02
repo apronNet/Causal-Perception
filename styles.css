@@ -345,11 +345,12 @@ h3 {
 
 .choice-button {
   min-height: 26px;
-  padding: 4px 6px;
+  padding: 4px 5px;
   background: var(--paper);
   color: var(--ink);
-  font-size: 0.62rem;
-  letter-spacing: 0.035em;
+  font-size: 0.56rem;
+  letter-spacing: 0.025em;
+  line-height: 0.95;
 }
 
 .choice-button.is-active {
@@ -423,7 +424,7 @@ h3 {
 .field output {
   min-height: 1em;
   color: var(--accent-dark);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 800;
   line-height: 1.05;
   text-align: right;
@@ -449,7 +450,8 @@ select {
   background: var(--paper);
   color: var(--ink);
   font: inherit;
-  font-size: 0.66rem;
+  font-size: 0.6rem;
+  line-height: 1.05;
 }
 
 input[type="text"]:focus,
@@ -477,7 +479,7 @@ input[type="range"] {
   height: 24px;
   min-height: 24px;
   padding: 2px 3px;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -525,7 +527,7 @@ button,
   border-radius: 0;
   padding: 6px 10px;
   font: inherit;
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -614,7 +616,7 @@ button:disabled {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
 }
 
 .summary-strip {
@@ -645,7 +647,7 @@ button:disabled {
 
 .summary-strip b {
   color: var(--muted);
-  font-size: 0.45rem;
+  font-size: 0.42rem;
   line-height: 1;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -654,7 +656,7 @@ button:disabled {
 .summary-strip em {
   overflow: hidden;
   color: var(--ink);
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   font-style: normal;
   font-weight: 800;
   line-height: 1.08;
