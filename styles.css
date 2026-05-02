@@ -544,6 +544,13 @@ input[type="color"] {
   accent-color: var(--accent);
 }
 
+.tunnel-checkbox-field {
+  align-content: center;
+  border: 0;
+  background: transparent;
+  padding: 2px 0;
+}
+
 button,
 .download-link {
   display: inline-flex;

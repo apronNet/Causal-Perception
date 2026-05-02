@@ -1526,7 +1526,8 @@
 
   function renderContextCheckbox(pairNumber, group, field, label, snapshot) {
     const id = contextPairFieldId(pairNumber, group, field);
-    return `<label class="field checkbox-field"><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="checkbox"${snapshot[field] ? " checked" : ""} /><span>${label}</span></label>`;
+    const fieldClass = field === "occluderEnabled" ? " checkbox-field tunnel-checkbox-field" : " checkbox-field";
+    return `<label class="field${fieldClass}"><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="checkbox"${snapshot[field] ? " checked" : ""} /><span>${label}</span></label>`;
   }
 
   function renderContextColor(pairNumber, group, field, label, snapshot) {
