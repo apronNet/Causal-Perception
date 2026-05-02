@@ -7,6 +7,7 @@
   const DEFAULT_EXPORT_HEIGHT_PX = STAGE_HEIGHT * 2;
   const MIN_EXPORT_HEIGHT_PX = 360;
   const MAX_EXPORT_HEIGHT_PX = 2160;
+  const MAX_EXPORT_BASENAME_LENGTH = 180;
   const CONTEXT_PAIR_MAX = 10;
   const RAIL_MAX = 6;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
@@ -936,6 +937,8 @@
   let customPresetKeys = [];
   let hiddenBuiltInPresetKeys = [];
   let lastContextPairCount = 1;
+  let lastGeneratedMovieFilename = null;
+  let lastGeneratedExportDetails = null;
 
   function resizePreviewCanvas() {
     const rect = canvas.getBoundingClientRect();
@@ -1496,6 +1499,9 @@
 
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
+    if (contextIsOff) {
+      restoreAutoFitRadii();
+    }
     syncContextChoiceButtons();
     syncAllChoiceControlButtons();
     contextDependentControls.forEach((field) => {
@@ -1590,6 +1596,20 @@
       }
       control.value = fittedRadius;
     }
+  }
+
+  function restoreAutoFitRadiusControl(control) {
+    const storedRequested = Number(control?.dataset.autoFitRequestedRadius);
+    if (!control || !Number.isFinite(storedRequested)) {
+      return;
+    }
+    control.value = storedRequested;
+    delete control.dataset.autoFitRequestedRadius;
+  }
+
+  function restoreAutoFitRadii() {
+    restoreAutoFitRadiusControl(controls.ballRadius);
+    restoreAutoFitRadiusControl(controls.contextBallRadius);
   }
 
   function syncAutoFitSnapshotRadius(snapshot, fittedRadius) {
@@ -2813,6 +2833,8 @@
 
   function getExperimentWarnings(state) {
     const warnings = [];
+    const impactMovieTimeMs = getImpactMovieTimeMs(state);
+    const targetMovieOnsetMs = getTargetMovieOnsetMs(state);
     if (state.renderMode === "lab") {
       warnings.push("Lab preview exports labels. Use Clean stimulus or Fixation for participant movies.");
     }
@@ -2827,9 +2849,17 @@
     }
     if (state.soundEnabled) {
       warnings.push("Audio export depends on browser encoding. Check the saved movie in PsychoPy.");
+      if (!hasScheduledImpactSound(state)) {
+        warnings.push("Sound is enabled, but contact occurs outside the video or volume is zero. Export will be silent.");
+      }
     }
     if (getPreBallBlinkMs(state) >= state.durationMs) {
       warnings.push("Blink time is at least as long as the video. Increase Video duration if the balls should appear.");
+    }
+    if (impactMovieTimeMs >= state.durationMs) {
+      warnings.push("Contact occurs after the video ends. Increase Video duration if the launch should be visible.");
+    } else if (targetMovieOnsetMs >= state.durationMs) {
+      warnings.push("The second object starts after the video ends. Increase Video duration if the launched motion should be visible.");
     }
     return warnings;
   }
@@ -4597,8 +4627,21 @@
     canvas.addEventListener("pointerdown", (event) => {
       const state = cloneState();
       const point = getStagePoint(event);
+
+      if (state.customStartEnabled) {
+        initializeCustomStartPositions();
+        const handle = findStartDragHandle(cloneState(), point);
+        if (handle) {
+          stopPreview();
+          startDragTarget = handle;
+          canvas.setPointerCapture?.(event.pointerId);
+          event.preventDefault();
+          return;
+        }
+      }
+
       const specialTarget = findSpecialDragTarget(state, point);
-      if (specialTarget) {
+      if (specialTarget && specialTarget.type !== "railLine") {
         stopPreview();
         specialDragTarget = specialTarget;
         canvas.setPointerCapture?.(event.pointerId);
@@ -4615,18 +4658,12 @@
         return;
       }
 
-      if (!state.customStartEnabled) {
-        return;
-      }
-
-      initializeCustomStartPositions();
-      const handle = findStartDragHandle(cloneState(), point);
-      if (!handle) {
+      if (!specialTarget) {
         return;
       }
 
       stopPreview();
-      startDragTarget = handle;
+      specialDragTarget = specialTarget;
       canvas.setPointerCapture?.(event.pointerId);
       event.preventDefault();
     });
@@ -4846,6 +4883,26 @@
     )}${pad2(date.getSeconds())}`;
   }
 
+  function hashLabel(value) {
+    let hash = 2166136261;
+    const text = String(value);
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function capFilenameBase(base, maxLength = MAX_EXPORT_BASENAME_LENGTH) {
+    const cleanBase = sanitizeLabel(base);
+    if (cleanBase.length <= maxLength) {
+      return cleanBase;
+    }
+    const suffix = hashLabel(cleanBase);
+    const prefixLength = Math.max(12, maxLength - suffix.length - 1);
+    return `${cleanBase.slice(0, prefixLength).replace(/-+$/g, "")}-${suffix}`;
+  }
+
   function compactNumber(value, decimals = 0) {
     const number = Number(value);
     if (!Number.isFinite(number)) {
@@ -4935,11 +4992,33 @@
       const railCount = getRailCount(state);
       parts.push(`${railCount > 1 ? `rails${railCount}` : "rail"}${compactNumber(state.railLength)}px`);
     }
-    return sanitizeLabel(parts.join("-"));
+    return capFilenameBase(parts.join("-"));
   }
 
   function getExportMovieFilename(state, extension, date = new Date()) {
     return `${getExportFilenameBase(state)}-${getMonthDayTimestamp(date)}.${extension}`;
+  }
+
+  function copyExportDetails(exportDetails = {}) {
+    return {
+      ...exportDetails,
+      width: exportDetails.width,
+      height: exportDetails.height
+    };
+  }
+
+  function rememberGeneratedMovie(state, filename, exportDetails) {
+    lastExportSignature = getExportSignature(state);
+    lastGeneratedMovieFilename = filename;
+    lastGeneratedExportDetails = copyExportDetails(exportDetails);
+  }
+
+  function getReusableMovieFilename(state, extension) {
+    const signature = getExportSignature(state);
+    if (lastExportSignature === signature && lastGeneratedMovieFilename?.toLowerCase().endsWith(`.${extension}`)) {
+      return lastGeneratedMovieFilename;
+    }
+    return getExportMovieFilename(state, extension);
   }
 
   function getMimeCandidates(state) {
@@ -4998,18 +5077,24 @@
     return ratios[value] || ratios["16:9"];
   }
 
+  function toEvenDimension(value) {
+    return Math.max(2, Math.round(Number(value) / 2) * 2);
+  }
+
   function getExportHeightPx(state) {
-    return clamp(
-      Math.round(Number(state.exportHeightPx) || DEFAULT_EXPORT_HEIGHT_PX),
-      MIN_EXPORT_HEIGHT_PX,
-      MAX_EXPORT_HEIGHT_PX
+    return toEvenDimension(
+      clamp(
+        Math.round(Number(state.exportHeightPx) || DEFAULT_EXPORT_HEIGHT_PX),
+        MIN_EXPORT_HEIGHT_PX,
+        MAX_EXPORT_HEIGHT_PX
+      )
     );
   }
 
   function getExportCanvasSize(state) {
     const [ratioWidth, ratioHeight] = getAspectRatioParts(state.aspectRatio);
     const targetHeight = getExportHeightPx(state);
-    const width = Math.max(320, Math.round((targetHeight * ratioWidth) / ratioHeight));
+    const width = toEvenDimension((targetHeight * ratioWidth) / ratioHeight);
     return {
       width,
       height: targetHeight
@@ -5019,7 +5104,7 @@
   function getStageExportCanvasSize(state) {
     const targetHeight = getExportHeightPx(state);
     return {
-      width: Math.round((targetHeight * STAGE_WIDTH) / STAGE_HEIGHT),
+      width: toEvenDimension((targetHeight * STAGE_WIDTH) / STAGE_HEIGHT),
       height: targetHeight
     };
   }
@@ -5070,6 +5155,20 @@
     return Number((state.durationMs / 1000).toFixed(3));
   }
 
+  function getImpactMovieTimeMs(state) {
+    const geometry = getGeometry(state, getMainLaneY(state));
+    return getPreBallBlinkMs(state) + geometry.stopTime;
+  }
+
+  function getTargetMovieOnsetMs(state) {
+    const geometry = getGeometry(state, getMainLaneY(state));
+    return getPreBallBlinkMs(state) + geometry.targetStartTime;
+  }
+
+  function hasScheduledImpactSound(state) {
+    return Boolean(state.soundEnabled && state.soundVolume > 0 && getImpactMovieTimeMs(state) < state.durationMs);
+  }
+
   function getConditionName() {
     const preset = activePresetKey ? getPreset(activePresetKey) : null;
     return preset ? preset.label : "Custom stimulus";
@@ -5105,7 +5204,7 @@
         intendedDurationSec: getIntendedDurationSec(state),
         forceEndRoutine: true,
         loopPlayback: false,
-        noAudio: !state.soundEnabled,
+        noAudio: !hasScheduledImpactSound(state),
         syncTimingWithScreenRefresh: true
       },
       coder: {
@@ -5115,7 +5214,7 @@
         size: [encoded.width, encoded.height],
         pos: [0, 0],
         loop: false,
-        noAudio: !state.soundEnabled
+        noAudio: !hasScheduledImpactSound(state)
       },
       timing: {
         nativeMovieFps: state.fps,
@@ -5137,6 +5236,7 @@
         heightPx: encoded.height
       },
       stageColor: state.stageColor,
+      contextPairSnapshots: state.contextPairSnapshots,
       trajectoryOverrides: state.trajectoryOverrides,
       placement: `Put the movie in ${PSYCHOPY_STIMULI_FOLDER}/ next to the PsychoPy experiment and use the CSV as the loop conditions file.`
     };
@@ -5167,7 +5267,7 @@
       positionYPix: 0,
       forceEndRoutine: "true",
       loopPlayback: "false",
-      noAudio: String(!state.soundEnabled),
+      noAudio: String(!hasScheduledImpactSound(state)),
       durationMs: state.durationMs,
       leadInMs: state.leadInMs,
       launcherSpeedPxPerSec: state.launcherSpeed,
@@ -5191,6 +5291,7 @@
       contactOcclusionMode: state.contactOcclusionMode,
       contextMode: state.contextMode,
       contextPairCount: getContextPairCount(state),
+      contextPairSnapshots: JSON.stringify(state.contextPairSnapshots),
       contextDurationMs: state.contextDurationMs,
       contextOffsetMs: state.contextOffsetMs,
       contextDirection: state.contextDirection,
@@ -5351,6 +5452,8 @@
       artifactWarnings.textContent = "no notes";
     }
     lastExportSignature = null;
+    lastGeneratedMovieFilename = null;
+    lastGeneratedExportDetails = null;
   }
 
   function stateFromConditionParameters(baseState, parameters) {
@@ -5374,6 +5477,8 @@
       occluderWidth: parameters.occluderWidthPx,
       contactOcclusionMode: parameters.contactOcclusionMode,
       contextMode: parameters.contextMode,
+      contextPairCount: parameters.contextPairCount ?? baseState.contextPairCount,
+      contextPairSnapshots: parameters.contextPairSnapshots ?? baseState.contextPairSnapshots,
       contextDurationMs: parameters.contextDurationMs,
       contextOffsetMs: parameters.contextOffsetMs,
       contextDirection: parameters.contextDirection,
@@ -5426,12 +5531,12 @@
 
   function getConditionMovieName(baseName, condition, index, extension) {
     const order = String(index + 1).padStart(2, "0");
-    return `${baseName}-${order}-${sanitizeLabel(condition.label || "condition")}.${extension}`;
+    return `${capFilenameBase(`${baseName}-${order}-${sanitizeLabel(condition.label || "condition")}`)}.${extension}`;
   }
 
   function buildConditionManifest(kind, baseState, exportFormat = chooseExportFormat(baseState)) {
     const rawSet = buildConditionSet(kind, baseState);
-    const baseName = `${sanitizeLabel(baseState.fileLabel)}-${sanitizeLabel(rawSet.family)}`;
+    const baseName = capFilenameBase(`${sanitizeLabel(baseState.fileLabel)}-${sanitizeLabel(rawSet.family)}`, 150);
     const encoded = getEncodedDimensions(exportFormat.width ? exportFormat : getExportCanvasSize(baseState));
     const conditions = rawSet.conditions.map((condition, index) => {
       const filename = getConditionMovieName(baseName, condition, index, exportFormat.extension);
@@ -5455,6 +5560,7 @@
         widthPx: encoded.width,
         heightPx: encoded.height,
         resolutionPx: `${encoded.width}x${encoded.height}`,
+        noAudio: !hasScheduledImpactSound(conditionState),
         validationWarnings: getExperimentWarnings(conditionState),
         standards: condition.standards,
         parameters: condition.parameters
@@ -5502,7 +5608,7 @@
       positionYPix: 0,
       forceEndRoutine: "true",
       loopPlayback: "false",
-      noAudio: String(!condition.parameters.soundEnabled),
+      noAudio: String(condition.noAudio),
       durationMs: condition.parameters.durationMs,
       leadInMs: condition.parameters.leadInMs,
       launcherSpeedPxPerSec: condition.parameters.launcherSpeedPxPerSec,
@@ -5520,6 +5626,8 @@
       impactMs: condition.standards.impactMs,
       targetOnsetMs: condition.standards.targetOnsetMs,
       contextMode: condition.parameters.contextMode,
+      contextPairCount: condition.parameters.contextPairCount,
+      contextPairSnapshots: JSON.stringify(condition.parameters.contextPairSnapshots || []),
       contextDurationMs: condition.parameters.contextDurationMs,
       contextOffsetMs: condition.parameters.contextOffsetMs,
       contextDirection: condition.parameters.contextDirection,
@@ -5595,10 +5703,18 @@
 
   function exportPsychopyCsv() {
     const state = cloneState();
+    const exportSize = getExportCanvasSize(state);
     const exportFormat = chooseExportFormat(state);
-    const filename = getExportMovieFilename(state, exportFormat.extension);
-    setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), getPsychopyCsvName(filename));
-    lastExportSignature = getExportSignature(state);
+    exportFormat.width = exportSize.width;
+    exportFormat.height = exportSize.height;
+    const filename = getReusableMovieFilename(state, exportFormat.extension);
+    const signature = getExportSignature(state);
+    const exportDetails =
+      lastExportSignature === signature && lastGeneratedMovieFilename === filename && lastGeneratedExportDetails
+        ? lastGeneratedExportDetails
+        : exportFormat;
+    setPsychopyDownload(buildPsychopyCsv(state, filename, exportDetails), getPsychopyCsvName(filename));
+    rememberGeneratedMovie(state, filename, exportDetails);
     statusText.textContent = "PsychoPy CSV ready.";
   }
 
@@ -5635,6 +5751,8 @@
         occluderWidthPx: condition.occluderWidth,
         contactOcclusionMode: condition.contactOcclusionMode,
         contextMode: condition.contextMode,
+        contextPairCount: getContextPairCount(condition),
+        contextPairSnapshots: condition.contextPairSnapshots,
         contextDurationMs: condition.contextDurationMs,
         contextOffsetMs: condition.contextOffsetMs,
         contextDirection: condition.contextDirection,
@@ -6250,7 +6368,7 @@
     const exportFormat = chooseExportFormat(state);
     exportFormat.width = exportCanvas.width;
     exportFormat.height = exportCanvas.height;
-    const mimeType = exportFormat.mimeType;
+    let mimeType = exportFormat.mimeType;
     if (exportFormat.usedFallback) {
       statusText.textContent = "Requested format unsupported; using browser fallback.";
     }
@@ -6268,12 +6386,23 @@
       recorder = new MediaRecorder(stream, recorderOptions);
     } catch (error) {
       statusText.textContent = "Selected encoder failed; retrying WebM.";
-      recorder = new MediaRecorder(stream, {
-        mimeType: "video/webm",
-        videoBitsPerSecond: Math.round(state.videoBitrate * 1000000)
-      });
       exportFormat.mimeType = "video/webm";
       exportFormat.extension = "webm";
+      mimeType = exportFormat.mimeType;
+      try {
+        recorder = new MediaRecorder(stream, {
+          mimeType,
+          videoBitsPerSecond: Math.round(state.videoBitrate * 1000000)
+        });
+      } catch (fallbackError) {
+        if (exportAudioContext) {
+          await exportAudioContext.close().catch(() => {});
+        }
+        statusText.textContent = "Video encoder unavailable in this browser.";
+        exportButton.disabled = false;
+        isExporting = false;
+        return;
+      }
     }
     const chunks = [];
 
@@ -6321,7 +6450,7 @@
     downloadLink.classList.remove("hidden");
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
     updateArtifactChecklist(state, filename, exportFormat);
-    lastExportSignature = getExportSignature(state);
+    rememberGeneratedMovie(state, filename, exportFormat);
 
     exportedVideo.src = currentObjectUrl;
     videoPanel.classList.remove("hidden");
@@ -6363,6 +6492,7 @@
       }
       if (id === "fileLabel") {
         control.addEventListener("input", () => {
+          updateOutputs();
           statusText.textContent = READY_STATUS;
         });
         return;
@@ -6440,6 +6570,9 @@
       if (id === "crosshairEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
+          if (!control.checked && controls.crosshairBlinkEnabled.checked) {
+            controls.crosshairBlinkEnabled.checked = false;
+          }
           syncCrosshairControlVisibility();
           syncSpecialDragUi();
           updateOutputs();
