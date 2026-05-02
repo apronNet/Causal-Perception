@@ -289,6 +289,21 @@ h3 {
   gap: 4px;
 }
 
+.context-panel .control-grid {
+  margin-top: 5px;
+}
+
+.context-head-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.context-head-row h2 {
+  white-space: nowrap;
+}
+
 .field {
   display: grid;
   gap: 2px;
@@ -297,6 +312,17 @@ h3 {
 
 .context-toggle-field {
   grid-column: 1 / -1;
+}
+
+.context-toggle-inline {
+  grid-column: auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.context-toggle-inline > span:first-child {
+  display: none;
 }
 
 .context-dependent-control.is-retracted,
@@ -930,6 +956,7 @@ canvas.special-drag-enabled:active {
   }
 
   .section-heading,
+  .context-head-row,
   .preset-compact-grid,
   .preset-save-row,
   .preview-bar,
@@ -972,5 +999,9 @@ canvas.special-drag-enabled:active {
 
   .range-pair {
     grid-template-columns: minmax(0, 1fr) 68px;
+  }
+
+  .context-toggle-inline {
+    grid-template-columns: 1fr;
   }
 }
