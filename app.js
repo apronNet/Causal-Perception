@@ -1216,8 +1216,9 @@
       if (!input) {
         return;
       }
-      output.textContent = formatUnitHint(input.dataset.format, input.value);
+      output.textContent = "";
       output.title = formatValue(input.dataset.format, input.value, input.id, input);
+      syncFieldUnitLabel(input);
       const fineInput = input.dataset.fineControlId ? document.getElementById(input.dataset.fineControlId) : null;
       if (fineInput && document.activeElement !== fineInput) {
         fineInput.value = input.value;
@@ -1225,8 +1226,32 @@
     });
   }
 
+  function syncFieldUnitLabel(input) {
+    if (!input || input.type !== "range") {
+      return;
+    }
+    const unit = formatUnitHint(input.dataset.format, input.value);
+    const field = input.closest(".field");
+    const label = Array.from(field?.children || []).find((element) => element.tagName === "SPAN");
+    if (!label) {
+      return;
+    }
+    let unitBadge = label.querySelector(".unit-label");
+    if (!unit) {
+      unitBadge?.remove();
+      return;
+    }
+    if (!unitBadge) {
+      unitBadge = document.createElement("small");
+      unitBadge.className = "unit-label";
+      label.appendChild(unitBadge);
+    }
+    unitBadge.textContent = unit;
+  }
+
   function enhanceRangePrecision() {
     document.querySelectorAll('input[type="range"]').forEach((range) => {
+      syncFieldUnitLabel(range);
       if (range.dataset.precisionEnhanced === "true") {
         return;
       }
