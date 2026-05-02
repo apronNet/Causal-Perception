@@ -175,15 +175,15 @@
     gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
       "Changes: optional cue drawn only when Overlap / Gap is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
-    ballRadius: "Changes: object size. Use for: scaling the balls while keeping the same motion logic.",
-    contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size unless edited separately.",
+    ballRadius: "Changes: object size. When many context pairs are shown, all pairs auto-shrink so the rows fit vertically.",
+    contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
     contactOcclusionMode: "Changes: which original-pair object is painted on top during overlap. Use for: First object front puts the launcher on top; Second object front puts the target on top; Alternate switches the top object.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
-      "Changes: how many context pairs are drawn, up to 10. New pairs copy the original pair when added; ball size stays matched unless Radius is edited.",
+      "Changes: how many context pairs are drawn, up to 10. New pairs copy the original pair when added; high counts shrink and space all pairs to fit vertically.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short window around impact.",
     contextOffsetMs: "Changes: context timing relative to the original pair event. Use for: 0 ms means simultaneous contact; negative means context earlier; positive means context later.",
     contextDirection: "Changes: context motion direction. Same matches the original pair event; opposite mirrors it.",
@@ -1349,8 +1349,27 @@
   }
 
   function getAutoContextPairRadius(baseRadius, pairCount) {
-    const radius = Number(baseRadius) || stimulusDefaults.contextBallRadius;
-    return clamp(Math.round(radius), 12, 60);
+    const requestedRadius = clamp(Math.round(Number(baseRadius) || stimulusDefaults.contextBallRadius), 8, 60);
+    const visibleContextPairs = clamp(Math.round(Number(pairCount) || 1), 1, CONTEXT_PAIR_MAX);
+    const visibleRows = visibleContextPairs + 1;
+    const fitRadius = Math.floor((STAGE_HEIGHT - 88) / (visibleRows * 2.25));
+    return clamp(Math.min(requestedRadius, fitRadius), 8, 60);
+  }
+
+  function getAutoContextPairSpacing(radius, pairCount, preferredSpacing = 112) {
+    const visibleContextPairs = clamp(Math.round(Number(pairCount) || 1), 1, CONTEXT_PAIR_MAX);
+    const visibleHalfSpan = Math.max(80, STAGE_HEIGHT / 2 - radius - 44);
+    const stepCount = Math.max(1, Math.ceil(visibleContextPairs / 2));
+    const fitSpacing = visibleHalfSpan / stepCount;
+    const preferred = Math.abs(Number(preferredSpacing)) || 112;
+    const minimumComfortSpacing = radius * 2.15;
+    return Math.max(Math.min(preferred, fitSpacing), Math.min(minimumComfortSpacing, fitSpacing));
+  }
+
+  function getContextPairOffsetFromSpacing(pairIndex, spacing, sign = 1) {
+    const offsetMagnitude = Math.floor(pairIndex / 2) + 1;
+    const side = pairIndex % 2 === 0 ? 1 : -1;
+    return offsetMagnitude * spacing * side * sign;
   }
 
   function shouldReplaceAutoContextRadius(value, baseRadius, previousPairCount) {
@@ -1363,19 +1382,42 @@
   function applyAutoContextPairRadii(previousPairCount, nextPairCount) {
     const baseRadius = Number(controls.ballRadius.value) || stimulusDefaults.contextBallRadius;
     const nextAutoRadius = getAutoContextPairRadius(baseRadius, nextPairCount);
+    const shouldFitManyRows = nextPairCount >= 4;
 
-    if (shouldReplaceAutoContextRadius(controls.contextBallRadius.value, baseRadius, previousPairCount)) {
+    if (shouldFitManyRows && Number(controls.ballRadius.value) > nextAutoRadius) {
+      controls.ballRadius.value = nextAutoRadius;
+    }
+
+    if (
+      shouldReplaceAutoContextRadius(controls.contextBallRadius.value, baseRadius, previousPairCount) ||
+      (shouldFitManyRows && Number(controls.contextBallRadius.value) > nextAutoRadius)
+    ) {
       controls.contextBallRadius.value = nextAutoRadius;
     }
 
-    const snapshots = parseContextPairSnapshots(controls.contextPairSnapshots.value).map((snapshot) => {
-      if (!shouldReplaceAutoContextRadius(snapshot.ballRadius, baseRadius, previousPairCount)) {
-        return snapshot;
+    const currentYOffset = Number(controls.contextYOffset.value) || 112;
+    const spacingSign = currentYOffset < 0 ? -1 : 1;
+    const nextAutoSpacing = getAutoContextPairSpacing(nextAutoRadius, nextPairCount, currentYOffset);
+    if (shouldFitManyRows && Math.abs(currentYOffset) > nextAutoSpacing) {
+      controls.contextYOffset.value = Math.round(nextAutoSpacing * spacingSign);
+    }
+
+    const snapshots = parseContextPairSnapshots(controls.contextPairSnapshots.value).map((snapshot, snapshotIndex) => {
+      const nextSnapshot = { ...snapshot };
+      if (
+        shouldReplaceAutoContextRadius(snapshot.ballRadius, baseRadius, previousPairCount) ||
+        (shouldFitManyRows && Number(snapshot.ballRadius) > nextAutoRadius)
+      ) {
+        nextSnapshot.ballRadius = nextAutoRadius;
       }
-      return {
-        ...snapshot,
-        ballRadius: nextAutoRadius
-      };
+      if (shouldFitManyRows) {
+        nextSnapshot.yOffset = getContextPairOffsetFromSpacing(
+          snapshotIndex + 1,
+          nextAutoSpacing,
+          spacingSign
+        );
+      }
+      return nextSnapshot;
     });
     controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
   }
@@ -1385,13 +1427,8 @@
     const pairCount = Math.max(getContextPairCount(state) || Math.round(Number(state.contextPairCount) || 1), pairIndex + 1, 1);
     const radius = Number(state.contextBallRadius) || Number(state.ballRadius) || stimulusDefaults.contextBallRadius;
     const preferredSpacing = Math.abs(state.contextYOffset) || 112;
-    const visibleHalfSpan = Math.max(80, STAGE_HEIGHT / 2 - radius - 28);
-    const stepCount = Math.max(1, Math.ceil(pairCount / 2));
-    const fitSpacing = visibleHalfSpan / stepCount;
-    const spacing = Math.max(Math.min(preferredSpacing, fitSpacing), Math.min(radius * 1.55, preferredSpacing));
-    const offsetMagnitude = Math.floor(pairIndex / 2) + 1;
-    const side = pairIndex % 2 === 0 ? 1 : -1;
-    return offsetMagnitude * spacing * side * sign;
+    const spacing = getAutoContextPairSpacing(radius, pairCount, preferredSpacing);
+    return getContextPairOffsetFromSpacing(pairIndex, spacing, sign);
   }
 
   function makeContextPairSnapshotFromOriginal(state, pairIndex = 1) {
@@ -1550,7 +1587,7 @@
           <h3 class="subgroup-title">Context ${pairNumber} position</h3>
           <div class="control-subgrid">
             ${renderContextRange(pairNumber, "Position", "yOffset", "Vertical distance", snapshot, "signedPx", -320, 320, 1)}
-            ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 12, 60, 1)}
+            ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
             ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
             ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
             ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
@@ -4026,7 +4063,13 @@
   }
 
   function getMainLaneY(state) {
-    return STAGE_HEIGHT / 2 - (state.contextMode === "none" ? 0 : 52) + state.stimulusYOffset;
+    if (state.contextMode === "none") {
+      return STAGE_HEIGHT / 2 + state.stimulusYOffset;
+    }
+
+    const visibleContextPairs = Math.max(1, getContextPairCount(state) || 1);
+    const contextShift = Math.max(0, 52 - (visibleContextPairs - 1) * 18);
+    return STAGE_HEIGHT / 2 - contextShift + state.stimulusYOffset;
   }
 
   function stopPreview() {

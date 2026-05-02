@@ -92,7 +92,7 @@
                 </span>
               </label>
               <p class="context-copy-note context-dependent-control">
-                New pairs copy the original pair when added. Ball size stays matched unless you edit Radius.
+                New pairs copy the original pair when added. High counts auto-shrink all pairs to fit.
               </p>
               <input id="contextPairSnapshots" type="hidden" />
             </div>
@@ -253,7 +253,7 @@
                 <div class="control-subgrid">
                   <label class="field">
                     <span>Radius</span>
-                    <input id="ballRadius" data-format="intPx" min="12" max="60" step="1" type="range" />
+                    <input id="ballRadius" data-format="intPx" min="8" max="60" step="1" type="range" />
                     <output data-for="ballRadius"></output>
                   </label>
                   <label class="field">
@@ -282,7 +282,7 @@
                   </label>
                   <label class="field">
                     <span>Radius</span>
-                    <input id="contextBallRadius" data-format="intPx" min="12" max="60" step="1" type="range" />
+                    <input id="contextBallRadius" data-format="intPx" min="8" max="60" step="1" type="range" />
                     <output data-for="contextBallRadius"></output>
                   </label>
                   <label class="field">
