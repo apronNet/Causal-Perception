@@ -298,16 +298,6 @@
                 </div>
               </div>
               <div id="contextPositionPairList" class="context-pair-list context-dependent-control"></div>
-              <label class="field">
-                <span>Marker</span>
-                <select id="markerMode">
-                  <option value="none">None</option>
-                  <option value="bridge">Bridge across gap</option>
-                  <option value="stop">Stop marker</option>
-                  <option value="start">Start marker</option>
-                  <option value="both">Stop and start markers</option>
-                </select>
-              </label>
               <label class="field checkbox-field">
                 <input id="customStartEnabled" type="checkbox" />
                 <span>Drag start positions</span>
@@ -362,15 +352,6 @@
                   <option value="light">Light</option>
                 </select>
               </label>
-              <label class="field">
-                <span>Contact guide</span>
-                <select id="contactGuideMode">
-                  <option value="none">None</option>
-                  <option value="original">Original set</option>
-                  <option value="context">Context set</option>
-                  <option value="both">Both sets</option>
-                </select>
-              </label>
             </div>
           </section>
 
@@ -378,6 +359,50 @@
             <summary><h2>06 Special features</h2></summary>
             <div class="panel-content">
               <div class="control-grid">
+                <div class="control-subgroup">
+                  <h3 class="subgroup-title">Visible cues</h3>
+                  <div class="control-subgrid">
+                    <label class="field">
+                      <span>Perceptual grouping</span>
+                      <select id="groupingMode">
+                        <option value="none">None</option>
+                        <option value="original">Original set</option>
+                        <option value="context">Context set</option>
+                        <option value="both">Both sets</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Marker</span>
+                      <select id="markerMode">
+                        <option value="none">None</option>
+                        <option value="bridge">Bridge across gap</option>
+                        <option value="stop">Stop marker</option>
+                        <option value="start">Start marker</option>
+                        <option value="both">Stop and start markers</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Contact guide</span>
+                      <select id="contactGuideMode">
+                        <option value="none">None</option>
+                        <option value="original">Original set</option>
+                        <option value="context">Context set</option>
+                        <option value="both">Both sets</option>
+                      </select>
+                    </label>
+                    <label class="field color-field">
+                      <span>Original box</span>
+                      <input id="groupingOriginalColor" type="color" />
+                    </label>
+                    <label class="field color-field context-dependent-control">
+                      <span>Context box</span>
+                      <input id="groupingContextColor" type="color" />
+                    </label>
+                  </div>
+                </div>
+                <div class="control-subgroup">
+                  <h3 class="subgroup-title">Crosshair and rail</h3>
+                  <div class="control-subgrid">
                 <label class="field checkbox-field">
                   <input id="crosshairEnabled" type="checkbox" />
                   <span>Crosshair</span>
@@ -404,8 +429,32 @@
                   <input id="crosshairBlinkMs" data-format="ms" min="100" max="3000" step="50" type="range" />
                   <output data-for="crosshairBlinkMs"></output>
                 </label>
+                  </div>
+                </div>
+                <div class="control-subgroup">
+                  <h3 class="subgroup-title">Sound cue</h3>
+                  <div class="control-subgrid">
+                    <label class="field checkbox-field">
+                      <input id="soundEnabled" type="checkbox" />
+                      <span>Impact sound</span>
+                    </label>
+                    <label class="field">
+                      <span>Type</span>
+                      <select id="soundType">
+                        <option value="click">Click</option>
+                        <option value="thud">Soft thud</option>
+                        <option value="tone">Brief tone</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Volume</span>
+                      <input id="soundVolume" data-format="percent" min="0" max="1" step="0.05" type="range" />
+                      <output data-for="soundVolume"></output>
+                    </label>
+                  </div>
+                </div>
                 <p class="special-note">
-                  Crosshair and rails are draggable in the preview. Blink hides balls before launch.
+                  These are visible or audible extras. Use them only when they are part of the condition.
                 </p>
                 <input id="crosshairX" type="hidden" />
                 <input id="crosshairY" type="hidden" />
@@ -427,15 +476,6 @@
                 <select id="objectStyle">
                   <option value="flat">Simple discs</option>
                   <option value="shaded">3D shaded balls</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Perceptual grouping</span>
-                <select id="groupingMode">
-                  <option value="none">None</option>
-                  <option value="original">Original set</option>
-                  <option value="context">Context set</option>
-                  <option value="both">Both sets</option>
                 </select>
               </label>
               <label class="field">
@@ -462,10 +502,6 @@
                     <span>Target</span>
                     <input id="targetColor" type="color" />
                   </label>
-                  <label class="field color-field">
-                    <span>Grouping box</span>
-                    <input id="groupingOriginalColor" type="color" />
-                  </label>
                 </div>
               </div>
               <div class="control-subgroup context-dependent-control">
@@ -478,10 +514,6 @@
                   <label class="field color-field">
                     <span>Target</span>
                     <input id="contextTargetColor" type="color" />
-                  </label>
-                  <label class="field color-field">
-                    <span>Grouping box</span>
-                    <input id="groupingContextColor" type="color" />
                   </label>
                 </div>
               </div>
@@ -547,23 +579,6 @@
                 <span>Fixation</span>
                 <input id="fixationDva" data-format="dva" min="0.05" max="2.5" step="0.05" type="range" />
                 <output data-for="fixationDva"></output>
-              </label>
-              <label class="field checkbox-field">
-                <input id="soundEnabled" type="checkbox" />
-                <span>Impact sound</span>
-              </label>
-              <label class="field">
-                <span>Type</span>
-                <select id="soundType">
-                  <option value="click">Click</option>
-                  <option value="thud">Soft thud</option>
-                  <option value="tone">Brief tone</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Volume</span>
-                <input id="soundVolume" data-format="percent" min="0" max="1" step="0.05" type="range" />
-                <output data-for="soundVolume"></output>
               </label>
             </div>
             <button id="psychopyButton" class="secondary-button full-button" type="button">Export PsychoPy CSV</button>
