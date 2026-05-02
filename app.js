@@ -199,18 +199,18 @@
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
     presetNameInput: "Changes: the name used when saving the current settings. Browser saves are local; shared presets must be added to shared-presets.json.",
     durationMs: "Changes: total video duration for preview and export. Use for: making sure approach, contact, launched motion, and any context are not cut off.",
-    leadInMs: "Changes: still time before the first object moves. Use for: giving viewers a stable start frame before motion begins.",
-    launcherSpeed: "Changes: speed of the first object before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
-    launcherAccel: "Changes: whether the first object speeds up or slows down before contact. Positive means speeding up; negative means slowing down.",
-    targetSpeedRatio: "Changes: launchee outgoing speed as a multiple of launcher impact speed. Use for: 1.00 matched launch, below 1.00 slower launch, above 1.00 trigger-like motion.",
-    targetAccel: "Changes: whether the launchee speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
-    launcherBehavior: "Changes: what the first object does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
-    targetAngle: "Changes: direction of the launchee motion after contact. Use for: straight launch versus angled launch.",
+    leadInMs: "Changes: still time before O1 moves. Use for: giving viewers a stable start frame before motion begins.",
+    launcherSpeed: "Changes: speed of O1 before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
+    launcherAccel: "Changes: whether O1 speeds up or slows down before contact. Positive means speeding up; negative means slowing down.",
+    targetSpeedRatio: "Changes: O2 outgoing speed as a multiple of O1 impact speed. Use for: 1.00 matched launch, below 1.00 slower launch, above 1.00 trigger-like motion.",
+    targetAccel: "Changes: whether O2 speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
+    launcherBehavior: "Changes: what O1 does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
+    targetAngle: "Changes: direction of O2 motion after contact. Use for: straight launch versus angled launch.",
     launcherVisibleMs:
-      "Changes: how long the launcher stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
+      "Changes: how long O1 stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
     targetVisibleMs:
-      "Changes: how long the launchee stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
-    delayMs: "Changes: time between contact and second-object motion. Short delays look more directly causal; long delays look less like immediate launching.",
+      "Changes: how long O2 stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
+    delayMs: "Changes: time between contact and O2 motion. Short delays look more directly causal; long delays look less like immediate launching.",
     gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
       "Changes: optional cue drawn only when Overlap / Gap is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
@@ -218,7 +218,7 @@
     contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
-    contactOcclusionMode: "Changes: which object is painted on top during overlap. O2 puts the second object on top; O1 puts the first object on top.",
+    contactOcclusionMode: "Changes: which object is painted on top during overlap. O2 puts O2 on top; O1 puts O1 on top.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
     contextPairCount:
@@ -228,21 +228,21 @@
     contextDirection: "Changes: context motion direction. Same matches the original pair event; opposite mirrors it.",
     contextYOffset: "Changes: vertical distance between original pair and context rows. Use for: separating the rows or preventing box overlap.",
     contextLeadInMs: "Changes: still time before the context object moves. Use for: shifting context approach timing without changing the original pair event.",
-    contextLauncherSpeed: "Changes: speed of the context first object. Use for: matching the original pair event or making the context more/less forceful.",
-    contextLauncherAccel: "Changes: whether the context first object speeds up or slows down before contact.",
-    contextLauncherBehavior: "Changes: what the context first object does after contact. Stop is launch-like; continue is pass-like; entrain makes both context objects move together.",
-    contextDelayMs: "Changes: delay between context contact and context target motion. Use for: strong immediate context versus weaker delayed context.",
+    contextLauncherSpeed: "Changes: speed of context O1. Use for: matching the original pair event or making the context more/less forceful.",
+    contextLauncherAccel: "Changes: whether context O1 speeds up or slows down before contact.",
+    contextLauncherBehavior: "Changes: what context O1 does after contact. Stop is launch-like; continue is pass-like; entrain makes both context objects move together.",
+    contextDelayMs: "Changes: delay between context contact and context O2 motion. Use for: strong immediate context versus weaker delayed context.",
     contextGapPx: "Changes: context-row spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. O2 puts the second context object on top; O1 puts the first context object on top.",
     contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original pair event.",
     contextOccluderWidth: "Changes: context tunnel width. Wider context tunnels hide more of the context contact region.",
-    contextTargetSpeedRatio: "Changes: context launchee speed as a multiple of context launcher impact speed. Use for: matching the original pair launch or making the context faster/slower.",
-    contextTargetAccel: "Changes: whether the context launchee speeds up or slows down after it starts moving.",
-    contextTargetAngle: "Changes: direction of context launchee motion. Use for: matching or mismatching the original pair event direction.",
+    contextTargetSpeedRatio: "Changes: context O2 speed as a multiple of context O1 impact speed. Use for: matching the original pair launch or making the context faster/slower.",
+    contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
+    contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
     contextLauncherVisibleMs:
-      "Changes: how long the context launcher stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
+      "Changes: how long context O1 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     contextTargetVisibleMs:
-      "Changes: how long the context launchee stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
+      "Changes: how long context O2 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
     stageTheme: "Changes: preset background luminance and sets the background color picker.",
     stageColor: "Changes: exact stimulus-field color. Causal-capture displays commonly use bright colored discs on a black field.",
@@ -264,15 +264,15 @@
       "Changes: enables preview selection of individual ball trajectories. Click a ball or guide line in the preview, then adjust Angle for that selected ball only.",
     selectedTrajectoryAngle:
       "Changes: relative angle for the selected ball trajectory. 0 follows the default path; positive and negative values bend that selected ball in opposite vertical directions.",
-    customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing launcher and launchee start positions manually; exports use the positions but hide the rings.",
-    customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: launcher and launchee share one y-position within each pair.",
-    customStartAlignStartsVertical: "Changes: keeps launchers on one vertical line when context is shown.",
+    customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1 and O2 start positions manually; exports use the positions but hide the rings.",
+    customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position within each pair.",
+    customStartAlignStartsVertical: "Changes: keeps O1 starts on one vertical line when context is shown.",
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
     colorChangeColor: "Changes: the new color used by sudden color change. Use for: setting the contact-locked feature change.",
-    launcherColor: "Changes: color of the original-pair first object. Default follows the common red/green research display.",
-    targetColor: "Changes: color of the original-pair launchee. Default follows the common red/green research display.",
-    contextColor: "Changes: color of the context first object. Use for: matching or separating context from the original pair row.",
-    contextTargetColor: "Changes: color of the context launchee. Use for: context object identity.",
+    launcherColor: "Changes: color of original-pair O1. Default follows the common red/green research display.",
+    targetColor: "Changes: color of original-pair O2. Default follows the common red/green research display.",
+    contextColor: "Changes: color of context O1. Use for: matching or separating context from the original pair row.",
+    contextTargetColor: "Changes: color of context O2. Use for: context object identity.",
     groupingOriginalColor: "Changes: line color of the original-pair grouping box. Use a visible color that does not dominate the balls.",
     groupingContextColor: "Changes: line color of the context-row grouping box. Match box colors to group rows, or separate colors to distinguish rows.",
     pxPerDva: "Changes: pixels per visual degree saved in metadata. Use for: PsychoPy reporting when monitor size and viewing distance are known.",
@@ -393,7 +393,7 @@
     delayed: {
       label: "Delayed launch control",
       summary:
-        "Delay the target after contact to weaken the causal impression while keeping the rest of the event canonical.",
+        "Delay O2 after contact to weaken the causal impression while keeping the rest of the event canonical.",
       note:
         "Michotte-style delay manipulations are useful for shifting participants from direct launching toward delayed launching or independent motion.",
       literature:
@@ -422,7 +422,7 @@
     gapped: {
       label: "Gap control",
       summary:
-        "Stop the launcher short of the target. Gap displays often weaken causal appearance, though speed and wording matter.",
+        "Stop O1 short of O2. Gap displays often weaken causal appearance, though speed and wording matter.",
       note:
         "This is a good non-canonical comparison for experiments that want to separate visible contact from a broader making-move impression.",
       literature:
@@ -688,11 +688,11 @@
     triggering: {
       label: "Triggering event",
       summary:
-        "The target moves faster than the launcher after contact, producing a triggering-style causal event.",
+        "O2 moves faster than O1 after contact, producing a triggering-style causal event.",
       note:
         "Kominsky and Scholl treat triggering as launching-like for adaptation transfer, unlike entraining.",
       literature:
-        "Triggering displays keep the contact structure but make the launched object move faster than the launcher.",
+        "Triggering displays keep the contact structure but make O2 move faster than O1.",
       values: {
         durationMs: 1700,
         leadInMs: 160,
@@ -717,7 +717,7 @@
     entraining: {
       label: "Entraining / push event",
       summary:
-        "The launcher continues with the target after contact, producing the push/entrain event family.",
+        "O1 continues with O2 after contact, producing the push/entrain event family.",
       note:
         "Keep this only for the COGS launch/push contrast; it is not part of the Scholl/Nakayama capture display.",
       literature:
@@ -1836,8 +1836,8 @@
           <h3 class="subgroup-title">Context ${pairNumber} movement</h3>
           <div class="control-subgrid">
             ${renderContextRange(pairNumber, "Movement", "leadInMs", "Lead-in", snapshot, "int", 0, 1800, 10)}
-            ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "Speed", snapshot, "float1", 80, 6500, 1)}
-            ${renderContextRange(pairNumber, "Movement", "launcherAccel", "Acceleration", snapshot, "accel", -1500, 3000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "O1 speed", snapshot, "float1", 80, 6500, 1)}
+            ${renderContextRange(pairNumber, "Movement", "launcherAccel", "O1 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "After contact", snapshot, [
               ["stop", "Stop"],
               ["continue", "Pass"],
@@ -1848,11 +1848,11 @@
               ["launcher-front", "O1"]
             ])}
             ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
-            ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Launchee speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
-            ${renderContextRange(pairNumber, "Movement", "targetAccel", "Launchee accel.", snapshot, "accel", -1500, 3000, 50)}
-            ${renderContextRange(pairNumber, "Movement", "targetAngle", "Launchee angle", snapshot, "degrees", -90, 90, 1)}
-            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "Launcher on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
-            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "Launchee on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
+            ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "O2 speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
+            ${renderContextRange(pairNumber, "Movement", "targetAccel", "O2 accel.", snapshot, "accel", -1500, 3000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
+            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
+            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
           </div>
         </div>`);
 
@@ -1872,8 +1872,8 @@
         <div class="control-subgroup context-pair-editor">
           <h3 class="subgroup-title">Context ${pairNumber} color</h3>
           <div class="control-subgrid">
-            ${renderContextColor(pairNumber, "Color", "launcherColor", "Launcher", snapshot)}
-            ${renderContextColor(pairNumber, "Color", "targetColor", "Launchee", snapshot)}
+            ${renderContextColor(pairNumber, "Color", "launcherColor", "O1", snapshot)}
+            ${renderContextColor(pairNumber, "Color", "targetColor", "O2", snapshot)}
             ${renderContextColor(pairNumber, "Color", "groupingColor", "Grouping box", snapshot)}
           </div>
         </div>`);
@@ -2564,7 +2564,7 @@
     if (state.launcherBehavior === "entrain") {
       return {
         label: "Custom entraining display",
-        summary: "The mover continues with the target after contact.",
+        summary: "O1 continues with O2 after contact.",
         note: "This is now an entraining event, not a standard launch.",
         literature:
           "Entraining matters because adaptation studies distinguish it from launching-like causal perception."
@@ -2574,10 +2574,10 @@
     if (state.targetSpeedRatio >= 1.25 && state.launcherBehavior === "stop") {
       return {
         label: "Custom triggering display",
-        summary: "The target leaves faster than the launcher arrived.",
+        summary: "O2 leaves faster than O1 arrived.",
         note: "This is closer to triggering than to equal-speed launching.",
         literature:
-          "Triggering keeps the launch structure while increasing the target's post-contact speed."
+          "Triggering keeps the launch structure while increasing O2's post-contact speed."
       };
     }
 
@@ -2859,7 +2859,7 @@
     if (impactMovieTimeMs >= state.durationMs) {
       warnings.push("Contact occurs after the video ends. Increase Video duration if the launch should be visible.");
     } else if (targetMovieOnsetMs >= state.durationMs) {
-      warnings.push("The second object starts after the video ends. Increase Video duration if the launched motion should be visible.");
+      warnings.push("O2 starts after the video ends. Increase Video duration if the launched motion should be visible.");
     }
     return warnings;
   }
@@ -3771,10 +3771,10 @@
 
   function getTrajectoryTargetLabel(id) {
     const fixedLabels = {
-      originalLauncher: "Launcher approach",
-      originalTarget: "Launchee after contact",
-      contextLauncher: "Context 1 launcher approach",
-      contextTarget: "Context 1 launchee after contact"
+      originalLauncher: "O1 approach",
+      originalTarget: "O2 after contact",
+      contextLauncher: "Context 1 O1 approach",
+      contextTarget: "Context 1 O2 after contact"
     };
     if (fixedLabels[id]) {
       return fixedLabels[id];
@@ -3784,7 +3784,7 @@
       return "Select in preview";
     }
     const pairNumber = match[1];
-    const role = match[2] === "Launcher" ? "launcher approach" : "launchee after contact";
+    const role = match[2] === "Launcher" ? "O1 approach" : "O2 after contact";
     return `Context ${pairNumber} ${role}`;
   }
 
@@ -4204,8 +4204,8 @@
     drawCtx.save();
     drawCtx.font = '600 14px "Avenir Next", "Segoe UI", sans-serif';
     drawCtx.fillStyle = "rgba(240, 245, 245, 0.92)";
-    drawCtx.fillText("Launcher", 80, 32);
-    drawCtx.fillText("Target", 192, 32);
+    drawCtx.fillText("O1", 80, 32);
+    drawCtx.fillText("O2", 192, 32);
     drawObject(drawCtx, state, 54, 26, 10, palette.launcher.fill, palette.launcher.outline);
     drawObject(drawCtx, state, 166, 26, 10, palette.target.fill, palette.target.outline);
 
@@ -4438,7 +4438,7 @@
     const handles = [
       {
         id: "originalLauncher",
-        label: "Launcher",
+        label: "O1",
         x: originalGeometry.launcherStartX,
         y: originalGeometry.launcherStartY,
         radius: originalGeometry.radius,
@@ -4447,7 +4447,7 @@
       },
       {
         id: "originalTarget",
-        label: "Launchee",
+        label: "O2",
         x: originalGeometry.targetBaseX,
         y: originalGeometry.targetBaseY,
         radius: originalGeometry.radius,
@@ -4464,7 +4464,7 @@
       handles.push(
         {
           id: "contextLauncher",
-          label: "Launcher",
+          label: "O1",
           x: contextGeometry.launcherStartX,
           y: contextGeometry.launcherStartY,
           radius: contextGeometry.radius,
@@ -4473,7 +4473,7 @@
         },
         {
           id: "contextTarget",
-          label: "Launchee",
+          label: "O2",
           x: contextGeometry.targetBaseX,
           y: contextGeometry.targetBaseY,
           radius: contextGeometry.radius,

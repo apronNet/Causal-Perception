@@ -113,12 +113,12 @@
                     <output data-for="leadInMs"></output>
                   </label>
                   <label class="field">
-                    <span>Speed</span>
+                    <span>O1 speed</span>
                     <input id="launcherSpeed" data-format="float1" min="80" max="6500" step="1" type="range" />
                     <output data-for="launcherSpeed"></output>
                   </label>
                   <label class="field">
-                    <span>Acceleration</span>
+                    <span>O1 accel.</span>
                     <input id="launcherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="launcherAccel"></output>
                   </label>
@@ -145,27 +145,27 @@
                     <output data-for="delayMs"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee speed ratio</span>
+                    <span>O2 speed ratio</span>
                     <input id="targetSpeedRatio" data-format="float3" min="0.2" max="2.5" step="0.001" type="range" />
                     <output data-for="targetSpeedRatio"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee accel.</span>
+                    <span>O2 accel.</span>
                     <input id="targetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="targetAccel"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee angle</span>
+                    <span>O2 angle</span>
                     <input id="targetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                     <output data-for="targetAngle"></output>
                   </label>
                   <label class="field">
-                    <span>Launcher on-screen</span>
+                    <span>O1 on-screen</span>
                     <input id="launcherVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="launcherVisibleMs"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee on-screen</span>
+                    <span>O2 on-screen</span>
                     <input id="targetVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="targetVisibleMs"></output>
                   </label>
@@ -180,12 +180,12 @@
                     <output data-for="contextLeadInMs"></output>
                   </label>
                   <label class="field">
-                    <span>Speed</span>
+                    <span>O1 speed</span>
                     <input id="contextLauncherSpeed" data-format="float1" min="80" max="6500" step="1" type="range" />
                     <output data-for="contextLauncherSpeed"></output>
                   </label>
                   <label class="field">
-                    <span>Acceleration</span>
+                    <span>O1 accel.</span>
                     <input id="contextLauncherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="contextLauncherAccel"></output>
                   </label>
@@ -212,27 +212,27 @@
                     <output data-for="contextDelayMs"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee speed ratio</span>
+                    <span>O2 speed ratio</span>
                     <input id="contextTargetSpeedRatio" data-format="float3" min="0.2" max="2.5" step="0.001" type="range" />
                     <output data-for="contextTargetSpeedRatio"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee accel.</span>
+                    <span>O2 accel.</span>
                     <input id="contextTargetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="contextTargetAccel"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee angle</span>
+                    <span>O2 angle</span>
                     <input id="contextTargetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                     <output data-for="contextTargetAngle"></output>
                   </label>
                   <label class="field">
-                    <span>Launcher on-screen</span>
+                    <span>O1 on-screen</span>
                     <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="contextLauncherVisibleMs"></output>
                   </label>
                   <label class="field">
-                    <span>Launchee on-screen</span>
+                    <span>O2 on-screen</span>
                     <input id="contextTargetVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="contextTargetVisibleMs"></output>
                   </label>
@@ -516,8 +516,8 @@
                 <span>Sudden color change</span>
                 <select id="colorChangeMode">
                   <option value="none">None</option>
-                  <option value="target">Launchee at contact</option>
-                  <option value="launcher">Launcher at contact</option>
+                  <option value="target">O2 at contact</option>
+                  <option value="launcher">O1 at contact</option>
                   <option value="both">Both at contact</option>
                 </select>
               </label>
@@ -529,11 +529,11 @@
                 <h3 class="subgroup-title">Original pair color</h3>
                 <div class="control-subgrid">
                   <label class="field color-field">
-                    <span>Launcher</span>
+                    <span>O1</span>
                     <input id="launcherColor" type="color" />
                   </label>
                   <label class="field color-field">
-                    <span>Launchee</span>
+                    <span>O2</span>
                     <input id="targetColor" type="color" />
                   </label>
                 </div>
@@ -542,11 +542,11 @@
                 <h3 class="subgroup-title">Context 1 color</h3>
                 <div class="control-subgrid">
                   <label class="field color-field">
-                    <span>Launcher</span>
+                    <span>O1</span>
                     <input id="contextColor" type="color" />
                   </label>
                   <label class="field color-field">
-                    <span>Launchee</span>
+                    <span>O2</span>
                     <input id="contextTargetColor" type="color" />
                   </label>
                 </div>
@@ -669,17 +669,17 @@
               <span><b>FPS</b><em id="summaryFps">60</em></span>
               <span><b>Lead-in</b><em id="summaryLeadIn">200 ms</em></span>
               <span><b>Impact</b><em id="summaryImpact">475 ms</em></span>
-              <span><b>Launchee starts</b><em id="summaryTargetOnset">475 ms</em></span>
+              <span><b>O2 starts</b><em id="summaryTargetOnset">475 ms</em></span>
               <span><b>Delay</b><em id="summaryDelay">0 ms</em></span>
-              <span><b>Launcher speed</b><em id="summarySpeed">876 px/s</em></span>
-              <span><b>Launchee ratio</b><em id="summaryTargetRatio">0.294 x</em></span>
-              <span><b>Launcher accel.</b><em id="summaryLauncherAccel">0 px/s^2</em></span>
-              <span><b>Launchee accel.</b><em id="summaryTargetAccel">0 px/s^2</em></span>
-              <span><b>Launchee angle</b><em id="summaryTargetAngle">0 deg</em></span>
+              <span><b>O1 speed</b><em id="summarySpeed">876 px/s</em></span>
+              <span><b>O2 ratio</b><em id="summaryTargetRatio">0.294 x</em></span>
+              <span><b>O1 accel.</b><em id="summaryLauncherAccel">0 px/s^2</em></span>
+              <span><b>O2 accel.</b><em id="summaryTargetAccel">0 px/s^2</em></span>
+              <span><b>O2 angle</b><em id="summaryTargetAngle">0 deg</em></span>
               <span><b>Radius</b><em id="summaryRadius">28 px</em></span>
               <span><b>After contact</b><em id="summaryAfter">stops</em></span>
-              <span><b>Launcher visible</b><em id="summaryLauncherVisible">9000 ms</em></span>
-              <span><b>Launchee visible</b><em id="summaryTargetVisible">9000 ms</em></span>
+              <span><b>O1 visible</b><em id="summaryLauncherVisible">9000 ms</em></span>
+              <span><b>O2 visible</b><em id="summaryTargetVisible">9000 ms</em></span>
               <span><b>Context</b><em id="summaryContext">none</em></span>
               <span><b>Context duration</b><em id="summaryContextWindow">off</em></span>
               <span><b>Context offset</b><em id="summaryContextOffset">0 ms</em></span>
