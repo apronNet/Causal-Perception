@@ -1143,11 +1143,8 @@
         return `${Math.round(number)} ${Math.round(number) === 1 ? "rail" : "rails"}`;
       case "trajectoryTarget":
         return getTrajectoryTargetLabel(value);
-      case "visibilityMs": {
-        const videoDuration = controls.durationMs ? Number(controls.durationMs.value) : 0;
-        const suffix = number > videoDuration ? " until end" : "";
-        return `${Math.round(number)} ms${suffix}`;
-      }
+      case "visibilityMs":
+        return `${Math.round(number)} ms`;
       case "signedMs":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} ms`;
       case "signedPx":
