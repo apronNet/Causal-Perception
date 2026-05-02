@@ -31,6 +31,10 @@ body {
   min-height: 100%;
 }
 
+html {
+  font-size: 103%;
+}
+
 body {
   font-family: "Helvetica Neue", Helvetica, "Nimbus Sans", "Arial", sans-serif;
   color: var(--ink);
