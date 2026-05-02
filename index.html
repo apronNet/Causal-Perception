@@ -390,8 +390,11 @@
                 <div class="control-subgroup">
                   <h3 class="subgroup-title">Physics mode</h3>
                   <div class="control-subgrid">
-                    <button id="physicsModeButton" class="secondary-button full-button" type="button">Apply physics mode</button>
-                    <p class="microcopy wide-copy">Sets existing motion controls to contact, no delay, O1 stops, and O2 leaves at matched speed.</p>
+                    <input id="physicsEngineEnabled" type="hidden" value="false" />
+                    <button id="physicsModeButton" class="secondary-button full-button" type="button">Apply physics engine</button>
+                    <p class="microcopy wide-copy">
+                      Uses equal-density disc mass from ball size. Disables delay, gap, tunnels, markers, sudden color change, and manual trajectories.
+                    </p>
                   </div>
                 </div>
                 <div class="control-subgroup">

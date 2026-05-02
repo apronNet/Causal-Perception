@@ -21,6 +21,13 @@
   const MAX_EXPORT_BASENAME_LENGTH = 180;
   const CONTEXT_PAIR_MAX = 10;
   const RAIL_MAX = 6;
+  const PHYSICS_ENGINE = {
+    restitution: 0.9,
+    baseRadius: 28,
+    baseDamping: 260,
+    massPower: 2,
+    stopThreshold: 0.075
+  };
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
   const READY_STATUS = "Ready to export current preview.";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
@@ -163,6 +170,7 @@
     "objectStyle",
     "groupingMode",
     "contactGuideMode",
+    "physicsEngineEnabled",
     "fractureEnabled",
     "crosshairEnabled",
     "crosshairX",
@@ -880,6 +888,7 @@
     objectStyle: "flat",
     groupingMode: "none",
     contactGuideMode: "none",
+    physicsEngineEnabled: false,
     fractureEnabled: false,
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
@@ -1174,6 +1183,7 @@
       objectStyle: controls.objectStyle.value,
       groupingMode: controls.groupingMode.value,
       contactGuideMode: controls.contactGuideMode.value,
+      physicsEngineEnabled: controls.physicsEngineEnabled.value === "true",
       fractureEnabled: controls.fractureEnabled.checked,
       crosshairEnabled: controls.crosshairEnabled.checked,
       crosshairX: Number(controls.crosshairX.value),
@@ -1230,7 +1240,7 @@
     state.contextPairSnapshots = normalizeContextPairSnapshotsForState(state);
     state.railSegments = state.railEnabled ? getRailSegments(state).slice(1) : [];
     state.trajectoryOverrides = parseTrajectoryOverrides(state.trajectoryOverrides);
-    return state;
+    return state.physicsEngineEnabled ? normalizePhysicsEngineState(state) : state;
   }
 
   function formatValue(format, value, inputId = "", input = null) {
@@ -1607,55 +1617,148 @@
     control.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
+  function getEqualDensityDiscMass(radius) {
+    const normalizedRadius = Math.max(1, Number(radius) || PHYSICS_ENGINE.baseRadius) / PHYSICS_ENGINE.baseRadius;
+    return Math.pow(normalizedRadius, PHYSICS_ENGINE.massPower);
+  }
+
+  function getPhysicsCollisionValues(launcherRadius, targetRadius = launcherRadius) {
+    const launcherMass = getEqualDensityDiscMass(launcherRadius);
+    const targetMass = getEqualDensityDiscMass(targetRadius);
+    const massSum = Math.max(0.001, launcherMass + targetMass);
+    const restitution = PHYSICS_ENGINE.restitution;
+    const launcherPostSpeedRatio = (launcherMass - restitution * targetMass) / massSum;
+    const targetSpeedRatio = ((1 + restitution) * launcherMass) / massSum;
+    const targetDamping = -clamp(PHYSICS_ENGINE.baseDamping / Math.max(0.1, targetMass), 40, 1500);
+
+    return {
+      launcherMass,
+      targetMass,
+      restitution,
+      launcherPostSpeedRatio,
+      targetSpeedRatio: clamp(targetSpeedRatio, 0.05, 2.5),
+      targetAccel: Math.round(targetDamping)
+    };
+  }
+
+  function getPhysicsControlValuesForRadius(radius) {
+    const collision = getPhysicsCollisionValues(radius);
+    return {
+      launcherAccel: 0,
+      targetSpeedRatio: Number(collision.targetSpeedRatio.toFixed(3)),
+      targetAccel: collision.targetAccel,
+      launcherBehavior: Math.abs(collision.launcherPostSpeedRatio) <= PHYSICS_ENGINE.stopThreshold ? "stop" : "continue",
+      targetAngle: 0,
+      delayMs: 0,
+      gapPx: 0,
+      contactOcclusionMode: "target-front",
+      occluderEnabled: false,
+      markerMode: "none"
+    };
+  }
+
+  function applyPhysicsToContextSnapshot(snapshot, baseState, durationMs, visibleMs) {
+    const normalized = normalizeContextPairSnapshot(snapshot, baseState, 0);
+    const physics = getPhysicsControlValuesForRadius(normalized.ballRadius || baseState.contextBallRadius || baseState.ballRadius);
+    return {
+      ...normalized,
+      launcherSpeed: Math.max(Number(normalized.launcherSpeed) || baseState.launcherSpeed, 900),
+      launcherAccel: physics.launcherAccel,
+      targetSpeedRatio: physics.targetSpeedRatio,
+      targetAccel: physics.targetAccel,
+      launcherBehavior: physics.launcherBehavior,
+      targetAngle: physics.targetAngle,
+      delayMs: physics.delayMs,
+      gapPx: physics.gapPx,
+      contactOcclusionMode: physics.contactOcclusionMode,
+      occluderEnabled: false,
+      launcherVisibleMs: Math.max(Number(normalized.launcherVisibleMs) || visibleMs, durationMs),
+      targetVisibleMs: Math.max(Number(normalized.targetVisibleMs) || visibleMs, durationMs)
+    };
+  }
+
+  function normalizePhysicsEngineState(state) {
+    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius);
+    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius);
+
+    return {
+      ...state,
+      launcherAccel: originalPhysics.launcherAccel,
+      targetSpeedRatio: originalPhysics.targetSpeedRatio,
+      targetAccel: originalPhysics.targetAccel,
+      launcherBehavior: originalPhysics.launcherBehavior,
+      targetAngle: originalPhysics.targetAngle,
+      delayMs: originalPhysics.delayMs,
+      gapPx: originalPhysics.gapPx,
+      markerMode: "none",
+      contactGuideMode: "none",
+      occluderEnabled: false,
+      contactOcclusionMode: originalPhysics.contactOcclusionMode,
+      contextLauncherAccel: contextPhysics.launcherAccel,
+      contextTargetSpeedRatio: contextPhysics.targetSpeedRatio,
+      contextTargetAccel: contextPhysics.targetAccel,
+      contextLauncherBehavior: contextPhysics.launcherBehavior,
+      contextTargetAngle: contextPhysics.targetAngle,
+      contextDelayMs: contextPhysics.delayMs,
+      contextGapPx: contextPhysics.gapPx,
+      contextOccluderEnabled: false,
+      contextContactOcclusionMode: contextPhysics.contactOcclusionMode,
+      trajectoryEditEnabled: false,
+      trajectoryOverrides: {},
+      colorChangeMode: "none",
+      contextPairSnapshots: state.contextPairSnapshots.map((snapshot) => applyPhysicsToContextSnapshot(snapshot, state, 0, 0))
+    };
+  }
+
   function applyPhysicsMode() {
     const state = cloneState();
     const durationMs = Math.max(state.durationMs, 1800);
     const visibleMs = Math.max(state.launcherVisibleMs, state.targetVisibleMs, durationMs);
     const contextVisibleMs = Math.max(state.contextLauncherVisibleMs, state.contextTargetVisibleMs, durationMs);
+    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius);
+    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius);
     const physicsValues = {
       ...state,
+      physicsEngineEnabled: true,
       durationMs,
       launcherSpeed: Math.max(state.launcherSpeed, 900),
-      launcherAccel: 0,
-      targetSpeedRatio: 1,
-      targetAccel: 0,
-      launcherBehavior: "stop",
-      targetAngle: 0,
-      delayMs: 0,
-      gapPx: 0,
-      contactOcclusionMode: "target-front",
+      launcherAccel: originalPhysics.launcherAccel,
+      targetSpeedRatio: originalPhysics.targetSpeedRatio,
+      targetAccel: originalPhysics.targetAccel,
+      launcherBehavior: originalPhysics.launcherBehavior,
+      targetAngle: originalPhysics.targetAngle,
+      delayMs: originalPhysics.delayMs,
+      gapPx: originalPhysics.gapPx,
+      markerMode: "none",
+      occluderEnabled: false,
+      contactOcclusionMode: originalPhysics.contactOcclusionMode,
       launcherVisibleMs: visibleMs,
       targetVisibleMs: visibleMs,
       contextLauncherSpeed: Math.max(state.contextLauncherSpeed, 900),
-      contextLauncherAccel: 0,
-      contextTargetSpeedRatio: 1,
-      contextTargetAccel: 0,
-      contextLauncherBehavior: "stop",
-      contextTargetAngle: 0,
-      contextDelayMs: 0,
-      contextGapPx: 0,
-      contextContactOcclusionMode: "target-front",
+      contextLauncherAccel: contextPhysics.launcherAccel,
+      contextTargetSpeedRatio: contextPhysics.targetSpeedRatio,
+      contextTargetAccel: contextPhysics.targetAccel,
+      contextLauncherBehavior: contextPhysics.launcherBehavior,
+      contextTargetAngle: contextPhysics.targetAngle,
+      contextDelayMs: contextPhysics.delayMs,
+      contextGapPx: contextPhysics.gapPx,
+      contextContactOcclusionMode: contextPhysics.contactOcclusionMode,
+      contextOccluderEnabled: false,
       contextLauncherVisibleMs: contextVisibleMs,
       contextTargetVisibleMs: contextVisibleMs,
-      contextPairSnapshots: state.contextPairSnapshots.map((snapshot) => ({
-        ...snapshot,
-        launcherSpeed: Math.max(Number(snapshot.launcherSpeed) || state.launcherSpeed, 900),
-        launcherAccel: 0,
-        targetSpeedRatio: 1,
-        targetAccel: 0,
-        launcherBehavior: "stop",
-        targetAngle: 0,
-        delayMs: 0,
-        gapPx: 0,
-        contactOcclusionMode: "target-front",
-        launcherVisibleMs: Math.max(Number(snapshot.launcherVisibleMs) || contextVisibleMs, durationMs),
-        targetVisibleMs: Math.max(Number(snapshot.targetVisibleMs) || contextVisibleMs, durationMs)
-      }))
+      trajectoryEditEnabled: false,
+      trajectoryOverrides: "{}",
+      colorChangeMode: "none",
+      contactGuideMode: "none",
+      contextPairSnapshots: state.contextPairSnapshots.map((snapshot) =>
+        applyPhysicsToContextSnapshot(snapshot, state, durationMs, contextVisibleMs)
+      )
     };
 
     activePresetKey = null;
     setControls(physicsValues);
-    statusText.textContent = "Physics mode applied to existing motion controls.";
+    statusText.textContent =
+      "Physics engine applied. Delay, gaps, tunnels, markers, sudden color, and manual trajectories were disabled.";
   }
 
   function getBlinkMsControlValue() {
@@ -2852,6 +2955,16 @@
   }
 
   function getDynamicCopy(state) {
+    if (state.physicsEngineEnabled) {
+      return {
+        label: "Custom physics-engine display",
+        summary: "A hidden equal-density collision solver is controlling post-impact motion.",
+        note: "Delay, gaps, tunnels, markers, sudden color changes, and manual trajectories were reset because they break the physics-engine assumption.",
+        literature:
+          "Use this when you want a physically constrained comparison condition rather than a pure Michotte-style parameter manipulation."
+      };
+    }
+
     if (state.launcherBehavior === "entrain") {
       return {
         label: "Custom entraining display",
@@ -2934,7 +3047,9 @@
           : "0% overlap contact";
 
     let category = "launching";
-    if (state.launcherBehavior === "entrain") {
+    if (state.physicsEngineEnabled) {
+      category = "physics collision";
+    } else if (state.launcherBehavior === "entrain") {
       category = "entraining";
     } else if (state.launcherBehavior === "continue") {
       category = "pass/slip";
@@ -3248,7 +3363,7 @@
           : `main ${Math.round(state.ballRadius)} px / context ${Math.round(state.contextBallRadius)} px`;
     }
     if (summaryAfter) {
-      summaryAfter.textContent = describeLauncherBehavior(state.launcherBehavior);
+      summaryAfter.textContent = state.physicsEngineEnabled ? "physics engine" : describeLauncherBehavior(state.launcherBehavior);
     }
     if (summaryLauncherVisible) {
       summaryLauncherVisible.textContent = formatValue("visibilityMs", state.launcherVisibleMs);
@@ -3449,6 +3564,11 @@
     }
 
     return Math.max(0, velocity * t + 0.5 * a * t * t);
+  }
+
+  function signedDisplacementAt(elapsedMs, initialVelocity, acceleration = 0) {
+    const t = Math.max(0, elapsedMs) / 1000;
+    return (Number(initialVelocity) || 0) * t + 0.5 * (Number(acceleration) || 0) * t * t;
   }
 
   function velocityAt(elapsedMs, initialVelocity, acceleration) {
@@ -3926,12 +4046,17 @@
         y: launcherStopY - approachUnitY * launcherDistance
       };
     }
+    const physicsCollision = state.physicsEngineEnabled ? getPhysicsCollisionValues(radius) : null;
+    const effectiveDelayMs = physicsCollision ? 0 : state.delayMs;
+    const effectiveTargetSpeedRatio = physicsCollision ? physicsCollision.targetSpeedRatio : state.targetSpeedRatio;
+    const effectiveTargetAccel = physicsCollision ? physicsCollision.targetAccel : state.targetAccel;
     const travelMs = solveTravelMs(launcherDistance, state.launcherSpeed, state.launcherAccel);
     const stopTime = state.leadInMs + travelMs;
-    const targetStartTime = stopTime + state.delayMs;
+    const targetStartTime = stopTime + effectiveDelayMs;
     const remainingMs = Math.max(state.durationMs - targetStartTime - 240, 80);
     const launcherImpactSpeed = velocityAt(travelMs, state.launcherSpeed, state.launcherAccel);
-    const targetSpeed = launcherImpactSpeed * state.targetSpeedRatio;
+    const targetSpeed = launcherImpactSpeed * effectiveTargetSpeedRatio;
+    const launcherPostSpeed = physicsCollision ? launcherImpactSpeed * physicsCollision.launcherPostSpeedRatio : launcherImpactSpeed;
     const targetAngleOverride = getTrajectoryOverrideAngle(state, `${trajectoryScope}Target`);
     const effectiveTargetAngle = Number.isFinite(targetAngleOverride) ? targetAngleOverride : state.targetAngle;
     const angleRad = (effectiveTargetAngle * Math.PI) / 180;
@@ -3962,7 +4087,10 @@
       targetStartTime,
       remainingMs,
       launcherImpactSpeed,
+      launcherPostSpeed,
       targetSpeed,
+      targetAccel: effectiveTargetAccel,
+      physicsCollision,
       angleRad,
       targetDistance,
       contextDirectionSign,
@@ -3983,14 +4111,19 @@
 
     let targetX = geometry.targetBaseX;
     let targetY = geometry.targetBaseY;
-    if (state.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
+    if ((state.physicsEngineEnabled || state.launcherBehavior !== "continue") && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
-      const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, state.targetAccel);
+      const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, geometry.targetAccel);
       targetX += geometry.targetUnitX * moveDistance;
       targetY += geometry.targetUnitY * moveDistance;
     }
 
-    if (state.launcherBehavior === "continue" && t >= geometry.stopTime) {
+    if (state.physicsEngineEnabled && t >= geometry.targetStartTime) {
+      const elapsed = t - geometry.targetStartTime;
+      const moveDistance = signedDisplacementAt(elapsed, geometry.launcherPostSpeed);
+      launcherX = geometry.launcherStopX + geometry.approachUnitX * moveDistance;
+      launcherY = geometry.launcherStopY + geometry.approachUnitY * moveDistance;
+    } else if (state.launcherBehavior === "continue" && t >= geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, state.launcherAccel);
       launcherX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
@@ -4046,14 +4179,19 @@
     let targetX = geometry.targetBaseX;
     let targetY = geometry.targetBaseY;
 
-    if (eventState.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
+    if ((eventState.physicsEngineEnabled || eventState.launcherBehavior !== "continue") && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
-      const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, eventState.targetAccel);
+      const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, geometry.targetAccel);
       targetX += geometry.targetUnitX * moveDistance;
       targetY += geometry.targetUnitY * moveDistance;
     }
 
-    if (eventState.launcherBehavior === "continue" && t >= geometry.stopTime) {
+    if (eventState.physicsEngineEnabled && t >= geometry.targetStartTime) {
+      const elapsed = t - geometry.targetStartTime;
+      const moveDistance = signedDisplacementAt(elapsed, geometry.launcherPostSpeed);
+      launcherX = geometry.launcherStopX + geometry.approachUnitX * moveDistance;
+      launcherY = geometry.launcherStopY + geometry.approachUnitY * moveDistance;
+    } else if (eventState.launcherBehavior === "continue" && t >= geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, eventState.launcherAccel);
       launcherX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
@@ -5438,6 +5576,9 @@
     if (state.launcherAccel !== 0 || state.targetAccel !== 0) {
       parts.push(`accel${compactNumber(state.launcherAccel)}-${compactNumber(state.targetAccel)}`);
     }
+    if (state.physicsEngineEnabled) {
+      parts.push("physdisc");
+    }
     if (state.launcherVisibleMs < state.durationMs || state.targetVisibleMs < state.durationMs) {
       parts.push(`vis${compactNumber(state.launcherVisibleMs)}-${compactNumber(state.targetVisibleMs)}ms`);
     }
@@ -5858,6 +5999,9 @@
       launcherBehavior: state.launcherBehavior,
       targetSpeedRatio: state.targetSpeedRatio,
       targetAccelerationPxPerSec2: state.targetAccel,
+      physicsEngineEnabled: state.physicsEngineEnabled,
+      physicsMassModel: state.physicsEngineEnabled ? `equal-density visible discs, mass proportional to radius^${PHYSICS_ENGINE.massPower}` : "",
+      physicsRestitution: state.physicsEngineEnabled ? PHYSICS_ENGINE.restitution : "",
       targetAngleDegrees: state.targetAngle,
       launcherVisibleMs: state.launcherVisibleMs,
       targetVisibleMs: state.targetVisibleMs,
@@ -6076,6 +6220,7 @@
       launcherAccel: readConditionParameter(parameters, "launcherAccelerationPxPerSec2", baseState.launcherAccel),
       targetSpeedRatio: readConditionParameter(parameters, "targetSpeedRatio", baseState.targetSpeedRatio),
       targetAccel: readConditionParameter(parameters, "targetAccelerationPxPerSec2", baseState.targetAccel),
+      physicsEngineEnabled: readConditionParameter(parameters, "physicsEngineEnabled", baseState.physicsEngineEnabled),
       launcherBehavior: readConditionParameter(parameters, "launcherBehavior", baseState.launcherBehavior),
       targetAngle: readConditionParameter(parameters, "targetAngleDegrees", baseState.targetAngle),
       launcherVisibleMs: readConditionParameter(parameters, "launcherVisibleMs", baseState.launcherVisibleMs),
@@ -6283,6 +6428,9 @@
       launcherBehavior: condition.parameters.launcherBehavior,
       targetSpeedRatio: condition.parameters.targetSpeedRatio,
       targetAccelerationPxPerSec2: condition.parameters.targetAccelerationPxPerSec2,
+      physicsEngineEnabled: condition.parameters.physicsEngineEnabled,
+      physicsMassModel: condition.parameters.physicsMassModel,
+      physicsRestitution: condition.parameters.physicsRestitution,
       targetAngleDegrees: condition.parameters.targetAngleDegrees,
       launcherVisibleMs: condition.parameters.launcherVisibleMs,
       targetVisibleMs: condition.parameters.targetVisibleMs,
@@ -6469,6 +6617,11 @@
         launcherAccelerationPxPerSec2: condition.launcherAccel,
         targetSpeedRatio: condition.targetSpeedRatio,
         targetAccelerationPxPerSec2: condition.targetAccel,
+        physicsEngineEnabled: condition.physicsEngineEnabled,
+        physicsMassModel: condition.physicsEngineEnabled
+          ? `equal-density visible discs, mass proportional to radius^${PHYSICS_ENGINE.massPower}`
+          : "",
+        physicsRestitution: condition.physicsEngineEnabled ? PHYSICS_ENGINE.restitution : "",
         launcherBehavior: condition.launcherBehavior,
         targetAngleDegrees: condition.targetAngle,
         launcherVisibleMs: condition.launcherVisibleMs,
