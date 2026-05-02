@@ -13,7 +13,8 @@
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
   const SHARED_PRESETS_URL = "shared-presets.json";
-  const CLASSIC_DISC_COLOR = "#f4f1e6";
+  const CLASSIC_LAUNCHER_COLOR = "#ff2f2f";
+  const CLASSIC_TARGET_COLOR = "#27c76f";
   const CLASSIC_BACKGROUND_COLOR = "#111514";
   const BACKGROUND_THEME_COLORS = {
     dark: CLASSIC_BACKGROUND_COLOR,
@@ -242,7 +243,7 @@
       "Changes: how long the context launchee stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
     stageTheme: "Changes: preset background luminance and sets the background color picker.",
-    stageColor: "Changes: exact stimulus-field color. Classic launching studies usually use high-contrast neutral discs rather than colored objects.",
+    stageColor: "Changes: exact stimulus-field color. Causal-capture displays commonly use bright colored discs on a black field.",
     objectStyle: "Changes: visual rendering of the balls. Simple filled discs are the most controlled; shaded or ring styles are for display variants.",
     groupingMode: "Changes: solid boxes that group one pair, every pair separately, or all context pairs together. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
@@ -266,8 +267,8 @@
     customStartAlignStartsVertical: "Changes: keeps launchers on one vertical line when context is shown.",
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
     colorChangeColor: "Changes: the new color used by sudden color change. Use for: setting the contact-locked feature change.",
-    launcherColor: "Changes: color of the original-pair first object. Use for: object identity or fixed stimulus colors.",
-    targetColor: "Changes: color of the original-pair second object. Match colors for similarity; contrast colors for distinct objects.",
+    launcherColor: "Changes: color of the original-pair first object. Default follows the common red/green research display.",
+    targetColor: "Changes: color of the original-pair second object. Default follows the common red/green research display.",
     contextColor: "Changes: color of the context first object. Use for: matching or separating context from the original pair row.",
     contextTargetColor: "Changes: color of the context second object. Use for: context object identity.",
     groupingOriginalColor: "Changes: line color of the original-pair grouping box. Use a visible color that does not dominate the balls.",
@@ -868,10 +869,10 @@
     trajectoryOverrides: "{}",
     colorChangeMode: "none",
     colorChangeColor: "#e0b24a",
-    launcherColor: CLASSIC_DISC_COLOR,
-    targetColor: CLASSIC_DISC_COLOR,
-    contextColor: CLASSIC_DISC_COLOR,
-    contextTargetColor: CLASSIC_DISC_COLOR,
+    launcherColor: CLASSIC_LAUNCHER_COLOR,
+    targetColor: CLASSIC_TARGET_COLOR,
+    contextColor: CLASSIC_LAUNCHER_COLOR,
+    contextTargetColor: CLASSIC_TARGET_COLOR,
     groupingOriginalColor: "#e0b24a",
     groupingContextColor: "#80a7a1",
     customStartEnabled: false,
@@ -2940,10 +2941,10 @@
   }
 
   function getPalette(state) {
-    const launcher = normalizeHexColor(state.launcherColor, CLASSIC_DISC_COLOR);
-    const target = normalizeHexColor(state.targetColor, CLASSIC_DISC_COLOR);
-    const context = normalizeHexColor(state.contextColor, CLASSIC_DISC_COLOR);
-    const contextTarget = normalizeHexColor(state.contextTargetColor, CLASSIC_DISC_COLOR);
+    const launcher = normalizeHexColor(state.launcherColor, CLASSIC_LAUNCHER_COLOR);
+    const target = normalizeHexColor(state.targetColor, CLASSIC_TARGET_COLOR);
+    const context = normalizeHexColor(state.contextColor, CLASSIC_LAUNCHER_COLOR);
+    const contextTarget = normalizeHexColor(state.contextTargetColor, CLASSIC_TARGET_COLOR);
     return {
       launcher: {
         fill: launcher,
