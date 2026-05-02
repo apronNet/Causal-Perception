@@ -283,9 +283,9 @@
     crosshairBlinkMs:
       "Changes: duration of the pre-ball crosshair blink. If this is long, increase Video duration so the launch still has time to play after the blink.",
     trajectoryEditEnabled:
-      "Changes: enables preview selection of individual ball trajectories. Click a ball or guide line in the preview, then adjust Angle for that selected ball only.",
+      "Changes: shows draggable vector arrows in the preview. Drag an arrow head to set that ball's trajectory; use Angle for exact numeric entry.",
     selectedTrajectoryAngle:
-      "Changes: relative angle for the selected ball trajectory. 0 follows the default path; positive and negative values bend that selected ball in opposite vertical directions.",
+      "Changes: angle of the selected trajectory vector. Dragging a preview arrow updates this value; 0 follows the default path.",
     customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1 and O2 start positions manually; exports use the positions but hide the rings.",
     customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position within each pair.",
     customStartAlignStartsVertical: "Changes: keeps O1 starts on one vertical line when context is shown.",
@@ -962,6 +962,7 @@
   let isExporting = false;
   let startDragTarget = null;
   let specialDragTarget = null;
+  let trajectoryDragTarget = null;
   let customStartPositionsInitialized = false;
   let sharedPresetKeys = [];
   let customPresetKeys = [];
@@ -2174,6 +2175,9 @@
     canvas.classList.toggle("trajectory-edit-enabled", trajectoryEnabled);
     if (!enabled) {
       specialDragTarget = null;
+    }
+    if (!trajectoryEnabled) {
+      trajectoryDragTarget = null;
     }
   }
 
@@ -3797,6 +3801,8 @@
     const fallbackUnitY = 0;
     let approachUnitX = approachLength > 0.001 ? approachDx / approachLength : fallbackUnitX;
     let approachUnitY = approachLength > 0.001 ? approachDy / approachLength : fallbackUnitY;
+    const baseApproachUnitX = approachUnitX;
+    const baseApproachUnitY = approachUnitY;
     const contactDistance = Math.max(0, radius * 2 + state.gapPx);
     let launcherStopX = targetBase.x - approachUnitX * contactDistance;
     let launcherStopY = targetBase.y - approachUnitY * contactDistance;
@@ -3838,6 +3844,8 @@
       launcherStopX,
       launcherStopY,
       launcherDistance,
+      baseApproachUnitX,
+      baseApproachUnitY,
       approachUnitX,
       approachUnitY,
       targetUnitX,
@@ -3850,7 +3858,9 @@
       targetSpeed,
       angleRad,
       targetDistance,
-      contextDirectionSign
+      contextDirectionSign,
+      directionSign,
+      usesCustomStarts
     };
   }
 
@@ -4072,6 +4082,37 @@
     controls.trajectoryOverrides.value = serializeTrajectoryOverrides(overrides);
   }
 
+  function normalizeVector(dx, dy) {
+    const length = Math.hypot(dx, dy);
+    if (length < 0.001) {
+      return null;
+    }
+    return {
+      x: dx / length,
+      y: dy / length
+    };
+  }
+
+  function signedScreenAngleDegrees(referenceUnit, desiredUnit) {
+    const cross = referenceUnit.x * desiredUnit.y - referenceUnit.y * desiredUnit.x;
+    const dot = referenceUnit.x * desiredUnit.x + referenceUnit.y * desiredUnit.y;
+    return (Math.atan2(cross, dot) * 180) / Math.PI;
+  }
+
+  function getTrajectoryAngleFromPoint(state, target, point) {
+    const desiredUnit = normalizeVector(point.x - target.start.x, point.y - target.start.y);
+    if (!desiredUnit) {
+      return getTrajectoryEffectiveAngle(state, target.id);
+    }
+
+    if (target.role === "launcher" || target.usesCustomStarts) {
+      return clamp(Math.round(signedScreenAngleDegrees(target.referenceUnit, desiredUnit)), -90, 90);
+    }
+
+    const signedX = (target.directionSign || 1) * desiredUnit.x;
+    return clamp(Math.round((Math.atan2(desiredUnit.y, signedX) * 180) / Math.PI), -90, 90);
+  }
+
   function getTrajectoryGuideEnd(start, unit, length) {
     return {
       x: start.x + unit.x * length,
@@ -4097,7 +4138,12 @@
       start,
       end,
       role,
-      radius: geometry.radius
+      radius: geometry.radius,
+      referenceUnit: isLauncher
+        ? { x: geometry.baseApproachUnitX, y: geometry.baseApproachUnitY }
+        : { x: geometry.approachUnitX, y: geometry.approachUnitY },
+      directionSign: geometry.directionSign,
+      usesCustomStarts: geometry.usesCustomStarts
     };
   }
 
@@ -4175,6 +4221,34 @@
     statusText.textContent = `${getTrajectoryTargetLabel(target.id)} selected.`;
   }
 
+  function beginTrajectoryDrag(target, state) {
+    selectTrajectoryTarget(target, state);
+    trajectoryDragTarget = {
+      id: target.id,
+      role: target.role,
+      start: { ...target.start },
+      referenceUnit: { ...target.referenceUnit },
+      directionSign: target.directionSign,
+      usesCustomStarts: target.usesCustomStarts
+    };
+  }
+
+  function updateDraggedTrajectory(event) {
+    if (!trajectoryDragTarget) {
+      return;
+    }
+    const state = cloneState();
+    const angle = getTrajectoryAngleFromPoint(state, trajectoryDragTarget, getStagePoint(event));
+    activePresetKey = null;
+    controls.selectedTrajectoryBall.value = trajectoryDragTarget.id;
+    controls.selectedTrajectoryAngle.value = angle;
+    writeTrajectoryOverride(trajectoryDragTarget.id, angle);
+    updateOutputs();
+    refreshText();
+    statusText.textContent = `${getTrajectoryTargetLabel(trajectoryDragTarget.id)} vector updated.`;
+    drawFrame(cloneState(), 0, ctx);
+  }
+
   function findTrajectoryTarget(state, point) {
     if (!state.trajectoryEditEnabled) {
       return null;
@@ -4221,6 +4295,15 @@
       drawCtx.lineTo(target.end.x - Math.cos(angle + 0.45) * arrowSize, target.end.y - Math.sin(angle + 0.45) * arrowSize);
       drawCtx.closePath();
       drawCtx.fill();
+      drawCtx.beginPath();
+      drawCtx.arc(target.start.x, target.start.y, selected ? 4.5 : 3, 0, Math.PI * 2);
+      drawCtx.fill();
+      drawCtx.beginPath();
+      drawCtx.arc(target.end.x, target.end.y, selected ? 8 : 6, 0, Math.PI * 2);
+      drawCtx.fill();
+      drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(31, 28, 24, 0.72)" : "rgba(7, 15, 14, 0.85)";
+      drawCtx.lineWidth = 1.25;
+      drawCtx.stroke();
       if (selected) {
         drawCtx.fillText(getTrajectoryTargetLabel(target.id), target.end.x + 8, target.end.y);
       }
@@ -4902,8 +4985,9 @@
       const trajectoryTarget = findTrajectoryTarget(state, point);
       if (trajectoryTarget) {
         stopPreview();
-        selectTrajectoryTarget(trajectoryTarget, state);
+        beginTrajectoryDrag(trajectoryTarget, state);
         drawFrame(cloneState(), 0, ctx);
+        canvas.setPointerCapture?.(event.pointerId);
         event.preventDefault();
         return;
       }
@@ -4919,6 +5003,10 @@
     });
 
     canvas.addEventListener("pointermove", (event) => {
+      if (trajectoryDragTarget) {
+        updateDraggedTrajectory(event);
+        return;
+      }
       if (specialDragTarget) {
         updateDraggedSpecialFeature(event);
         return;
@@ -4930,6 +5018,12 @@
     });
 
     const endDrag = (event) => {
+      if (trajectoryDragTarget) {
+        updateDraggedTrajectory(event);
+        canvas.releasePointerCapture?.(event.pointerId);
+        trajectoryDragTarget = null;
+        return;
+      }
       if (specialDragTarget) {
         updateDraggedSpecialFeature(event);
         canvas.releasePointerCapture?.(event.pointerId);
@@ -7069,7 +7163,7 @@
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = control.checked ? "Click a ball or trajectory in the preview." : READY_STATUS;
+          statusText.textContent = control.checked ? "Drag a trajectory vector in the preview." : READY_STATUS;
           drawFrame(cloneState(), 0, ctx);
         });
         return;
