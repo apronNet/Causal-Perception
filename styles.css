@@ -1,18 +1,18 @@
 :root {
   color-scheme: light;
-  --bg: #f4f1e8;
-  --paper: #fffdf6;
-  --paper-soft: #f8f5ec;
-  --ink: #11110f;
-  --muted: #626056;
-  --line: #1b1a17;
-  --line-soft: rgba(27, 26, 23, 0.18);
-  --accent: #e23b2f;
-  --accent-dark: #9f2119;
-  --deep: #11110f;
-  --deep-soft: #ebe7dc;
-  --blue: #1f5a9f;
-  --gold: #a87918;
+  --bg: #ecebe3;
+  --paper: #fbfaf1;
+  --paper-soft: #f2f0e6;
+  --ink: #111820;
+  --muted: #63675f;
+  --line: #12171c;
+  --line-soft: rgba(18, 23, 28, 0.18);
+  --accent: #0067a8;
+  --accent-dark: #004f82;
+  --deep: #111820;
+  --deep-soft: #dfe7e8;
+  --blue: #0067a8;
+  --gold: #c58b00;
   --shadow: none;
   --radius-lg: 0;
   --radius-md: 0;
@@ -397,7 +397,7 @@ h3 {
 
 .help-field > span {
   cursor: help;
-  text-decoration: underline dotted rgba(27, 26, 23, 0.35) 1px;
+  text-decoration: underline dotted rgba(18, 23, 28, 0.35) 1px;
   text-underline-offset: 3px;
 }
 
@@ -457,7 +457,7 @@ input[type="number"]:focus,
 select:focus,
 button:focus-visible,
 .download-link:focus-visible {
-  outline: 3px solid rgba(226, 59, 47, 0.36);
+  outline: 3px solid rgba(0, 103, 168, 0.36);
   outline-offset: 2px;
 }
 
@@ -710,7 +710,7 @@ button:disabled {
 .validation-list li {
   border-left: 4px solid var(--accent);
   padding: 5px 7px;
-  background: #fff5ec;
+  background: #eef4f7;
   color: var(--accent-dark);
   font-size: 0.7rem;
   font-weight: 800;
@@ -762,7 +762,7 @@ canvas.special-drag-enabled:active {
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  background: rgba(255, 253, 246, 0.92);
+  background: rgba(251, 250, 241, 0.92);
   color: var(--ink);
   font-size: 0.68rem;
   font-weight: 800;

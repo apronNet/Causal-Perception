@@ -335,8 +335,8 @@
         stageTheme: "dark",
         groupingMode: "none",
         contactGuideMode: "none",
-        groupingOriginalColor: "#e05a5a",
-        groupingContextColor: "#d8a51b",
+        groupingOriginalColor: "#0067a8",
+        groupingContextColor: "#c58b00",
         fps: 60,
         fileLabel: "causal-capture-scenario"
       }
@@ -800,7 +800,7 @@
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
-    crosshairColor: "#f4f0df",
+    crosshairColor: "#fbfaf1",
     railEnabled: false,
     railCount: 1,
     railStartX: 92,
@@ -816,8 +816,8 @@
     targetColor: "#27c35a",
     contextColor: "#e53935",
     contextTargetColor: "#27c35a",
-    groupingOriginalColor: "#e05a5a",
-    groupingContextColor: "#d8a51b",
+    groupingOriginalColor: "#0067a8",
+    groupingContextColor: "#c58b00",
     customStartEnabled: false,
     customStartKeepRowsHorizontal: false,
     customStartAlignStartsVertical: false,
@@ -1522,14 +1522,14 @@
             ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "Speed", snapshot, "float1", 80, 6500, 1)}
             ${renderContextRange(pairNumber, "Movement", "launcherAccel", "Acceleration", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "After contact", snapshot, [
-              ["stop", "Stops"],
-              ["continue", "Continues"],
-              ["entrain", "Together"]
+              ["stop", "Stop"],
+              ["continue", "Pass"],
+              ["entrain", "Both"]
             ])}
             ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
-              ["target-front", "Second front"],
-              ["launcher-front", "First front"],
-              ["alternate", "Alternate"]
+              ["target-front", "C2 front"],
+              ["launcher-front", "C1 front"],
+              ["alternate", "Alt"]
             ])}
             ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Target ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
@@ -2861,7 +2861,7 @@
     };
 
     if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#e05a5a");
+      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#0067a8");
     }
 
     if (
@@ -2872,7 +2872,7 @@
         "Context set",
         contextGeometry,
         state.groupingContextColor,
-        "#d8a51b"
+        "#c58b00"
       );
     }
   }
@@ -2890,7 +2890,7 @@
         x: eventState.geometry.targetBaseX,
         radius: eventState.geometry.radius,
         color: state.groupingOriginalColor,
-        fallback: "#e05a5a"
+        fallback: "#0067a8"
       });
     }
     if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
@@ -2904,7 +2904,7 @@
         x: contextGeometry.targetBaseX,
         radius: contextGeometry.radius,
         color: state.groupingContextColor,
-        fallback: "#d8a51b"
+        fallback: "#c58b00"
       });
     }
 
@@ -3702,10 +3702,10 @@
       drawCtx.stroke();
       drawCtx.beginPath();
       drawCtx.arc(handle.x, handle.y, handle.radius + 12, 0, Math.PI * 2);
-      drawCtx.strokeStyle = "rgba(239, 59, 47, 0.86)";
+      drawCtx.strokeStyle = "rgba(0, 103, 168, 0.86)";
       drawCtx.lineWidth = 2;
       drawCtx.stroke();
-      drawCtx.fillStyle = "rgba(255, 253, 246, 0.92)";
+      drawCtx.fillStyle = "rgba(251, 250, 241, 0.92)";
       drawCtx.fillText(handle.label, handle.x, handle.y - handle.radius - 20);
     });
     drawCtx.restore();
