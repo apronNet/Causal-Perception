@@ -1328,7 +1328,7 @@
   }
 
   function formatParameterTooltipText(text) {
-    return text.split(/\s+Use for:/)[0];
+    return text.split(/\s+Use for:/)[0].replace(/^Changes:\s*/i, "");
   }
 
   function showParameterTooltip(anchor, text) {
