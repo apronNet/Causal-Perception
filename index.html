@@ -123,19 +123,21 @@
                   </label>
                   <label class="field">
                     <span>After contact</span>
-                    <select id="launcherBehavior">
-                      <option value="stop">Stops: launching</option>
-                      <option value="continue">Continues: pass/slip</option>
-                      <option value="entrain">Continues with target: entraining</option>
-                    </select>
+                    <input id="launcherBehavior" type="hidden" value="stop" />
+                    <span class="choice-row three-choice-row" role="group" aria-label="After contact">
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="stop" type="button">Stops</button>
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="continue" type="button">Continues</button>
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Together</button>
+                    </span>
                   </label>
                   <label class="field">
                     <span>Front object</span>
-                    <select id="contactOcclusionMode">
-                      <option value="target-front">Second object front</option>
-                      <option value="launcher-front">First object front</option>
-                      <option value="alternate">Alternate</option>
-                    </select>
+                    <input id="contactOcclusionMode" type="hidden" value="target-front" />
+                    <span class="choice-row three-choice-row" role="group" aria-label="Front object">
+                      <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="target-front" type="button">Second front</button>
+                      <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="launcher-front" type="button">First front</button>
+                      <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="alternate" type="button">Alternate</button>
+                    </span>
                   </label>
                   <label class="field">
                     <span>Delay</span>
@@ -189,19 +191,21 @@
                   </label>
                   <label class="field">
                     <span>After contact</span>
-                    <select id="contextLauncherBehavior">
-                      <option value="stop">Stops: launching</option>
-                      <option value="continue">Continues: pass/slip</option>
-                      <option value="entrain">Continues with target</option>
-                    </select>
+                    <input id="contextLauncherBehavior" type="hidden" value="stop" />
+                    <span class="choice-row three-choice-row" role="group" aria-label="Context after contact">
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="stop" type="button">Stops</button>
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="continue" type="button">Continues</button>
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Together</button>
+                    </span>
                   </label>
                   <label class="field">
                     <span>Front object</span>
-                    <select id="contextContactOcclusionMode">
-                      <option value="target-front">Second object front</option>
-                      <option value="launcher-front">First object front</option>
-                      <option value="alternate">Alternate</option>
-                    </select>
+                    <input id="contextContactOcclusionMode" type="hidden" value="target-front" />
+                    <span class="choice-row three-choice-row" role="group" aria-label="Context front object">
+                      <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="target-front" type="button">Second front</button>
+                      <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="launcher-front" type="button">First front</button>
+                      <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="alternate" type="button">Alternate</button>
+                    </span>
                   </label>
                   <label class="field">
                     <span>Delay</span>
@@ -338,19 +342,21 @@
             <div class="control-grid">
               <label class="field">
                 <span>Mode</span>
-                <select id="renderMode">
-                  <option value="lab">Lab preview</option>
-                  <option value="stimulus">Clean stimulus</option>
-                  <option value="fixation">Clean stimulus with fixation</option>
-                </select>
+                <input id="renderMode" type="hidden" value="stimulus" />
+                <span class="choice-row three-choice-row" role="group" aria-label="Mode">
+                  <button class="choice-button" data-choice-for="renderMode" data-choice-value="lab" type="button">Lab</button>
+                  <button class="choice-button" data-choice-for="renderMode" data-choice-value="stimulus" type="button">Clean</button>
+                  <button class="choice-button" data-choice-for="renderMode" data-choice-value="fixation" type="button">Fixation</button>
+                </span>
               </label>
               <label class="field">
                 <span>Background</span>
-                <select id="stageTheme">
-                  <option value="dark">Dark</option>
-                  <option value="midgray">Mid-gray</option>
-                  <option value="light">Light</option>
-                </select>
+                <input id="stageTheme" type="hidden" value="dark" />
+                <span class="choice-row three-choice-row" role="group" aria-label="Background">
+                  <button class="choice-button" data-choice-for="stageTheme" data-choice-value="dark" type="button">Dark</button>
+                  <button class="choice-button" data-choice-for="stageTheme" data-choice-value="midgray" type="button">Mid-gray</button>
+                  <button class="choice-button" data-choice-for="stageTheme" data-choice-value="light" type="button">Light</button>
+                </span>
               </label>
             </div>
           </section>
@@ -440,11 +446,12 @@
                     </label>
                     <label class="field">
                       <span>Type</span>
-                      <select id="soundType">
-                        <option value="click">Click</option>
-                        <option value="thud">Soft thud</option>
-                        <option value="tone">Brief tone</option>
-                      </select>
+                      <input id="soundType" type="hidden" value="click" />
+                      <span class="choice-row three-choice-row" role="group" aria-label="Sound type">
+                        <button class="choice-button" data-choice-for="soundType" data-choice-value="click" type="button">Click</button>
+                        <button class="choice-button" data-choice-for="soundType" data-choice-value="thud" type="button">Thud</button>
+                        <button class="choice-button" data-choice-for="soundType" data-choice-value="tone" type="button">Tone</button>
+                      </span>
                     </label>
                     <label class="field">
                       <span>Volume</span>
@@ -473,10 +480,11 @@
             <div class="control-grid">
               <label class="field">
                 <span>Style</span>
-                <select id="objectStyle">
-                  <option value="flat">Simple discs</option>
-                  <option value="shaded">3D shaded balls</option>
-                </select>
+                <input id="objectStyle" type="hidden" value="flat" />
+                <span class="choice-row two-choice-row" role="group" aria-label="Style">
+                  <button class="choice-button" data-choice-for="objectStyle" data-choice-value="flat" type="button">Simple discs</button>
+                  <button class="choice-button" data-choice-for="objectStyle" data-choice-value="shaded" type="button">3D shaded</button>
+                </span>
               </label>
               <label class="field">
                 <span>Sudden color change</span>

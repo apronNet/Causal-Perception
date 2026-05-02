@@ -851,6 +851,7 @@
   const crosshairDependentControls = Array.from(document.querySelectorAll(".crosshair-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
+  const choiceControlButtons = Array.from(document.querySelectorAll("[data-choice-for]"));
   let activePresetKey = "canonical";
   let selectedPresetKey = "canonical";
   let currentObjectUrl = null;
@@ -1222,6 +1223,33 @@
     });
   }
 
+  function getChoiceControlButtons(controlId) {
+    return Array.from(document.querySelectorAll(`[data-choice-for="${controlId}"]`));
+  }
+
+  function syncChoiceControlButtons(controlId, value) {
+    getChoiceControlButtons(controlId).forEach((button) => {
+      const isActive = button.dataset.choiceValue === value;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+  }
+
+  function syncAllChoiceControlButtons() {
+    const synced = new Set();
+    document.querySelectorAll("[data-choice-for]").forEach((button) => {
+      const controlId = button.dataset.choiceFor;
+      if (!controlId || synced.has(controlId)) {
+        return;
+      }
+      const control = document.getElementById(controlId);
+      if (control) {
+        syncChoiceControlButtons(controlId, control.value);
+        synced.add(controlId);
+      }
+    });
+  }
+
   function syncContextChoiceButtons() {
     syncChoiceButtons(contextModeButtons, "contextMode", controls.contextMode.value);
     syncChoiceButtons(contextDirectionButtons, "contextDirection", controls.contextDirection.value);
@@ -1235,6 +1263,7 @@
       control.checked = Boolean(value);
     } else {
       control.value = value;
+      syncChoiceControlButtons(control.id, String(control.value));
     }
   }
 
@@ -1282,9 +1311,20 @@
     control.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
+  function applyChoiceControl(control, value) {
+    if (!control || control.value === value) {
+      return;
+    }
+
+    control.value = value;
+    syncChoiceControlButtons(control.id, value);
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
     syncContextChoiceButtons();
+    syncAllChoiceControlButtons();
     contextDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", contextIsOff);
     });
@@ -1423,6 +1463,16 @@
 
   function renderContextSelect(pairNumber, group, field, label, snapshot, options) {
     const id = contextPairFieldId(pairNumber, group, field);
+    if (options.length <= 3) {
+      const renderedButtons = options
+        .map(
+          ([value, text]) =>
+            `<button class="choice-button" data-choice-for="${id}" data-choice-value="${value}" type="button">${text}</button>`
+        )
+        .join("");
+      return `<label class="field"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row three-choice-row" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
+    }
+
     const renderedOptions = options
       .map(
         ([value, text]) =>
@@ -1472,13 +1522,13 @@
             ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "Speed", snapshot, "float1", 80, 6500, 1)}
             ${renderContextRange(pairNumber, "Movement", "launcherAccel", "Acceleration", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "After contact", snapshot, [
-              ["stop", "Stops: launching"],
-              ["continue", "Continues: pass/slip"],
-              ["entrain", "Continues with target"]
+              ["stop", "Stops"],
+              ["continue", "Continues"],
+              ["entrain", "Together"]
             ])}
             ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
-              ["target-front", "Second object front"],
-              ["launcher-front", "First object front"],
+              ["target-front", "Second front"],
+              ["launcher-front", "First front"],
               ["alternate", "Alternate"]
             ])}
             ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
@@ -1517,6 +1567,7 @@
     contextPositionPairList.innerHTML = positionCards.join("");
     contextColorPairList.innerHTML = colorCards.join("");
     enhanceRangePrecision();
+    syncAllChoiceControlButtons();
     updateOutputs();
   }
 
@@ -2076,6 +2127,7 @@
         control.value = normalizedValue;
       }
     });
+    syncAllChoiceControlButtons();
     customStartPositionsInitialized = Boolean(controls.customStartEnabled.checked);
     syncContextControlVisibility();
     syncContextPairSnapshots();
@@ -3827,6 +3879,15 @@
       if (!container) {
         return;
       }
+      container.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-choice-for][data-choice-value]");
+        if (!button || !container.contains(button)) {
+          return;
+        }
+        const control = document.getElementById(button.dataset.choiceFor);
+        applyChoiceControl(control, button.dataset.choiceValue);
+      });
+
       const handleEdit = (event) => {
         const control = event.target.closest("[data-pair-field]");
         if (!control || !container.contains(control)) {
@@ -5392,6 +5453,12 @@
   }
 
   function bindControls() {
+    choiceControlButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const control = document.getElementById(button.dataset.choiceFor);
+        applyChoiceControl(control, button.dataset.choiceValue);
+      });
+    });
     contextModeButtons.forEach((button) => {
       button.addEventListener("click", () => applyContextChoice(controls.contextMode, button.dataset.contextMode));
     });
@@ -5635,6 +5702,7 @@
         control.value = value;
       }
     });
+    syncAllChoiceControlButtons();
   }
 
   loadHiddenBuiltInPresets();
