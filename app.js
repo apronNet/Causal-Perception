@@ -110,6 +110,10 @@
   const artifactFilename = document.getElementById("artifactFilename");
   const artifactCsvStatus = document.getElementById("artifactCsvStatus");
   const artifactWarnings = document.getElementById("artifactWarnings");
+  const feedbackToggle = document.getElementById("feedbackToggle");
+  const feedbackPanel = document.getElementById("feedbackPanel");
+  const feedbackMessage = document.getElementById("feedbackMessage");
+  const feedbackMailLink = document.getElementById("feedbackMailLink");
   const relationMetric = document.getElementById("relationMetric");
   const categoryMetric = document.getElementById("categoryMetric");
   const captureMetric = document.getElementById("captureMetric");
@@ -7486,6 +7490,58 @@
     updateCompatibilityNotice(state);
   }
 
+  function getFeedbackMailto() {
+    const message = (feedbackMessage?.value || "").trim();
+    const body = [
+      "Comment:",
+      message || "",
+      "",
+      "Page:",
+      document.title,
+      window.location.href,
+      "",
+      "If this concerns a parameter set, attach the exported metadata JSON or PsychoPy CSV."
+    ].join("\n");
+    return `mailto:rfan6@illinois.edu?subject=${encodeURIComponent(
+      "Launching Video Maker feedback"
+    )}&body=${encodeURIComponent(body)}`;
+  }
+
+  function updateFeedbackMailLink() {
+    if (!feedbackMailLink) {
+      return;
+    }
+    feedbackMailLink.href = getFeedbackMailto();
+  }
+
+  function setFeedbackPanelOpen(isOpen) {
+    if (!feedbackToggle || !feedbackPanel) {
+      return;
+    }
+    feedbackPanel.classList.toggle("hidden", !isOpen);
+    feedbackToggle.setAttribute("aria-expanded", String(isOpen));
+    if (isOpen) {
+      updateFeedbackMailLink();
+      feedbackMessage?.focus();
+    }
+  }
+
+  function bindFeedbackForm() {
+    if (!feedbackToggle || !feedbackPanel || !feedbackMessage || !feedbackMailLink) {
+      return;
+    }
+
+    updateFeedbackMailLink();
+    feedbackToggle.addEventListener("click", () => {
+      setFeedbackPanelOpen(feedbackPanel.classList.contains("hidden"));
+    });
+    feedbackMessage.addEventListener("input", updateFeedbackMailLink);
+    feedbackMailLink.addEventListener("click", () => {
+      updateFeedbackMailLink();
+      statusText.textContent = "Email draft opened.";
+    });
+  }
+
   function bindControls() {
     choiceControlButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -7807,6 +7863,7 @@
   enhanceRangePrecision();
   bindParameterHelp();
   bindControls();
+  bindFeedbackForm();
   bindContextPairEditors();
   bindStartDragging();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");

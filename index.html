@@ -745,10 +745,23 @@
       </main>
 
       <footer class="page-footer">
+        <section class="feedback-card" aria-labelledby="feedbackTitle">
+          <button id="feedbackToggle" class="secondary-button feedback-toggle" type="button" aria-expanded="false" aria-controls="feedbackPanel">
+            Leave feedback
+          </button>
+          <div id="feedbackPanel" class="feedback-panel hidden">
+            <label for="feedbackMessage" id="feedbackTitle">Feedback</label>
+            <textarea id="feedbackMessage" maxlength="1200" placeholder="What should be clearer, easier, or added?"></textarea>
+            <div class="feedback-actions">
+              <a id="feedbackMailLink" class="download-link feedback-send" href="mailto:rfan6@illinois.edu">Open email draft</a>
+              <small>Opens your email app. Nothing is sent until you send it.</small>
+            </div>
+          </div>
+        </section>
         <small>made by runkun and Codex AI. I am very happy to implement new features that your experiment needs! Please reach out email rfan6@illinois.edu</small>
       </footer>
     </div>
 
-    <script src="app.js?v=20260502-export-cache"></script>
+    <script src="app.js?v=20260502-feedback"></script>
   </body>
 </html>

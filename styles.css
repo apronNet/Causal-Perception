@@ -499,6 +499,7 @@ h3 {
 
 input[type="text"],
 input[type="number"],
+textarea,
 select {
   width: 100%;
   min-height: 24px;
@@ -514,6 +515,7 @@ select {
 
 input[type="text"]:focus,
 input[type="number"]:focus,
+textarea:focus,
 select:focus,
 button:focus-visible,
 .download-link:focus-visible {
@@ -1007,6 +1009,56 @@ canvas.trajectory-edit-enabled:active {
   font-family: inherit;
   font-weight: 800;
   color: var(--ink);
+}
+
+.feedback-card {
+  display: grid;
+  gap: 8px;
+  max-width: 520px;
+}
+
+.feedback-toggle {
+  justify-self: start;
+}
+
+.feedback-panel {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+}
+
+.feedback-panel label {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.feedback-panel textarea {
+  min-height: 86px;
+  resize: vertical;
+  line-height: 1.25;
+}
+
+.feedback-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.feedback-send {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  text-decoration: none;
+}
+
+.feedback-actions small {
+  max-width: none;
+  text-align: left;
 }
 
 /* Shared utility for generated links, warnings, and panels that app.js reveals after user actions. */
