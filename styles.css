@@ -77,6 +77,16 @@ h1 {
   line-height: 0.9;
 }
 
+.app-subtitle {
+  max-width: 520px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: clamp(0.78rem, 1vw, 0.92rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
 .michotte-card {
   display: grid;
   grid-template-columns: 224px max-content;
