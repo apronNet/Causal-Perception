@@ -31,6 +31,7 @@ Touch every relevant point below. Missing one is the usual source of silent bugs
 9. Use it in the relevant motion or drawing helper.
 10. If it should be reproducible, update `getExportFilenameBase()`, `buildPsychopyMetadata()`, and `buildPsychopyCsv()`.
 11. If condition sets need it, update `withCondition()`, `stateFromConditionParameters()`, `buildConditionSetCsv()`, and the relevant `buildConditionSet()` family.
+12. Update `README.md`. If the feature is visual, add or refresh a small guide image in `docs/screenshots/`.
 
 ## Context Pairs
 
@@ -58,3 +59,12 @@ For one stimulus, export the movie and the PsychoPy CSV. Put the movie file in a
 Condition sets are batch plans, not rendered movies. `buildConditionSet()` creates rows and expected filenames; the lab still needs matching movie files for those rows.
 
 Browser MediaRecorder cannot reliably embed custom MP4/WebM metadata. The app therefore exports a metadata JSON sidecar. Treat the CSV and JSON as the durable parameter record.
+
+## README / GitHub Page
+
+The GitHub page is part of the tool. Keep it current whenever the app gains a new parameter, special feature, export behavior, or PsychoPy workflow.
+
+- Add short user guidance to `README.md`.
+- Add practical PsychoPy consequences when a feature changes export or CSV behavior.
+- Add a guide image in `docs/screenshots/` when a feature is easier to understand visually.
+- Keep images simple enough that they stay useful even if the interface layout changes.

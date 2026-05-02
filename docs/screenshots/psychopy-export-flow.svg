@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="360" viewBox="0 0 980 360" role="img" aria-labelledby="title desc">
+  <title id="title">PsychoPy export workflow</title>
+  <desc id="desc">A practical flow from the web app to a PsychoPy Builder loop and MovieStim component.</desc>
+  <rect width="980" height="360" fill="#eee7d8"/>
+  <g font-family="Avenir Next, Helvetica, Arial, sans-serif" fill="#1f1c18">
+    <rect x="34" y="64" width="206" height="150" fill="#faf6ec" stroke="#1f1c18" stroke-width="4"/>
+    <text x="58" y="106" font-size="24" font-weight="900">1 Export video</text>
+    <text x="58" y="142" font-size="18">Save MP4/WebM</text>
+    <text x="58" y="170" font-size="18">to stimuli/</text>
+    <rect x="288" y="64" width="206" height="150" fill="#faf6ec" stroke="#1f1c18" stroke-width="4"/>
+    <text x="312" y="106" font-size="24" font-weight="900">2 Export CSV</text>
+    <text x="312" y="142" font-size="18">One row or</text>
+    <text x="312" y="170" font-size="18">condition set</text>
+    <rect x="542" y="64" width="206" height="150" fill="#faf6ec" stroke="#1f1c18" stroke-width="4"/>
+    <text x="566" y="106" font-size="24" font-weight="900">3 Builder loop</text>
+    <text x="566" y="142" font-size="18">Conditions file:</text>
+    <text x="566" y="170" font-size="18">launch_trials.csv</text>
+    <rect x="796" y="64" width="150" height="150" fill="#241f18" stroke="#1f1c18" stroke-width="4"/>
+    <text x="820" y="106" font-size="24" font-weight="900" fill="#f8f2e7">4 Movie</text>
+    <text x="820" y="142" font-size="18" fill="#f8f2e7">Filename:</text>
+    <text x="820" y="170" font-size="20" font-weight="900" fill="#f8f2e7">$movieFile</text>
+    <path d="M248 139 H280" stroke="#b95f46" stroke-width="6"/>
+    <path d="M280 139 L264 128 L264 150 Z" fill="#b95f46"/>
+    <path d="M502 139 H534" stroke="#b95f46" stroke-width="6"/>
+    <path d="M534 139 L518 128 L518 150 Z" fill="#b95f46"/>
+    <path d="M756 139 H788" stroke="#b95f46" stroke-width="6"/>
+    <path d="M788 139 L772 128 L772 150 Z" fill="#b95f46"/>
+    <text x="36" y="282" font-size="20" font-weight="800">Example CSV cell:</text>
+    <rect x="234" y="252" width="452" height="48" fill="#fffaf0" stroke="#1f1c18" stroke-width="3"/>
+    <text x="256" y="283" font-size="20" font-family="SFMono-Regular, Menlo, Consolas, monospace">movieFile = stimuli/sn-0-overlap-launch.mp4</text>
+  </g>
+</svg>
