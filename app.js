@@ -11,6 +11,13 @@
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
   const SHARED_PRESETS_URL = "shared-presets.json";
+  const CLASSIC_DISC_COLOR = "#f4f1e6";
+  const CLASSIC_BACKGROUND_COLOR = "#111514";
+  const BACKGROUND_THEME_COLORS = {
+    dark: CLASSIC_BACKGROUND_COLOR,
+    midgray: "#80786d",
+    light: "#f6efe1"
+  };
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
@@ -106,6 +113,7 @@
     "contextTargetVisibleMs",
     "renderMode",
     "stageTheme",
+    "stageColor",
     "objectStyle",
     "groupingMode",
     "contactGuideMode",
@@ -123,6 +131,10 @@
     "railSegments",
     "crosshairBlinkEnabled",
     "crosshairBlinkMs",
+    "trajectoryEditEnabled",
+    "selectedTrajectoryBall",
+    "selectedTrajectoryAngle",
+    "trajectoryOverrides",
     "customStartEnabled",
     "customStartKeepRowsHorizontal",
     "customStartAlignStartsVertical",
@@ -168,9 +180,9 @@
     launcherBehavior: "Changes: what the first object does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of the second object's motion after contact. Use for: straight launch versus angled launch.",
     launcherVisibleMs:
-      "Changes: how long O1 stays visible after the video starts. Longer than Video duration means no timed cut; O1 stays until the clip ends or it moves offscreen. Shorter than Video duration makes O1 disappear on screen at that time.",
+      "Changes: how long the launcher stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
     targetVisibleMs:
-      "Changes: how long O2 stays visible after the video starts. Longer than Video duration means no timed cut; O2 stays until the clip ends or it moves offscreen. Shorter than Video duration makes O2 disappear on screen at that time.",
+      "Changes: how long the launchee stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
     delayMs: "Changes: time between contact and second-object motion. Short delays look more directly causal; long delays look less like immediate launching.",
     gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
@@ -201,13 +213,14 @@
     contextTargetAccel: "Changes: whether the context second object speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context second-object motion. Use for: matching or mismatching the original pair event direction.",
     contextLauncherVisibleMs:
-      "Changes: how long C1 stays visible after the context event starts. Longer than Video duration means no timed cut; C1 stays until the clip ends or it moves offscreen. Shorter than Video duration makes C1 disappear on screen at that context time.",
+      "Changes: how long the context launcher stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     contextTargetVisibleMs:
-      "Changes: how long C2 stays visible after the context event starts. Longer than Video duration means no timed cut; C2 stays until the clip ends or it moves offscreen. Shorter than Video duration makes C2 disappear on screen at that context time.",
+      "Changes: how long the context launchee stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
-    stageTheme: "Changes: background luminance. Use for: dark, mid-gray, or light stimulus fields.",
-    objectStyle: "Changes: visual rendering of the balls. Simple discs are more controlled; 3D balls are more pictorial.",
-    groupingMode: "Changes: solid boxes around the original pair row, context row, or both. Use for: testing perceptual grouping.",
+    stageTheme: "Changes: preset background luminance and sets the background color picker.",
+    stageColor: "Changes: exact stimulus-field color. Classic launching studies usually use high-contrast neutral discs rather than colored objects.",
+    objectStyle: "Changes: visual rendering of the balls. Simple filled discs are the most controlled; shaded or ring styles are for display variants.",
+    groupingMode: "Changes: solid boxes that group one pair, every pair separately, or all context pairs together. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
@@ -220,9 +233,13 @@
       "Changes: makes the crosshair blink before balls appear. During this pre-ball window the event clock has not started.",
     crosshairBlinkMs:
       "Changes: duration of the pre-ball crosshair blink. If this is long, increase Video duration so the launch still has time to play after the blink.",
-    customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1, O2, C1, and C2 start positions manually; exports use the positions but hide the rings.",
-    customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position; C1 and C2 share one y-position when context is shown.",
-    customStartAlignStartsVertical: "Changes: keeps the two first objects on one vertical line. Use for: O1 and C1 share one x-position when context is shown.",
+    trajectoryEditEnabled:
+      "Changes: enables preview selection of individual ball trajectories. Click a ball or guide line in the preview, then adjust Angle for that selected ball only.",
+    selectedTrajectoryAngle:
+      "Changes: relative angle for the selected ball trajectory. 0 follows the default path; positive and negative values bend that selected ball in opposite vertical directions.",
+    customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing launcher and launchee start positions manually; exports use the positions but hide the rings.",
+    customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: launcher and launchee share one y-position within each pair.",
+    customStartAlignStartsVertical: "Changes: keeps launchers on one vertical line when context is shown.",
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
     colorChangeColor: "Changes: the new color used by sudden color change. Use for: setting the contact-locked feature change.",
     launcherColor: "Changes: color of the original-pair first object. Use for: object identity or fixed stimulus colors.",
@@ -792,11 +809,16 @@
     contextTargetAngle: 0,
     contextLauncherVisibleMs: 9000,
     contextTargetVisibleMs: 9000,
-    contactOcclusionMode: "target-front"
+    contactOcclusionMode: "target-front",
+    trajectoryEditEnabled: false,
+    selectedTrajectoryBall: "originalTarget",
+    selectedTrajectoryAngle: 0,
+    trajectoryOverrides: "{}"
   };
   const presentationDefaults = {
     renderMode: "stimulus",
     stageTheme: "dark",
+    stageColor: CLASSIC_BACKGROUND_COLOR,
     objectStyle: "flat",
     groupingMode: "none",
     contactGuideMode: "none",
@@ -814,14 +836,18 @@
     railSegments: "[]",
     crosshairBlinkEnabled: false,
     crosshairBlinkMs: 600,
+    trajectoryEditEnabled: false,
+    selectedTrajectoryBall: "originalTarget",
+    selectedTrajectoryAngle: 0,
+    trajectoryOverrides: "{}",
     colorChangeMode: "none",
     colorChangeColor: "#e0b24a",
-    launcherColor: "#c45f45",
-    targetColor: "#3f746f",
-    contextColor: "#c45f45",
-    contextTargetColor: "#3f746f",
-    groupingOriginalColor: "#c45f45",
-    groupingContextColor: "#3f746f",
+    launcherColor: CLASSIC_DISC_COLOR,
+    targetColor: CLASSIC_DISC_COLOR,
+    contextColor: CLASSIC_DISC_COLOR,
+    contextTargetColor: CLASSIC_DISC_COLOR,
+    groupingOriginalColor: "#e0b24a",
+    groupingContextColor: "#80a7a1",
     customStartEnabled: false,
     customStartKeepRowsHorizontal: false,
     customStartAlignStartsVertical: false,
@@ -853,6 +879,7 @@
   const customStartDependentControls = Array.from(document.querySelectorAll(".custom-start-dependent-control"));
   const railDependentControls = Array.from(document.querySelectorAll(".rail-dependent-control"));
   const crosshairDependentControls = Array.from(document.querySelectorAll(".crosshair-dependent-control"));
+  const trajectoryDependentControls = Array.from(document.querySelectorAll(".trajectory-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
   const choiceControlButtons = Array.from(document.querySelectorAll("[data-choice-for]"));
@@ -934,6 +961,29 @@
     return JSON.stringify(Array.isArray(segments) ? segments : []);
   }
 
+  function parseTrajectoryOverrides(value) {
+    if (!value) {
+      return {};
+    }
+    try {
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return {};
+      }
+      return Object.fromEntries(
+        Object.entries(parsed)
+          .map(([key, angle]) => [key, clamp(Math.round(Number(angle)), -90, 90)])
+          .filter(([, angle]) => Number.isFinite(angle))
+      );
+    } catch {
+      return {};
+    }
+  }
+
+  function serializeTrajectoryOverrides(overrides) {
+    return JSON.stringify(parseTrajectoryOverrides(overrides));
+  }
+
   function cloneState() {
     return {
       durationMs: Number(controls.durationMs.value),
@@ -977,6 +1027,7 @@
       contextTargetVisibleMs: Number(controls.contextTargetVisibleMs.value),
       renderMode: controls.renderMode.value,
       stageTheme: controls.stageTheme.value,
+      stageColor: controls.stageColor.value,
       objectStyle: controls.objectStyle.value,
       groupingMode: controls.groupingMode.value,
       contactGuideMode: controls.contactGuideMode.value,
@@ -994,6 +1045,10 @@
       railSegments: parseRailSegments(controls.railSegments.value),
       crosshairBlinkEnabled: controls.crosshairBlinkEnabled.checked,
       crosshairBlinkMs: Number(controls.crosshairBlinkMs.value),
+      trajectoryEditEnabled: controls.trajectoryEditEnabled.checked,
+      selectedTrajectoryBall: controls.selectedTrajectoryBall.value,
+      selectedTrajectoryAngle: Number(controls.selectedTrajectoryAngle.value),
+      trajectoryOverrides: parseTrajectoryOverrides(controls.trajectoryOverrides.value),
       customStartEnabled: controls.customStartEnabled.checked,
       customStartKeepRowsHorizontal: controls.customStartKeepRowsHorizontal.checked,
       customStartAlignStartsVertical: controls.customStartAlignStartsVertical.checked,
@@ -1049,9 +1104,11 @@
         return `${Math.round(number)} ${Math.round(number) === 1 ? "pair" : "pairs"}`;
       case "railCount":
         return `${Math.round(number)} ${Math.round(number) === 1 ? "rail" : "rails"}`;
+      case "trajectoryTarget":
+        return getTrajectoryTargetLabel(value);
       case "visibilityMs": {
         const videoDuration = controls.durationMs ? Number(controls.durationMs.value) : 0;
-        const suffix = number > videoDuration ? " no cut" : "";
+        const suffix = number > videoDuration ? " until end" : "";
         return `${Math.round(number)} ms${suffix}`;
       }
       case "signedMs":
@@ -1322,6 +1379,9 @@
     }
 
     control.value = value;
+    if (control.id === "stageTheme" && controls.stageColor) {
+      controls.stageColor.value = BACKGROUND_THEME_COLORS[value] || CLASSIC_BACKGROUND_COLOR;
+    }
     syncChoiceControlButtons(control.id, value);
     control.dispatchEvent(new Event("input", { bubbles: true }));
   }
@@ -1351,8 +1411,10 @@
   function getAutoContextPairRadius(baseRadius, pairCount) {
     const requestedRadius = clamp(Math.round(Number(baseRadius) || stimulusDefaults.contextBallRadius), 8, 60);
     const visibleContextPairs = clamp(Math.round(Number(pairCount) || 1), 1, CONTEXT_PAIR_MAX);
-    const visibleRows = visibleContextPairs + 1;
-    const fitRadius = Math.floor((STAGE_HEIGHT - 88) / (visibleRows * 2.25));
+    const stepCount = Math.max(1, Math.ceil(visibleContextPairs / 2));
+    const desiredGap = 12;
+    const halfAvailable = STAGE_HEIGHT / 2 - 38;
+    const fitRadius = Math.floor((halfAvailable - stepCount * desiredGap) / (stepCount * 2 + 1));
     return clamp(Math.min(requestedRadius, fitRadius), 8, 60);
   }
 
@@ -1362,7 +1424,7 @@
     const stepCount = Math.max(1, Math.ceil(visibleContextPairs / 2));
     const fitSpacing = visibleHalfSpan / stepCount;
     const preferred = Math.abs(Number(preferredSpacing)) || 112;
-    const minimumComfortSpacing = radius * 2.15;
+    const minimumComfortSpacing = radius * 2 + 12;
     return Math.max(Math.min(preferred, fitSpacing), Math.min(minimumComfortSpacing, fitSpacing));
   }
 
@@ -1512,7 +1574,8 @@
             `<button class="choice-button" data-choice-for="${id}" data-choice-value="${value}" type="button">${text}</button>`
         )
         .join("");
-      return `<label class="field"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row three-choice-row" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
+      const fieldClass = field === "contactOcclusionMode" ? " field wide-choice-field" : " field";
+      return `<label class="${fieldClass.trim()}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row three-choice-row" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
     }
 
     const renderedOptions = options
@@ -1570,16 +1633,16 @@
               ["entrain", "Both"]
             ])}
             ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
-              ["target-front", "C2 front"],
-              ["launcher-front", "C1 front"],
+              ["target-front", "Launchee"],
+              ["launcher-front", "Launcher"],
               ["alternate", "Alt"]
             ])}
             ${renderContextRange(pairNumber, "Movement", "delayMs", "Delay", snapshot, "ms", 0, 500, 5)}
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "Target ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
             ${renderContextRange(pairNumber, "Movement", "targetAccel", "Target accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "Target angle", snapshot, "degrees", -90, 90, 1)}
-            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "C1 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
-            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "C2 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
+            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "Launcher on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
+            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "Launchee on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
           </div>
         </div>`);
 
@@ -1729,7 +1792,9 @@
 
   function syncSpecialDragUi() {
     const enabled = Boolean(controls.crosshairEnabled.checked || controls.railEnabled.checked);
+    const trajectoryEnabled = Boolean(controls.trajectoryEditEnabled.checked);
     canvas.classList.toggle("special-drag-enabled", enabled);
+    canvas.classList.toggle("trajectory-edit-enabled", trajectoryEnabled);
     if (!enabled) {
       specialDragTarget = null;
     }
@@ -1747,6 +1812,18 @@
     railDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
     });
+  }
+
+  function syncTrajectoryControlVisibility() {
+    const state = cloneState();
+    const enabled = Boolean(state.trajectoryEditEnabled);
+    trajectoryDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !enabled);
+    });
+    if (!enabled) {
+      return;
+    }
+    ensureSelectedTrajectoryTarget(state);
   }
 
   function getRailCount(state) {
@@ -2204,7 +2281,9 @@
             ? serializeContextPairSnapshots(value)
             : key === "railSegments" && Array.isArray(value)
               ? serializeRailSegments(value)
-            : value;
+              : key === "trajectoryOverrides" && value && typeof value === "object"
+                ? serializeTrajectoryOverrides(value)
+                : value;
       if (control.type === "checkbox") {
         control.checked = Boolean(normalizedValue);
       } else {
@@ -2220,6 +2299,7 @@
     syncStartDragUi();
     syncCrosshairControlVisibility();
     syncRailControlVisibility();
+    syncTrajectoryControlVisibility();
     syncRailSegments();
     syncSpecialDragUi();
     enforceCustomStartConstraints();
@@ -2258,7 +2338,11 @@
     presetSelect.value = presetKey;
     presetNameInput.value = isCustomPresetKey(presetKey) ? preset.label : "";
     syncPresetActions();
-    setControls({ ...stimulusDefaults, ...withContextMotionDefaults(preset.values) });
+    const nextValues = { ...stimulusDefaults, ...presentationDefaults, ...withContextMotionDefaults(preset.values) };
+    if (!Object.prototype.hasOwnProperty.call(preset.values, "stageColor")) {
+      nextValues.stageColor = BACKGROUND_THEME_COLORS[nextValues.stageTheme] || CLASSIC_BACKGROUND_COLOR;
+    }
+    setControls(nextValues);
   }
 
   function getDynamicCopy(state) {
@@ -2662,10 +2746,10 @@
   }
 
   function getPalette(state) {
-    const launcher = normalizeHexColor(state.launcherColor, "#c45f45");
-    const target = normalizeHexColor(state.targetColor, "#3f746f");
-    const context = normalizeHexColor(state.contextColor, "#c45f45");
-    const contextTarget = normalizeHexColor(state.contextTargetColor, "#3f746f");
+    const launcher = normalizeHexColor(state.launcherColor, CLASSIC_DISC_COLOR);
+    const target = normalizeHexColor(state.targetColor, CLASSIC_DISC_COLOR);
+    const context = normalizeHexColor(state.contextColor, CLASSIC_DISC_COLOR);
+    const contextTarget = normalizeHexColor(state.contextTargetColor, CLASSIC_DISC_COLOR);
     return {
       launcher: {
         fill: launcher,
@@ -2784,6 +2868,35 @@
       return;
     }
 
+    if (state.objectStyle === "outline") {
+      drawCtx.beginPath();
+      drawCtx.arc(x, y, radius, 0, Math.PI * 2);
+      drawCtx.fillStyle = "rgba(0, 0, 0, 0)";
+      drawCtx.fill();
+      drawCtx.lineWidth = Math.max(2, radius * 0.08);
+      drawCtx.strokeStyle = fill;
+      drawCtx.stroke();
+      return;
+    }
+
+    if (state.objectStyle === "ring") {
+      drawCtx.beginPath();
+      drawCtx.arc(x, y, radius, 0, Math.PI * 2);
+      drawCtx.fillStyle = fill;
+      drawCtx.fill();
+      drawCtx.lineWidth = Math.max(2.5, radius * 0.12);
+      drawCtx.strokeStyle = outline;
+      drawCtx.stroke();
+      drawCtx.beginPath();
+      drawCtx.arc(x, y, radius * 0.56, 0, Math.PI * 2);
+      drawCtx.fillStyle = getStageThemeColors(state)[0];
+      drawCtx.fill();
+      drawCtx.lineWidth = Math.max(1.5, radius * 0.06);
+      drawCtx.strokeStyle = outline;
+      drawCtx.stroke();
+      return;
+    }
+
     drawCtx.beginPath();
     drawCtx.arc(x, y, radius, 0, Math.PI * 2);
     drawCtx.fillStyle = fill;
@@ -2794,10 +2907,11 @@
   }
 
   function getStageThemeColors(state) {
+    const background = normalizeHexColor(state.stageColor, BACKGROUND_THEME_COLORS[state.stageTheme] || CLASSIC_BACKGROUND_COLOR);
     const themes = {
-      dark: ["#111514", "rgba(196, 95, 69, 0.11)", "rgba(255, 248, 234, 0.16)"],
-      midgray: ["#837b70", "rgba(255, 248, 234, 0.11)", "rgba(255, 248, 234, 0.19)"],
-      light: ["#f6efe1", "rgba(196, 95, 69, 0.07)", "rgba(39, 34, 28, 0.15)"]
+      dark: [background, "rgba(196, 95, 69, 0.11)", "rgba(255, 248, 234, 0.16)"],
+      midgray: [background, "rgba(255, 248, 234, 0.11)", "rgba(255, 248, 234, 0.19)"],
+      light: [background, "rgba(196, 95, 69, 0.07)", "rgba(39, 34, 28, 0.15)"]
     };
     return themes[state.stageTheme] || themes.dark;
   }
@@ -2902,26 +3016,62 @@
       return;
     }
 
-    const rowGap = Math.abs(state.contextYOffset);
-    const groupedRowsAreClose =
-      state.groupingMode === "both" &&
-      isContextEventVisible(state, eventState.time, eventState.geometry) &&
-      rowGap > 0;
-    const contextState = getContextMotionState(state);
-    const contextLaneY = getContextLaneY(state, eventState.geometry.laneY, 0);
-    const contextGeometry = getGeometry(contextState, contextLaneY, {
-      scope: "context",
-      directionSign: eventState.geometry.contextDirectionSign
-    });
+    const contextVisible = isContextEventVisible(state, eventState.time, eventState.geometry);
+    const contextGeometries = [];
+    if (contextVisible) {
+      const pairCount = getContextPairCount(state);
+      const contextState = getContextMotionState(state);
+      const snapshots = state.contextPairSnapshots || [];
+      for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+        const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
+        const laneY = getContextLaneY(state, eventState.geometry.laneY, pairIndex, snapshot);
+        if (pairIndex === 0) {
+          contextGeometries.push(
+            getGeometry(contextState, laneY, {
+              scope: "context",
+              directionSign: eventState.geometry.contextDirectionSign,
+              trajectoryScope: "context"
+            })
+          );
+        } else {
+          const snapshotState = getContextPairSnapshotState(snapshot, state, laneY);
+          contextGeometries.push(
+            getGeometry(snapshotState, laneY, {
+              scope: "original",
+              directionSign: eventState.geometry.contextDirectionSign,
+              trajectoryScope: `context${pairIndex + 1}`
+            })
+          );
+        }
+      }
+    }
 
-    const drawBox = (label, geometry, color, fallback) => {
-      const radius = geometry.radius;
-      const maxHalfHeight = groupedRowsAreClose ? Math.max(10, rowGap / 2 - 8) : radius * 2.3;
-      const boxHalfHeight = Math.min(radius * 2.3, maxHalfHeight);
-      const left = Math.max(20, Math.min(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) - radius * 1.8);
-      const right = Math.min(STAGE_WIDTH - 20, Math.max(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) + radius * 7.2);
-      const top = Math.max(20, Math.min(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) - boxHalfHeight);
-      const bottom = Math.min(STAGE_HEIGHT - 20, Math.max(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) + boxHalfHeight);
+    const getBoxBounds = (geometries) => {
+      const left = Math.max(
+        20,
+        Math.min(...geometries.map((geometry) => Math.min(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) - geometry.radius * 1.8))
+      );
+      const right = Math.min(
+        STAGE_WIDTH - 20,
+        Math.max(...geometries.map((geometry) => Math.max(geometry.launcherStartX, geometry.targetBaseX, geometry.launcherStopX) + geometry.radius * 7.2))
+      );
+      const top = Math.max(
+        20,
+        Math.min(...geometries.map((geometry) => Math.min(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) - geometry.radius * 2.3))
+      );
+      const bottom = Math.min(
+        STAGE_HEIGHT - 20,
+        Math.max(...geometries.map((geometry) => Math.max(geometry.launcherStartY, geometry.targetBaseY, geometry.launcherStopY) + geometry.radius * 2.3))
+      );
+      return { left, right, top, bottom };
+    };
+
+    const drawBox = (label, geometries, color, fallback) => {
+      const safeGeometries = Array.isArray(geometries) ? geometries.filter(Boolean) : [geometries].filter(Boolean);
+      if (safeGeometries.length === 0) {
+        return;
+      }
+      const { left, right, top, bottom } = getBoxBounds(safeGeometries);
       const height = Math.max(12, bottom - top);
       const strokeColor = hexToRgba(color, state.stageTheme === "light" ? 0.86 : 0.9, fallback);
       const fillColor = hexToRgba(color, state.stageTheme === "light" ? 0.07 : 0.045, fallback);
@@ -2944,20 +3094,25 @@
       drawCtx.restore();
     };
 
-    if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#c45f45");
+    const drawOriginal = ["original", "both", "each", "original-contexts"].includes(state.groupingMode);
+    if (drawOriginal) {
+      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#e0b24a");
     }
 
-    if (
-      isContextEventVisible(state, eventState.time, eventState.geometry) &&
-      (state.groupingMode === "context" || state.groupingMode === "both")
-    ) {
-      drawBox(
-        "Context set",
-        contextGeometry,
-        state.groupingContextColor,
-        "#3f746f"
-      );
+    if (!contextVisible || contextGeometries.length === 0) {
+      return;
+    }
+
+    if (state.groupingMode === "each") {
+      contextGeometries.forEach((geometry, index) => {
+        drawBox(`Context ${index + 1}`, geometry, state.groupingContextColor, "#80a7a1");
+      });
+      return;
+    }
+
+    if (["context", "both", "original-contexts"].includes(state.groupingMode)) {
+      const grouped = state.groupingMode === "both" ? contextGeometries.slice(0, 1) : contextGeometries;
+      drawBox("Context set", grouped, state.groupingContextColor, "#80a7a1");
     }
   }
 
@@ -3031,12 +3186,13 @@
   function getGeometry(state, laneY, options = {}) {
     const radius = state.ballRadius;
     const scope = options.scope || "original";
+    const trajectoryScope = options.trajectoryScope || scope;
     const directionSign = options.directionSign || 1;
     const defaultTargetX = (state.occluderEnabled ? STAGE_WIDTH * 0.62 : STAGE_WIDTH * 0.58) + state.stimulusXOffset;
     const orientedTargetX = directionSign === 1 ? defaultTargetX : STAGE_WIDTH - defaultTargetX;
     const orientedLauncherX = directionSign === 1 ? 92 + state.stimulusXOffset : STAGE_WIDTH - (92 + state.stimulusXOffset);
     const usesCustomStarts = Boolean(state.customStartEnabled);
-    const launcherStart = usesCustomStarts
+    let launcherStart = usesCustomStarts
       ? getStartPoint(state, scope, "Launcher", orientedLauncherX, laneY)
       : { x: orientedLauncherX, y: laneY };
     const targetBase = usesCustomStarts
@@ -3047,19 +3203,33 @@
     const approachLength = Math.hypot(approachDx, approachDy);
     const fallbackUnitX = directionSign;
     const fallbackUnitY = 0;
-    const approachUnitX = approachLength > 0.001 ? approachDx / approachLength : fallbackUnitX;
-    const approachUnitY = approachLength > 0.001 ? approachDy / approachLength : fallbackUnitY;
+    let approachUnitX = approachLength > 0.001 ? approachDx / approachLength : fallbackUnitX;
+    let approachUnitY = approachLength > 0.001 ? approachDy / approachLength : fallbackUnitY;
     const contactDistance = Math.max(0, radius * 2 + state.gapPx);
-    const launcherStopX = targetBase.x - approachUnitX * contactDistance;
-    const launcherStopY = targetBase.y - approachUnitY * contactDistance;
-    const launcherDistance = Math.max(Math.hypot(launcherStopX - launcherStart.x, launcherStopY - launcherStart.y), 1);
+    let launcherStopX = targetBase.x - approachUnitX * contactDistance;
+    let launcherStopY = targetBase.y - approachUnitY * contactDistance;
+    let launcherDistance = Math.max(Math.hypot(launcherStopX - launcherStart.x, launcherStopY - launcherStart.y), 1);
+    const launcherAngleOverride = getTrajectoryOverrideAngle(state, `${trajectoryScope}Launcher`);
+    if (Number.isFinite(launcherAngleOverride)) {
+      const rotatedApproach = rotateVector(approachUnitX, approachUnitY, (launcherAngleOverride * Math.PI) / 180);
+      approachUnitX = rotatedApproach.x;
+      approachUnitY = rotatedApproach.y;
+      launcherStopX = targetBase.x - approachUnitX * contactDistance;
+      launcherStopY = targetBase.y - approachUnitY * contactDistance;
+      launcherStart = {
+        x: launcherStopX - approachUnitX * launcherDistance,
+        y: launcherStopY - approachUnitY * launcherDistance
+      };
+    }
     const travelMs = solveTravelMs(launcherDistance, state.launcherSpeed, state.launcherAccel);
     const stopTime = state.leadInMs + travelMs;
     const targetStartTime = stopTime + state.delayMs;
     const remainingMs = Math.max(state.durationMs - targetStartTime - 240, 80);
     const launcherImpactSpeed = velocityAt(travelMs, state.launcherSpeed, state.launcherAccel);
     const targetSpeed = launcherImpactSpeed * state.targetSpeedRatio;
-    const angleRad = (state.targetAngle * Math.PI) / 180;
+    const targetAngleOverride = getTrajectoryOverrideAngle(state, `${trajectoryScope}Target`);
+    const effectiveTargetAngle = Number.isFinite(targetAngleOverride) ? targetAngleOverride : state.targetAngle;
+    const angleRad = (effectiveTargetAngle * Math.PI) / 180;
     const customTargetUnit = rotateVector(approachUnitX, approachUnitY, angleRad);
     const targetUnitX = usesCustomStarts ? customTargetUnit.x : directionSign * Math.cos(angleRad);
     const targetUnitY = usesCustomStarts ? customTargetUnit.y : Math.sin(angleRad);
@@ -3155,8 +3325,8 @@
     };
   }
 
-  function getDirectedEventState(eventState, t, laneY, directionSign, scope = "context") {
-    const geometry = getGeometry(eventState, laneY, { scope, directionSign });
+  function getDirectedEventState(eventState, t, laneY, directionSign, scope = "context", trajectoryScope = scope) {
+    const geometry = getGeometry(eventState, laneY, { scope, directionSign, trajectoryScope });
     const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
     const approachDistance = Math.min(
       geometry.launcherDistance,
@@ -3197,8 +3367,8 @@
     };
   }
 
-  function getDirectedSingleEventState(eventState, t, laneY, directionSign, scope = "context") {
-    const geometry = getGeometry(eventState, laneY, { scope, directionSign });
+  function getDirectedSingleEventState(eventState, t, laneY, directionSign, scope = "context", trajectoryScope = scope) {
+    const geometry = getGeometry(eventState, laneY, { scope, directionSign, trajectoryScope });
     const approachElapsed = clamp(t - eventState.leadInMs, 0, geometry.travelMs);
     const approachDistance = Math.min(
       geometry.launcherDistance,
@@ -3250,9 +3420,216 @@
     };
   }
 
-  function drawContextPair(drawCtx, state, eventState, t, laneY, directionSign, colors, scope = "context") {
+  function getTrajectoryOverrideAngle(state, id) {
+    const overrides = parseTrajectoryOverrides(state.trajectoryOverrides);
+    const angle = Number(overrides[id]);
+    return Number.isFinite(angle) ? clamp(Math.round(angle), -90, 90) : null;
+  }
+
+  function getTrajectoryTargetLabel(id) {
+    const fixedLabels = {
+      originalLauncher: "Launcher approach",
+      originalTarget: "Launchee after contact",
+      contextLauncher: "Context 1 launcher approach",
+      contextTarget: "Context 1 launchee after contact"
+    };
+    if (fixedLabels[id]) {
+      return fixedLabels[id];
+    }
+    const match = /^context(\d+)(Launcher|Target)$/.exec(id || "");
+    if (!match) {
+      return "Select in preview";
+    }
+    const pairNumber = match[1];
+    const role = match[2] === "Launcher" ? "launcher approach" : "launchee after contact";
+    return `Context ${pairNumber} ${role}`;
+  }
+
+  function getTrajectoryDefaultAngle(state, id) {
+    if (id === "originalTarget") {
+      return Number(state.targetAngle) || 0;
+    }
+    if (id === "contextTarget") {
+      return Number(state.contextTargetAngle) || 0;
+    }
+    const match = /^context(\d+)Target$/.exec(id || "");
+    if (match) {
+      const snapshot = state.contextPairSnapshots[Number(match[1]) - 2];
+      return Number(snapshot?.targetAngle) || 0;
+    }
+    return 0;
+  }
+
+  function getTrajectoryEffectiveAngle(state, id) {
+    const override = getTrajectoryOverrideAngle(state, id);
+    return Number.isFinite(override) ? override : getTrajectoryDefaultAngle(state, id);
+  }
+
+  function writeTrajectoryOverride(id, angle) {
+    const overrides = parseTrajectoryOverrides(controls.trajectoryOverrides.value);
+    overrides[id] = clamp(Math.round(Number(angle) || 0), -90, 90);
+    controls.trajectoryOverrides.value = serializeTrajectoryOverrides(overrides);
+  }
+
+  function getTrajectoryGuideEnd(start, unit, length) {
+    return {
+      x: start.x + unit.x * length,
+      y: start.y + unit.y * length
+    };
+  }
+
+  function makeTrajectoryTarget(id, label, role, geometry) {
+    const isLauncher = role === "launcher";
+    const start = isLauncher
+      ? { x: geometry.launcherStartX, y: geometry.launcherStartY }
+      : { x: geometry.targetBaseX, y: geometry.targetBaseY };
+    const end = isLauncher
+      ? { x: geometry.launcherStopX, y: geometry.launcherStopY }
+      : getTrajectoryGuideEnd(
+          start,
+          { x: geometry.targetUnitX, y: geometry.targetUnitY },
+          Math.max(150, Math.min(260, geometry.targetDistance || 180))
+        );
+    return {
+      id,
+      label,
+      start,
+      end,
+      role,
+      radius: geometry.radius
+    };
+  }
+
+  function getEventTrajectoryTargets(eventState, geometry, trajectoryScope, pairLabel) {
+    return [
+      makeTrajectoryTarget(
+        `${trajectoryScope}Launcher`,
+        `${pairLabel} first object`,
+        "launcher",
+        geometry
+      ),
+      makeTrajectoryTarget(
+        `${trajectoryScope}Target`,
+        `${pairLabel} second object`,
+        "target",
+        geometry
+      )
+    ];
+  }
+
+  function getTrajectoryTargets(state) {
+    const laneY = getMainLaneY(state);
+    const mainEvent = getMainEventState(state, 0, laneY);
+    const targets = getEventTrajectoryTargets(state, mainEvent.geometry, "original", "Original pair");
+
+    if (state.contextMode === "none") {
+      return targets;
+    }
+
+    const pairCount = getContextPairCount(state);
+    const directionSign = mainEvent.geometry.contextDirectionSign;
+    const contextState = getContextMotionState(state);
+    const snapshots = state.contextPairSnapshots || [];
+    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+      const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
+      const contextLaneY = getContextLaneY(state, mainEvent.geometry.laneY, pairIndex, snapshot);
+      if (pairIndex === 0) {
+        const contextGeometry = getGeometry(contextState, contextLaneY, {
+          scope: "context",
+          directionSign,
+          trajectoryScope: "context"
+        });
+        targets.push(...getEventTrajectoryTargets(contextState, contextGeometry, "context", "Context 1"));
+        continue;
+      }
+      const snapshotState = getContextPairSnapshotState(snapshot, state, contextLaneY);
+      const trajectoryScope = `context${pairIndex + 1}`;
+      const snapshotGeometry = getGeometry(snapshotState, contextLaneY, {
+        scope: "original",
+        directionSign,
+        trajectoryScope
+      });
+      targets.push(...getEventTrajectoryTargets(snapshotState, snapshotGeometry, trajectoryScope, `Context ${pairIndex + 1}`));
+    }
+    return targets;
+  }
+
+  function ensureSelectedTrajectoryTarget(state = cloneState()) {
+    const targets = getTrajectoryTargets(state);
+    if (targets.length === 0) {
+      return;
+    }
+    const selectedId = targets.some((target) => target.id === controls.selectedTrajectoryBall.value)
+      ? controls.selectedTrajectoryBall.value
+      : targets[0].id;
+    controls.selectedTrajectoryBall.value = selectedId;
+    controls.selectedTrajectoryAngle.value = getTrajectoryEffectiveAngle(state, selectedId);
+    updateOutputs();
+  }
+
+  function selectTrajectoryTarget(target, state = cloneState()) {
+    controls.selectedTrajectoryBall.value = target.id;
+    controls.selectedTrajectoryAngle.value = getTrajectoryEffectiveAngle(state, target.id);
+    updateOutputs();
+    statusText.textContent = `${getTrajectoryTargetLabel(target.id)} selected.`;
+  }
+
+  function findTrajectoryTarget(state, point) {
+    if (!state.trajectoryEditEnabled) {
+      return null;
+    }
+    let bestTarget = null;
+    let bestDistance = Infinity;
+    getTrajectoryTargets(state).forEach((target) => {
+      const distance = Math.min(
+        distanceToSegment(point, target.start, target.end),
+        Math.hypot(point.x - target.start.x, point.y - target.start.y),
+        Math.hypot(point.x - target.end.x, point.y - target.end.y)
+      );
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestTarget = target;
+      }
+    });
+    return bestDistance <= 22 ? bestTarget : null;
+  }
+
+  function drawTrajectoryGuides(drawCtx, state) {
+    if (!state.trajectoryEditEnabled) {
+      return;
+    }
+    const selectedId = state.selectedTrajectoryBall;
+    drawCtx.save();
+    drawCtx.lineCap = "round";
+    drawCtx.font = '800 11px "Avenir Next", "Segoe UI", sans-serif';
+    drawCtx.textBaseline = "middle";
+    getTrajectoryTargets(state).forEach((target) => {
+      const selected = target.id === selectedId;
+      drawCtx.strokeStyle = selected ? "rgba(224, 178, 74, 0.95)" : "rgba(255, 248, 234, 0.38)";
+      drawCtx.fillStyle = selected ? "rgba(224, 178, 74, 0.95)" : "rgba(255, 248, 234, 0.72)";
+      drawCtx.lineWidth = selected ? 3 : 1.5;
+      drawCtx.beginPath();
+      drawCtx.moveTo(target.start.x, target.start.y);
+      drawCtx.lineTo(target.end.x, target.end.y);
+      drawCtx.stroke();
+      const angle = Math.atan2(target.end.y - target.start.y, target.end.x - target.start.x);
+      const arrowSize = selected ? 10 : 7;
+      drawCtx.beginPath();
+      drawCtx.moveTo(target.end.x, target.end.y);
+      drawCtx.lineTo(target.end.x - Math.cos(angle - 0.45) * arrowSize, target.end.y - Math.sin(angle - 0.45) * arrowSize);
+      drawCtx.lineTo(target.end.x - Math.cos(angle + 0.45) * arrowSize, target.end.y - Math.sin(angle + 0.45) * arrowSize);
+      drawCtx.closePath();
+      drawCtx.fill();
+      if (selected) {
+        drawCtx.fillText(getTrajectoryTargetLabel(target.id), target.end.x + 8, target.end.y);
+      }
+    });
+    drawCtx.restore();
+  }
+
+  function drawContextPair(drawCtx, state, eventState, t, laneY, directionSign, colors, scope = "context", trajectoryScope = scope) {
     if (state.contextMode === "single") {
-      const singleEvent = getDirectedSingleEventState(eventState, t, laneY, directionSign, scope);
+      const singleEvent = getDirectedSingleEventState(eventState, t, laneY, directionSign, scope, trajectoryScope);
       const singlePalette = t < singleEvent.geometry.stopTime ? colors.launcher : colors.target;
       const radius = singleEvent.geometry.radius;
       const contextOccluderBounds = drawTunnelOccluder(
@@ -3271,7 +3648,7 @@
       return;
     }
 
-    const contextEvent = getDirectedEventState(eventState, t, laneY, directionSign, scope);
+    const contextEvent = getDirectedEventState(eventState, t, laneY, directionSign, scope, trajectoryScope);
     const launcher = {
       x: contextEvent.launcherX,
       y: contextEvent.launcherY,
@@ -3330,6 +3707,7 @@
             launcher: palette.context,
             target: palette.contextTarget
           },
+          "context",
           "context"
         );
         continue;
@@ -3347,7 +3725,8 @@
           launcher: getObjectPalette(snapshot.launcherColor || state.launcherColor, state.launcherColor),
           target: getObjectPalette(snapshot.targetColor || state.targetColor, state.targetColor)
         },
-        "original"
+        "original",
+        `context${pairIndex + 1}`
       );
     }
   }
@@ -3605,6 +3984,7 @@
     drawCrosshairFeature(drawCtx, state, 1);
 
     if (drawCtx === ctx) {
+      drawTrajectoryGuides(drawCtx, state);
       drawStartDragHandles(drawCtx, state);
     }
 
@@ -3718,7 +4098,7 @@
     const handles = [
       {
         id: "originalLauncher",
-        label: "O1",
+        label: "Launcher",
         x: originalGeometry.launcherStartX,
         y: originalGeometry.launcherStartY,
         radius: originalGeometry.radius,
@@ -3727,7 +4107,7 @@
       },
       {
         id: "originalTarget",
-        label: "O2",
+        label: "Launchee",
         x: originalGeometry.targetBaseX,
         y: originalGeometry.targetBaseY,
         radius: originalGeometry.radius,
@@ -3744,7 +4124,7 @@
       handles.push(
         {
           id: "contextLauncher",
-          label: "C1",
+          label: "Launcher",
           x: contextGeometry.launcherStartX,
           y: contextGeometry.launcherStartY,
           radius: contextGeometry.radius,
@@ -3753,7 +4133,7 @@
         },
         {
           id: "contextTarget",
-          label: "C2",
+          label: "Launchee",
           x: contextGeometry.targetBaseX,
           y: contextGeometry.targetBaseY,
           radius: contextGeometry.radius,
@@ -3912,6 +4292,15 @@
         stopPreview();
         specialDragTarget = specialTarget;
         canvas.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+
+      const trajectoryTarget = findTrajectoryTarget(state, point);
+      if (trajectoryTarget) {
+        stopPreview();
+        selectTrajectoryTarget(trajectoryTarget, state);
+        drawFrame(cloneState(), 0, ctx);
         event.preventDefault();
         return;
       }
@@ -4406,7 +4795,7 @@
         intendedDurationSec: getIntendedDurationSec(state),
         impactSec: Number((standards.impactMs / 1000).toFixed(3)),
         targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3)),
-      objectVisibleSec: {
+        objectVisibleSec: {
           launcher: Number((state.launcherVisibleMs / 1000).toFixed(3)),
           target: Number((state.targetVisibleMs / 1000).toFixed(3)),
           contextLauncher: Number((state.contextLauncherVisibleMs / 1000).toFixed(3)),
@@ -4414,6 +4803,8 @@
         }
       },
       aspectRatio: state.aspectRatio,
+      stageColor: state.stageColor,
+      trajectoryOverrides: state.trajectoryOverrides,
       placement: `Put the movie in ${PSYCHOPY_STIMULI_FOLDER}/ next to the PsychoPy experiment and use the CSV as the loop conditions file.`
     };
   }
@@ -4500,6 +4891,9 @@
       railSegments: JSON.stringify(getRailSegments(state).slice(1)),
       crosshairBlinkEnabled: state.crosshairBlinkEnabled,
       crosshairBlinkMs: state.crosshairBlinkMs,
+      trajectoryEditEnabled: state.trajectoryEditEnabled,
+      selectedTrajectoryBall: state.selectedTrajectoryBall,
+      trajectoryOverrides: JSON.stringify(state.trajectoryOverrides),
       customStartEnabled: state.customStartEnabled,
       customStartKeepRowsHorizontal: state.customStartKeepRowsHorizontal,
       customStartAlignStartsVertical: state.customStartAlignStartsVertical,
@@ -4520,6 +4914,7 @@
       groupingContextColor: state.groupingContextColor,
       renderMode: state.renderMode,
       stageTheme: state.stageTheme,
+      stageColor: state.stageColor,
       objectStyle: state.objectStyle,
       colorChangeColor: state.colorChangeColor,
       pxPerDva: state.pxPerDva,
@@ -4619,9 +5014,13 @@
       contextTargetVisibleMs: parameters.contextTargetVisibleMs ?? baseState.contextTargetVisibleMs,
       renderMode: parameters.renderMode,
       stageTheme: parameters.stageTheme,
+      stageColor: parameters.stageColor ?? baseState.stageColor,
       objectStyle: parameters.objectStyle,
       groupingMode: parameters.groupingMode,
       contactGuideMode: parameters.contactGuideMode,
+      trajectoryEditEnabled: parameters.trajectoryEditEnabled ?? baseState.trajectoryEditEnabled,
+      selectedTrajectoryBall: parameters.selectedTrajectoryBall ?? baseState.selectedTrajectoryBall,
+      trajectoryOverrides: parameters.trajectoryOverrides ?? baseState.trajectoryOverrides,
       colorChangeMode: parameters.colorChangeMode,
       colorChangeColor: parameters.colorChangeColor,
       launcherColor: parameters.launcherColor,
@@ -4746,6 +5145,7 @@
       contextTargetVisibleMs: condition.parameters.contextTargetVisibleMs,
       renderMode: condition.parameters.renderMode,
       stageTheme: condition.parameters.stageTheme,
+      stageColor: condition.parameters.stageColor,
       groupingMode: condition.parameters.groupingMode,
       contactGuideMode: condition.parameters.contactGuideMode,
       validationWarnings: condition.validationWarnings.join(" | ")
@@ -4867,9 +5267,13 @@
         contextTargetVisibleMs: condition.contextTargetVisibleMs,
         renderMode: condition.renderMode,
         stageTheme: condition.stageTheme,
+        stageColor: condition.stageColor,
         objectStyle: condition.objectStyle,
         groupingMode: condition.groupingMode,
         contactGuideMode: condition.contactGuideMode,
+        trajectoryEditEnabled: condition.trajectoryEditEnabled,
+        selectedTrajectoryBall: condition.selectedTrajectoryBall,
+        trajectoryOverrides: condition.trajectoryOverrides,
         customStartEnabled: condition.customStartEnabled,
         customStartKeepRowsHorizontal: condition.customStartKeepRowsHorizontal,
         customStartAlignStartsVertical: condition.customStartAlignStartsVertical,
@@ -4901,6 +5305,7 @@
       renderMode: baseState.renderMode === "lab" ? "fixation" : baseState.renderMode,
       objectStyle: "flat",
       stageTheme: baseState.stageTheme,
+      stageColor: baseState.stageColor,
       contextDurationMs: 750,
       contextOffsetMs: 0,
       contextDirection: "same",
@@ -5578,6 +5983,7 @@
           syncContextPairSnapshots();
           renderContextPairEditors();
           lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
+          syncTrajectoryControlVisibility();
           enforceCustomStartConstraints();
           updateOutputs();
           refreshText();
@@ -5594,6 +6000,7 @@
           syncContextPairSnapshots();
           renderContextPairEditors();
           lastContextPairCount = nextPairCount;
+          syncTrajectoryControlVisibility();
           updateOutputs();
           refreshText();
           statusText.textContent = "Context pair count updated.";
@@ -5655,6 +6062,33 @@
         });
         return;
       }
+      if (id === "trajectoryEditEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          syncTrajectoryControlVisibility();
+          syncSpecialDragUi();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = control.checked ? "Click a ball or trajectory in the preview." : "Ready.";
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
+      if (id === "selectedTrajectoryAngle") {
+        control.addEventListener("input", () => {
+          activePresetKey = null;
+          const state = cloneState();
+          if (!getTrajectoryTargets(state).some((target) => target.id === controls.selectedTrajectoryBall.value)) {
+            ensureSelectedTrajectoryTarget(state);
+          }
+          writeTrajectoryOverride(controls.selectedTrajectoryBall.value, control.value);
+          updateOutputs();
+          refreshText();
+          statusText.textContent = `${getTrajectoryTargetLabel(controls.selectedTrajectoryBall.value)} trajectory updated.`;
+          drawFrame(cloneState(), 0, ctx);
+        });
+        return;
+      }
       if (id === "customStartEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
@@ -5692,6 +6126,8 @@
         id.endsWith("StartX") ||
         id.endsWith("StartY") ||
         id === "contextPairSnapshots" ||
+        id === "selectedTrajectoryBall" ||
+        id === "trajectoryOverrides" ||
         ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)
       ) {
         return;
@@ -5703,6 +6139,7 @@
         [
           "renderMode",
           "stageTheme",
+          "stageColor",
           "objectStyle",
           "groupingMode",
           "contactGuideMode",

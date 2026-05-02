@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Launching Video Maker</title>
-    <link rel="stylesheet" href="styles.css?v=20260501-rail-length" />
+    <link rel="stylesheet" href="styles.css?v=20260501-trajectories" />
   </head>
   <body>
     <div class="page-shell">
@@ -130,12 +130,12 @@
                       <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Both</button>
                     </span>
                   </label>
-                  <label class="field">
+                  <label class="field wide-choice-field">
                     <span>Front object</span>
                     <input id="contactOcclusionMode" type="hidden" value="target-front" />
                     <span class="choice-row three-choice-row" role="group" aria-label="Front object">
-                      <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="target-front" type="button">O2 front</button>
-                      <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="launcher-front" type="button">O1 front</button>
+                      <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="target-front" type="button">Launchee</button>
+                      <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="launcher-front" type="button">Launcher</button>
                       <button class="choice-button" data-choice-for="contactOcclusionMode" data-choice-value="alternate" type="button">Alt</button>
                     </span>
                   </label>
@@ -160,12 +160,12 @@
                     <output data-for="targetAngle"></output>
                   </label>
                   <label class="field">
-                    <span>O1 on-screen</span>
+                    <span>Launcher on-screen</span>
                     <input id="launcherVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="launcherVisibleMs"></output>
                   </label>
                   <label class="field">
-                    <span>O2 on-screen</span>
+                    <span>Launchee on-screen</span>
                     <input id="targetVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="targetVisibleMs"></output>
                   </label>
@@ -198,12 +198,12 @@
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Both</button>
                     </span>
                   </label>
-                  <label class="field">
+                  <label class="field wide-choice-field">
                     <span>Front object</span>
                     <input id="contextContactOcclusionMode" type="hidden" value="target-front" />
                     <span class="choice-row three-choice-row" role="group" aria-label="Context front object">
-                      <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="target-front" type="button">C2 front</button>
-                      <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="launcher-front" type="button">C1 front</button>
+                      <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="target-front" type="button">Launchee</button>
+                      <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="launcher-front" type="button">Launcher</button>
                       <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="alternate" type="button">Alt</button>
                     </span>
                   </label>
@@ -228,12 +228,12 @@
                     <output data-for="contextTargetAngle"></output>
                   </label>
                   <label class="field">
-                    <span>C1 on-screen</span>
+                    <span>Launcher on-screen</span>
                     <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="contextLauncherVisibleMs"></output>
                   </label>
                   <label class="field">
-                    <span>C2 on-screen</span>
+                    <span>Launchee on-screen</span>
                     <input id="contextTargetVisibleMs" data-format="visibilityMs" min="25" max="9000" step="25" type="range" />
                     <output data-for="contextTargetVisibleMs"></output>
                   </label>
@@ -335,34 +335,8 @@
             </div>
           </section>
 
-          <section class="panel-block">
-            <div class="section-heading">
-              <h2>05 Background</h2>
-            </div>
-            <div class="control-grid">
-              <label class="field">
-                <span>Mode</span>
-                <input id="renderMode" type="hidden" value="stimulus" />
-                <span class="choice-row three-choice-row" role="group" aria-label="Mode">
-                  <button class="choice-button" data-choice-for="renderMode" data-choice-value="lab" type="button">Lab</button>
-                  <button class="choice-button" data-choice-for="renderMode" data-choice-value="stimulus" type="button">Clean</button>
-                  <button class="choice-button" data-choice-for="renderMode" data-choice-value="fixation" type="button">Fixation</button>
-                </span>
-              </label>
-              <label class="field">
-                <span>Background</span>
-                <input id="stageTheme" type="hidden" value="dark" />
-                <span class="choice-row three-choice-row" role="group" aria-label="Background">
-                  <button class="choice-button" data-choice-for="stageTheme" data-choice-value="dark" type="button">Dark</button>
-                  <button class="choice-button" data-choice-for="stageTheme" data-choice-value="midgray" type="button">Mid-gray</button>
-                  <button class="choice-button" data-choice-for="stageTheme" data-choice-value="light" type="button">Light</button>
-                </span>
-              </label>
-            </div>
-          </section>
-
           <details class="panel-block collapsible-panel special-panel">
-            <summary><h2>06 Special features</h2></summary>
+            <summary><h2>05 Special features</h2></summary>
             <div class="panel-content">
               <div class="control-grid">
                 <div class="control-subgroup">
@@ -373,8 +347,10 @@
                       <select id="groupingMode">
                         <option value="none">None</option>
                         <option value="original">Original pair</option>
-                        <option value="context">Context set</option>
-                        <option value="both">Both sets</option>
+                        <option value="context">Context set only</option>
+                        <option value="both">Original + first context</option>
+                        <option value="each">Each pair separately</option>
+                        <option value="original-contexts">Original + contexts together</option>
                       </select>
                     </label>
                     <label class="field">
@@ -440,6 +416,21 @@
                   <input id="crosshairBlinkMs" data-format="ms" min="100" max="3000" step="50" type="range" />
                   <output data-for="crosshairBlinkMs"></output>
                 </label>
+                <label class="field checkbox-field">
+                  <input id="trajectoryEditEnabled" type="checkbox" />
+                  <span>Individual trajectories</span>
+                </label>
+                <label class="field trajectory-dependent-control trajectory-selected-field is-retracted">
+                  <span>Selected trajectory</span>
+                  <input id="selectedTrajectoryBall" data-format="trajectoryTarget" type="hidden" value="originalTarget" />
+                  <output data-for="selectedTrajectoryBall"></output>
+                </label>
+                <label class="field trajectory-dependent-control is-retracted">
+                  <span>Angle</span>
+                  <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
+                  <output data-for="selectedTrajectoryAngle"></output>
+                </label>
+                <input id="trajectoryOverrides" type="hidden" value="{}" />
                   </div>
                 </div>
                 <div class="control-subgroup">
@@ -479,17 +470,48 @@
             </div>
           </details>
 
+          <details class="panel-block collapsible-panel background-panel">
+            <summary><h2>06 Background</h2></summary>
+            <div class="panel-content">
+              <div class="control-grid">
+                <label class="field">
+                  <span>Mode</span>
+                  <input id="renderMode" type="hidden" value="stimulus" />
+                  <span class="choice-row three-choice-row" role="group" aria-label="Mode">
+                    <button class="choice-button" data-choice-for="renderMode" data-choice-value="lab" type="button">Lab</button>
+                    <button class="choice-button" data-choice-for="renderMode" data-choice-value="stimulus" type="button">Clean</button>
+                    <button class="choice-button" data-choice-for="renderMode" data-choice-value="fixation" type="button">Fixation</button>
+                  </span>
+                </label>
+                <label class="field">
+                  <span>Background preset</span>
+                  <input id="stageTheme" type="hidden" value="dark" />
+                  <span class="choice-row three-choice-row" role="group" aria-label="Background">
+                    <button class="choice-button" data-choice-for="stageTheme" data-choice-value="dark" type="button">Dark</button>
+                    <button class="choice-button" data-choice-for="stageTheme" data-choice-value="midgray" type="button">Mid-gray</button>
+                    <button class="choice-button" data-choice-for="stageTheme" data-choice-value="light" type="button">Light</button>
+                  </span>
+                </label>
+                <label class="field color-field">
+                  <span>Background color</span>
+                  <input id="stageColor" type="color" />
+                </label>
+              </div>
+            </div>
+          </details>
+
           <details class="panel-block collapsible-panel color-panel">
             <summary><h2>07 Color</h2></summary>
             <div class="panel-content">
             <div class="control-grid">
               <label class="field">
                 <span>Style</span>
-                <input id="objectStyle" type="hidden" value="flat" />
-                <span class="choice-row two-choice-row" role="group" aria-label="Style">
-                  <button class="choice-button" data-choice-for="objectStyle" data-choice-value="flat" type="button">Simple discs</button>
-                  <button class="choice-button" data-choice-for="objectStyle" data-choice-value="shaded" type="button">3D shaded</button>
-                </span>
+                <select id="objectStyle">
+                  <option value="flat">Simple filled discs</option>
+                  <option value="outline">Outline discs</option>
+                  <option value="ring">Ring discs</option>
+                  <option value="shaded">3D shaded</option>
+                </select>
               </label>
               <label class="field">
                 <span>Sudden color change</span>
@@ -651,6 +673,7 @@
               <span id="timingBadge">Contact + 0 ms delay</span>
             </div>
           </div>
+          <p class="preview-note">Preview is for editing. Check the exported video for final timing, FPS, aspect ratio, and sound.</p>
 
           <section class="video-panel hidden" id="videoPanel">
             <div class="section-heading">
@@ -672,6 +695,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260501-rail-length"></script>
+    <script src="app.js?v=20260501-trajectories"></script>
   </body>
 </html>

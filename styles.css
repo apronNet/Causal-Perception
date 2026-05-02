@@ -227,7 +227,7 @@ h3 {
 
 .psychopy-panel > summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(72px, auto) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(54px, 0.6fr) auto auto;
   align-items: center;
 }
 
@@ -310,6 +310,10 @@ h3 {
   min-width: 0;
 }
 
+.wide-choice-field {
+  grid-column: span 2;
+}
+
 .context-toggle-field {
   grid-column: 1 / -1;
 }
@@ -328,7 +332,8 @@ h3 {
 .context-dependent-control.is-retracted,
 .custom-start-dependent-control.is-retracted,
 .rail-dependent-control.is-retracted,
-.crosshair-dependent-control.is-retracted {
+.crosshair-dependent-control.is-retracted,
+.trajectory-dependent-control.is-retracted {
   display: none;
 }
 
@@ -371,12 +376,13 @@ h3 {
 
 .choice-button {
   min-height: 26px;
-  padding: 4px 5px;
+  padding: 3px 4px;
   background: var(--paper);
   color: var(--ink);
-  font-size: 0.56rem;
-  letter-spacing: 0.025em;
+  font-size: 0.49rem;
+  letter-spacing: 0.018em;
   line-height: 0.95;
+  overflow-wrap: anywhere;
 }
 
 .choice-button.is-active {
@@ -450,11 +456,12 @@ h3 {
 .field output {
   min-height: 1em;
   color: var(--accent-dark);
-  font-size: 0.58rem;
+  font-size: 0.52rem;
   font-weight: 800;
   line-height: 1.05;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .field output,
@@ -551,6 +558,12 @@ input[type="color"] {
   padding: 2px 0;
 }
 
+.trajectory-selected-field output {
+  color: var(--ink);
+  font-size: 0.58rem;
+  text-align: left;
+}
+
 button,
 .download-link {
   display: inline-flex;
@@ -560,7 +573,7 @@ button,
   border-radius: 0;
   padding: 6px 10px;
   font: inherit;
-  font-size: 0.64rem;
+  font-size: 0.57rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -597,13 +610,13 @@ button:disabled {
 
 #exportButton {
   justify-self: end;
-  min-width: 144px;
+  min-width: 0;
 }
 
 .summary-export-button {
   min-height: 28px;
-  min-width: 112px;
-  padding: 5px 10px;
+  min-width: 84px;
+  padding: 5px 7px;
   white-space: nowrap;
 }
 
@@ -623,7 +636,7 @@ button:disabled {
 .summary-download-link {
   min-height: 28px;
   margin-top: 0;
-  padding: 5px 8px;
+  padding: 5px 6px;
   white-space: nowrap;
 }
 
@@ -752,6 +765,14 @@ button:disabled {
   line-height: 1.25;
 }
 
+.preview-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .stage-frame {
   position: relative;
   overflow: hidden;
@@ -776,8 +797,13 @@ canvas.special-drag-enabled {
   cursor: crosshair;
 }
 
+canvas.trajectory-edit-enabled {
+  cursor: crosshair;
+}
+
 canvas.start-drag-enabled:active,
-canvas.special-drag-enabled:active {
+canvas.special-drag-enabled:active,
+canvas.trajectory-edit-enabled:active {
   cursor: grabbing;
 }
 
