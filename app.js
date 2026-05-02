@@ -3270,9 +3270,6 @@
     if (state.groupingMode !== "none") {
       warnings.push("Grouping boxes are visible to participants. Keep only if grouping is tested.");
     }
-    if (hasAnyFractureEnabled(state)) {
-      warnings.push("Fracture marks are visible on O2 after impact. Keep only if this cue is part of the condition.");
-    }
     if (state.colorChangeMode !== "none") {
       warnings.push("Color-change cue is visible at contact. Keep only if feature change is part of the condition.");
     }
