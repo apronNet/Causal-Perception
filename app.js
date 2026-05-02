@@ -33,11 +33,13 @@
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const psychopyButton = document.getElementById("psychopyButton");
+  const physicsModeButton = document.getElementById("physicsModeButton");
   const conditionSetSelect = document.getElementById("conditionSetSelect");
   const conditionJsonButton = document.getElementById("conditionJsonButton");
   const conditionCsvButton = document.getElementById("conditionCsvButton");
   const downloadLink = document.getElementById("downloadLink");
   const psychopyLink = document.getElementById("psychopyLink");
+  const metadataJsonLink = document.getElementById("metadataJsonLink");
   const conditionJsonLink = document.getElementById("conditionJsonLink");
   const conditionCsvLink = document.getElementById("conditionCsvLink");
   const presetJsonLink = document.getElementById("presetJsonLink");
@@ -143,6 +145,7 @@
     "objectStyle",
     "groupingMode",
     "contactGuideMode",
+    "fractureEnabled",
     "crosshairEnabled",
     "crosshairX",
     "crosshairY",
@@ -198,7 +201,7 @@
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
     presetNameInput: "Changes: the name used when saving the current settings. Browser saves are local; shared presets must be added to shared-presets.json.",
-    durationMs: "Changes: total video duration for preview and export. Use for: making sure approach, contact, launched motion, and any context are not cut off.",
+    durationMs: "Changes: total video duration for preview and export. Increase it to let moving balls travel completely offscreen.",
     leadInMs: "Changes: still time before O1 moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of O1 before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
     launcherAccel: "Changes: whether O1 speeds up or slows down before contact. Positive means speeding up; negative means slowing down.",
@@ -249,6 +252,7 @@
     objectStyle: "Changes: visual rendering of the balls. Simple filled discs are the most controlled; shaded or ring styles are for display variants.",
     groupingMode: "Changes: solid boxes that group one pair, every pair separately, or all context pairs together. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
+    fractureEnabled: "Changes: adds simple crack lines to O2 after impact. Use for: testing a visible contact consequence.",
     crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
     railEnabled: "Changes: adds one or more draggable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
@@ -851,6 +855,7 @@
     objectStyle: "flat",
     groupingMode: "none",
     contactGuideMode: "none",
+    fractureEnabled: false,
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
@@ -920,6 +925,7 @@
   let selectedPresetKey = "canonical";
   let currentObjectUrl = null;
   let currentPsychopyUrl = null;
+  let currentMetadataJsonUrl = null;
   let currentConditionJsonUrl = null;
   let currentConditionCsvUrl = null;
   let currentPresetJsonUrl = null;
@@ -1067,6 +1073,7 @@
       objectStyle: controls.objectStyle.value,
       groupingMode: controls.groupingMode.value,
       contactGuideMode: controls.contactGuideMode.value,
+      fractureEnabled: controls.fractureEnabled.checked,
       crosshairEnabled: controls.crosshairEnabled.checked,
       crosshairX: Number(controls.crosshairX.value),
       crosshairY: Number(controls.crosshairY.value),
@@ -1494,6 +1501,57 @@
     control.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
+  function applyPhysicsMode() {
+    const state = cloneState();
+    const durationMs = Math.max(state.durationMs, 1800);
+    const visibleMs = Math.max(state.launcherVisibleMs, state.targetVisibleMs, durationMs);
+    const contextVisibleMs = Math.max(state.contextLauncherVisibleMs, state.contextTargetVisibleMs, durationMs);
+    const physicsValues = {
+      ...state,
+      durationMs,
+      launcherSpeed: Math.max(state.launcherSpeed, 900),
+      launcherAccel: 0,
+      targetSpeedRatio: 1,
+      targetAccel: 0,
+      launcherBehavior: "stop",
+      targetAngle: 0,
+      delayMs: 0,
+      gapPx: 0,
+      contactOcclusionMode: "target-front",
+      launcherVisibleMs: visibleMs,
+      targetVisibleMs: visibleMs,
+      contextLauncherSpeed: Math.max(state.contextLauncherSpeed, 900),
+      contextLauncherAccel: 0,
+      contextTargetSpeedRatio: 1,
+      contextTargetAccel: 0,
+      contextLauncherBehavior: "stop",
+      contextTargetAngle: 0,
+      contextDelayMs: 0,
+      contextGapPx: 0,
+      contextContactOcclusionMode: "target-front",
+      contextLauncherVisibleMs: contextVisibleMs,
+      contextTargetVisibleMs: contextVisibleMs,
+      contextPairSnapshots: state.contextPairSnapshots.map((snapshot) => ({
+        ...snapshot,
+        launcherSpeed: Math.max(Number(snapshot.launcherSpeed) || state.launcherSpeed, 900),
+        launcherAccel: 0,
+        targetSpeedRatio: 1,
+        targetAccel: 0,
+        launcherBehavior: "stop",
+        targetAngle: 0,
+        delayMs: 0,
+        gapPx: 0,
+        contactOcclusionMode: "target-front",
+        launcherVisibleMs: Math.max(Number(snapshot.launcherVisibleMs) || contextVisibleMs, durationMs),
+        targetVisibleMs: Math.max(Number(snapshot.targetVisibleMs) || contextVisibleMs, durationMs)
+      }))
+    };
+
+    activePresetKey = null;
+    setControls(physicsValues);
+    statusText.textContent = "Physics mode applied to existing motion controls.";
+  }
+
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
     if (contextIsOff) {
@@ -1848,8 +1906,8 @@
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "O2 speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
             ${renderContextRange(pairNumber, "Movement", "targetAccel", "O2 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
-            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
-            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 25, 9000, 25)}
+            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
+            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
           </div>
         </div>`);
 
@@ -2841,6 +2899,9 @@
     if (state.groupingMode !== "none") {
       warnings.push("Grouping boxes are visible to participants. Keep only if grouping is tested.");
     }
+    if (state.fractureEnabled) {
+      warnings.push("Fracture marks are visible on O2 after impact. Keep only if this cue is part of the condition.");
+    }
     if (state.markerMode !== "none" && state.gapPx > 0) {
       warnings.push("Marker is on: the exported video will show a visible gap cue. Set Marker to None unless this cue is part of the condition.");
     }
@@ -3236,6 +3297,53 @@
     drawCtx.lineWidth = lineWidth;
     drawCtx.strokeStyle = outline;
     drawCtx.stroke();
+  }
+
+  function shouldDrawFracture(state, eventState) {
+    return Boolean(state.fractureEnabled && eventState?.time >= eventState?.geometry?.targetStartTime);
+  }
+
+  function drawFracture(drawCtx, state, x, y, radius) {
+    const crackColor = state.stageTheme === "light" ? "rgba(35, 30, 24, 0.72)" : "rgba(255, 248, 234, 0.72)";
+    const shadowColor = state.stageTheme === "light" ? "rgba(255, 248, 234, 0.42)" : "rgba(10, 14, 13, 0.52)";
+    const cracks = [
+      [[0, 0], [0.18, -0.18], [0.34, -0.42]],
+      [[0, 0], [-0.18, -0.12], [-0.42, -0.18]],
+      [[0, 0], [0.15, 0.2], [0.28, 0.48]],
+      [[0.15, 0.2], [0.34, 0.12], [0.52, 0.18]]
+    ];
+
+    drawCtx.save();
+    drawCtx.beginPath();
+    drawCtx.arc(x, y, Math.max(0.1, radius - 2), 0, Math.PI * 2);
+    drawCtx.clip();
+    [shadowColor, crackColor].forEach((strokeStyle, passIndex) => {
+      drawCtx.strokeStyle = strokeStyle;
+      drawCtx.lineWidth = passIndex === 0 ? Math.max(2.2, radius * 0.08) : Math.max(1.2, radius * 0.045);
+      drawCtx.lineCap = "round";
+      drawCtx.lineJoin = "round";
+      cracks.forEach((crack) => {
+        drawCtx.beginPath();
+        crack.forEach(([px, py], pointIndex) => {
+          const pointX = x + px * radius;
+          const pointY = y + py * radius;
+          if (pointIndex === 0) {
+            drawCtx.moveTo(pointX, pointY);
+          } else {
+            drawCtx.lineTo(pointX, pointY);
+          }
+        });
+        drawCtx.stroke();
+      });
+    });
+    drawCtx.restore();
+  }
+
+  function drawRenderedObject(drawCtx, state, object, radius) {
+    drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
+    if (object.cracked) {
+      drawFracture(drawCtx, state, object.x, object.y, radius);
+    }
   }
 
   function getStageThemeColors(state) {
@@ -4001,7 +4109,8 @@
       y: contextEvent.targetY,
       fill: colors.target.fill,
       outline: colors.target.outline,
-      visible: isObjectVisibleAt(t, eventState.targetVisibleMs)
+      visible: isObjectVisibleAt(t, eventState.targetVisibleMs),
+      cracked: shouldDrawFracture(state, contextEvent)
     };
     const contextOccluderBounds = drawTunnelOccluder(
       drawCtx,
@@ -4113,7 +4222,7 @@
   function drawOccludedObjectPair(drawCtx, state, launcher, target, radius, occluderBounds) {
     [launcher, target].forEach((object) => {
       if (object.visible !== false && isObjectOutsideOccluder(object.x, radius, occluderBounds)) {
-        drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
+        drawRenderedObject(drawCtx, state, object, radius);
       }
     });
   }
@@ -4139,7 +4248,7 @@
 
   function drawObjectPair(drawCtx, state, eventState, launcher, target, radius, occlusionMode) {
     getOverlapDrawOrder(eventState, launcher, target, radius, occlusionMode).forEach((object) => {
-      drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
+      drawRenderedObject(drawCtx, state, object, radius);
     });
   }
 
@@ -4158,7 +4267,8 @@
       y: eventState.targetY,
       fill: palette.target.fill,
       outline: palette.target.outline,
-      visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs)
+      visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs),
+      cracked: shouldDrawFracture(state, eventState)
     };
     drawObjectPair(drawCtx, state, eventState, launcher, target, radius, state.contactOcclusionMode);
   }
@@ -4184,14 +4294,17 @@
       eventState.targetX - radius > occluderBounds.right &&
       eventState.targetX < STAGE_WIDTH + radius
     ) {
-      drawObject(
+      drawRenderedObject(
         drawCtx,
         state,
-        eventState.targetX,
-        eventState.targetY,
-        radius,
-        palette.target.fill,
-        palette.target.outline
+        {
+          x: eventState.targetX,
+          y: eventState.targetY,
+          fill: palette.target.fill,
+          outline: palette.target.outline,
+          cracked: shouldDrawFracture(state, eventState)
+        },
+        radius
       );
     }
   }
@@ -4989,6 +5102,9 @@
       const railCount = getRailCount(state);
       parts.push(`${railCount > 1 ? `rails${railCount}` : "rail"}${compactNumber(state.railLength)}px`);
     }
+    if (state.fractureEnabled) {
+      parts.push("fracture");
+    }
     return capFilenameBase(parts.join("-"));
   }
 
@@ -5179,6 +5295,10 @@
     return filename.replace(/\.(webm|mp4)$/i, "-psychopy.csv");
   }
 
+  function getMetadataJsonName(filename) {
+    return filename.replace(/\.(webm|mp4)$/i, "-metadata.json");
+  }
+
   function buildPsychopyMetadata(state, filename, exportDetails = {}) {
     const standards = getStandards(state);
     const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(state));
@@ -5235,6 +5355,10 @@
       stageColor: state.stageColor,
       contextPairSnapshots: state.contextPairSnapshots,
       trajectoryOverrides: state.trajectoryOverrides,
+      fractureEnabled: state.fractureEnabled,
+      parameters: state,
+      metadataEmbeddingNote:
+        "Browser MediaRecorder exports do not reliably support embedded custom MP4/WebM metadata. Keep this JSON sidecar with the movie file.",
       placement: `Put the movie in ${PSYCHOPY_STIMULI_FOLDER}/ next to the PsychoPy experiment and use the CSV as the loop conditions file.`
     };
   }
@@ -5324,6 +5448,7 @@
       railSegments: JSON.stringify(getRailSegments(state).slice(1)),
       crosshairBlinkEnabled: state.crosshairBlinkEnabled,
       crosshairBlinkMs: state.crosshairBlinkMs,
+      fractureEnabled: state.fractureEnabled,
       trajectoryEditEnabled: state.trajectoryEditEnabled,
       selectedTrajectoryBall: state.selectedTrajectoryBall,
       trajectoryOverrides: JSON.stringify(state.trajectoryOverrides),
@@ -5381,6 +5506,21 @@
     psychopyLink.classList.remove("hidden");
   }
 
+  function setMetadataDownload(metadata, preferredName) {
+    if (!metadataJsonLink) {
+      return;
+    }
+    const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: "application/json" });
+    if (currentMetadataJsonUrl) {
+      URL.revokeObjectURL(currentMetadataJsonUrl);
+    }
+    currentMetadataJsonUrl = URL.createObjectURL(blob);
+    metadataJsonLink.href = currentMetadataJsonUrl;
+    metadataJsonLink.download = preferredName;
+    metadataJsonLink.textContent = "Download metadata JSON";
+    metadataJsonLink.classList.remove("hidden");
+  }
+
   function setConditionJsonDownload(manifest, preferredName) {
     const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
     if (currentConditionJsonUrl) {
@@ -5427,9 +5567,14 @@
       URL.revokeObjectURL(currentPsychopyUrl);
       currentPsychopyUrl = null;
     }
+    if (currentMetadataJsonUrl) {
+      URL.revokeObjectURL(currentMetadataJsonUrl);
+      currentMetadataJsonUrl = null;
+    }
 
     clearGeneratedLink(downloadLink);
     clearGeneratedLink(psychopyLink);
+    clearGeneratedLink(metadataJsonLink);
     if (exportedVideo) {
       exportedVideo.removeAttribute("src");
       exportedVideo.load();
@@ -5501,6 +5646,7 @@
       objectStyle: parameters.objectStyle,
       groupingMode: parameters.groupingMode,
       contactGuideMode: parameters.contactGuideMode,
+      fractureEnabled: parameters.fractureEnabled ?? baseState.fractureEnabled,
       trajectoryEditEnabled: parameters.trajectoryEditEnabled ?? baseState.trajectoryEditEnabled,
       selectedTrajectoryBall: parameters.selectedTrajectoryBall ?? baseState.selectedTrajectoryBall,
       trajectoryOverrides: parameters.trajectoryOverrides ?? baseState.trajectoryOverrides,
@@ -5641,6 +5787,7 @@
       stageColor: condition.parameters.stageColor,
       groupingMode: condition.parameters.groupingMode,
       contactGuideMode: condition.parameters.contactGuideMode,
+      fractureEnabled: condition.parameters.fractureEnabled,
       validationWarnings: condition.validationWarnings.join(" | ")
     }));
     if (rows.length === 0) {
@@ -5775,6 +5922,7 @@
         objectStyle: condition.objectStyle,
         groupingMode: condition.groupingMode,
         contactGuideMode: condition.contactGuideMode,
+        fractureEnabled: condition.fractureEnabled,
         trajectoryEditEnabled: condition.trajectoryEditEnabled,
         selectedTrajectoryBall: condition.selectedTrajectoryBall,
         trajectoryOverrides: condition.trajectoryOverrides,
@@ -6446,6 +6594,7 @@
     downloadLink.title = filename;
     downloadLink.classList.remove("hidden");
     setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
+    setMetadataDownload(buildPsychopyMetadata(state, filename, exportFormat), getMetadataJsonName(filename));
     updateArtifactChecklist(state, filename, exportFormat);
     rememberGeneratedMovie(state, filename, exportFormat);
 
@@ -6738,6 +6887,7 @@
     });
 
     previewButton.addEventListener("click", playPreview);
+    physicsModeButton?.addEventListener("click", applyPhysicsMode);
     savePresetButton.addEventListener("click", saveCurrentPreset);
     deletePresetButton.addEventListener("click", deleteSelectedPreset);
     exportPresetButton?.addEventListener("click", exportCurrentPresetJson);
