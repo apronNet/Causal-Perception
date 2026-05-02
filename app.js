@@ -1657,6 +1657,98 @@
     statusText.textContent = "Physics mode applied to existing motion controls.";
   }
 
+  function getBlinkMsControlValue() {
+    return Math.max(0, Number(controls.crosshairBlinkMs.value) || Number(presentationDefaults.crosshairBlinkMs) || 0);
+  }
+
+  function getBlinkClassicLaunchDurationMs(blinkMs = getBlinkMsControlValue()) {
+    return blinkMs + (Number(controlDefaults.durationMs) || 1200);
+  }
+
+  function getClassicLaunchValuesAfterBlink(state = cloneState()) {
+    const blinkMs = getBlinkMsControlValue();
+    return {
+      ...state,
+      durationMs: getBlinkClassicLaunchDurationMs(blinkMs),
+      leadInMs: controlDefaults.leadInMs,
+      launcherSpeed: controlDefaults.launcherSpeed,
+      launcherAccel: stimulusDefaults.launcherAccel,
+      targetSpeedRatio: controlDefaults.targetSpeedRatio,
+      targetAccel: stimulusDefaults.targetAccel,
+      launcherBehavior: controlDefaults.launcherBehavior,
+      targetAngle: controlDefaults.targetAngle,
+      delayMs: controlDefaults.delayMs,
+      gapPx: controlDefaults.gapPx,
+      markerMode: controlDefaults.markerMode,
+      ballRadius: controlDefaults.ballRadius,
+      occluderEnabled: false,
+      occluderWidth: controlDefaults.occluderWidth,
+      contactOcclusionMode: stimulusDefaults.contactOcclusionMode,
+      launcherVisibleMs: stimulusDefaults.launcherVisibleMs,
+      targetVisibleMs: stimulusDefaults.targetVisibleMs,
+      contextMode: "none",
+      contextPairCount: 1,
+      contextPairSnapshots: "[]",
+      contextDurationMs: controlDefaults.contextDurationMs,
+      contextOffsetMs: controlDefaults.contextOffsetMs,
+      contextDirection: controlDefaults.contextDirection,
+      contextYOffset: controlDefaults.contextYOffset,
+      contextBallRadius: controlDefaults.ballRadius,
+      contextLeadInMs: controlDefaults.leadInMs,
+      contextLauncherSpeed: controlDefaults.launcherSpeed,
+      contextLauncherAccel: stimulusDefaults.contextLauncherAccel,
+      contextLauncherBehavior: controlDefaults.launcherBehavior,
+      contextDelayMs: controlDefaults.delayMs,
+      contextGapPx: controlDefaults.gapPx,
+      contextContactOcclusionMode: stimulusDefaults.contextContactOcclusionMode,
+      contextOccluderEnabled: false,
+      contextOccluderWidth: controlDefaults.occluderWidth,
+      contextTargetSpeedRatio: controlDefaults.targetSpeedRatio,
+      contextTargetAccel: stimulusDefaults.contextTargetAccel,
+      contextTargetAngle: controlDefaults.targetAngle,
+      contextLauncherVisibleMs: stimulusDefaults.contextLauncherVisibleMs,
+      contextTargetVisibleMs: stimulusDefaults.contextTargetVisibleMs,
+      customStartEnabled: false,
+      customStartKeepRowsHorizontal: false,
+      customStartAlignStartsVertical: false,
+      originalLauncherStartX: presentationDefaults.originalLauncherStartX,
+      originalLauncherStartY: presentationDefaults.originalLauncherStartY,
+      originalTargetStartX: presentationDefaults.originalTargetStartX,
+      originalTargetStartY: presentationDefaults.originalTargetStartY,
+      contextLauncherStartX: presentationDefaults.contextLauncherStartX,
+      contextLauncherStartY: presentationDefaults.contextLauncherStartY,
+      contextTargetStartX: presentationDefaults.contextTargetStartX,
+      contextTargetStartY: presentationDefaults.contextTargetStartY,
+      stimulusXOffset: 0,
+      stimulusYOffset: 0,
+      trajectoryEditEnabled: false,
+      selectedTrajectoryBall: stimulusDefaults.selectedTrajectoryBall,
+      selectedTrajectoryAngle: stimulusDefaults.selectedTrajectoryAngle,
+      trajectoryOverrides: stimulusDefaults.trajectoryOverrides,
+      crosshairEnabled: true,
+      crosshairX: presentationDefaults.crosshairX,
+      crosshairY: presentationDefaults.crosshairY,
+      crosshairBlinkEnabled: true,
+      crosshairBlinkMs: blinkMs
+    };
+  }
+
+  function applyClassicLaunchAfterBlinkEnabled() {
+    activePresetKey = null;
+    setControls(getClassicLaunchValuesAfterBlink());
+    statusText.textContent = "Blink enabled; post-blink event reset to classic launching.";
+  }
+
+  function ensureBlinkLeavesFullClassicLaunchDuration() {
+    if (!controls.crosshairBlinkEnabled.checked) {
+      return;
+    }
+    const requiredDuration = getBlinkClassicLaunchDurationMs();
+    if (Number(controls.durationMs.value) < requiredDuration) {
+      controls.durationMs.value = requiredDuration;
+    }
+  }
+
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
     if (contextIsOff) {
@@ -7145,7 +7237,8 @@
         control.addEventListener("change", () => {
           activePresetKey = null;
           if (control.checked) {
-            controls.crosshairEnabled.checked = true;
+            applyClassicLaunchAfterBlinkEnabled();
+            return;
           }
           syncCrosshairControlVisibility();
           syncSpecialDragUi();
@@ -7263,6 +7356,9 @@
       ) {
         const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
         control.addEventListener(eventName, () => {
+          if (id === "crosshairBlinkMs") {
+            ensureBlinkLeavesFullClassicLaunchDuration();
+          }
           updateOutputs();
           refreshText();
           statusText.textContent = READY_STATUS;
