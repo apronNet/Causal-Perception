@@ -28,6 +28,7 @@
     massPower: 2,
     stopThreshold: 0.075
   };
+  const TUNNEL_BASE_RADIUS = 28;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
   const READY_STATUS = "Ready to export current preview.";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
@@ -252,7 +253,8 @@
     ballRadius: "Changes: object size. When many context pairs are shown, all pairs auto-shrink so the rows fit vertically.",
     contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
-    occluderWidth: "Changes: width of the tunnel. Wider tunnels hide more of the contact region.",
+    occluderWidth:
+      "Changes: tunnel width. The rendered tunnel scales with ball size, so auto-shrunk balls get a smaller occluder.",
     contactOcclusionMode: "Changes: which object is painted on top during overlap. O2 puts O2 on top; O1 puts O1 on top.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
@@ -270,7 +272,8 @@
     contextGapPx: "Changes: context-row spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. O2 puts the second context object on top; O1 puts the first context object on top.",
     contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original pair event.",
-    contextOccluderWidth: "Changes: context tunnel width. Wider context tunnels hide more of the context contact region.",
+    contextOccluderWidth:
+      "Changes: context tunnel width. The rendered tunnel scales with that row's ball size, so dense context displays stay proportional.",
     contextTargetSpeedRatio: "Changes: context O2 speed as a multiple of context O1 impact speed. Use for: matching the original pair launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
@@ -4694,6 +4697,14 @@
     }
   }
 
+  function getScaledTunnelWidth(width, radius) {
+    const safeRadius = Math.max(2, Number(radius) || TUNNEL_BASE_RADIUS);
+    const numericWidth = Number(width);
+    const requestedWidth = Number.isFinite(numericWidth) ? Math.max(0, numericWidth) : stimulusDefaults.contextOccluderWidth;
+    const scaledWidth = requestedWidth * (safeRadius / TUNNEL_BASE_RADIUS);
+    return clamp(scaledWidth, safeRadius * 2.4, STAGE_WIDTH - 40);
+  }
+
   function drawTunnelOccluder(drawCtx, laneY, radius, enabled, width) {
     if (!enabled) {
       return {
@@ -4702,21 +4713,26 @@
       };
     }
 
-    const left = STAGE_WIDTH / 2 - width / 2;
-    const top = laneY - radius * 1.9;
-    const height = radius * 3.8;
-    const right = left + width;
+    const safeRadius = Math.max(2, Number(radius) || TUNNEL_BASE_RADIUS);
+    const scaledWidth = getScaledTunnelWidth(width, safeRadius);
+    const left = STAGE_WIDTH / 2 - scaledWidth / 2;
+    const top = laneY - safeRadius * 1.9;
+    const height = safeRadius * 3.8;
+    const right = left + scaledWidth;
+    const cornerRadius = clamp(safeRadius * 0.65, 5, 18);
+    const insetX = Math.min(scaledWidth * 0.12, safeRadius * 0.65);
+    const insetY = Math.min(height * 0.18, safeRadius * 0.55);
 
     drawCtx.fillStyle = "rgba(235, 233, 223, 0.88)";
     drawCtx.strokeStyle = "rgba(17, 34, 33, 0.16)";
-    drawCtx.lineWidth = 2;
+    drawCtx.lineWidth = clamp(safeRadius * 0.08, 1.2, 2);
     drawCtx.beginPath();
-    drawCtx.roundRect(left, top, width, height, 18);
+    drawCtx.roundRect(left, top, scaledWidth, height, cornerRadius);
     drawCtx.fill();
     drawCtx.stroke();
 
     drawCtx.fillStyle = "rgba(17, 34, 33, 0.07)";
-    drawCtx.fillRect(left + 14, top + 12, width - 28, height - 24);
+    drawCtx.fillRect(left + insetX, top + insetY, scaledWidth - insetX * 2, height - insetY * 2);
 
     return { left, right };
   }
