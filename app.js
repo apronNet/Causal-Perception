@@ -338,8 +338,8 @@
         stageTheme: "dark",
         groupingMode: "none",
         contactGuideMode: "none",
-        groupingOriginalColor: "#0067a8",
-        groupingContextColor: "#c58b00",
+        groupingOriginalColor: "#6f7f4f",
+        groupingContextColor: "#b18437",
         fps: 60,
         fileLabel: "causal-capture-scenario"
       }
@@ -803,7 +803,7 @@
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
-    crosshairColor: "#fbfaf1",
+    crosshairColor: "#fff9ec",
     railEnabled: false,
     railCount: 1,
     railLength: 465,
@@ -820,8 +820,8 @@
     targetColor: "#27c35a",
     contextColor: "#e53935",
     contextTargetColor: "#27c35a",
-    groupingOriginalColor: "#0067a8",
-    groupingContextColor: "#c58b00",
+    groupingOriginalColor: "#6f7f4f",
+    groupingContextColor: "#b18437",
     customStartEnabled: false,
     customStartKeepRowsHorizontal: false,
     customStartAlignStartsVertical: false,
@@ -2907,7 +2907,7 @@
     };
 
     if (state.groupingMode === "original" || state.groupingMode === "both") {
-      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#0067a8");
+      drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#6f7f4f");
     }
 
     if (
@@ -2918,7 +2918,7 @@
         "Context set",
         contextGeometry,
         state.groupingContextColor,
-        "#c58b00"
+        "#b18437"
       );
     }
   }
@@ -2936,7 +2936,7 @@
         x: eventState.geometry.targetBaseX,
         radius: eventState.geometry.radius,
         color: state.groupingOriginalColor,
-        fallback: "#0067a8"
+        fallback: "#6f7f4f"
       });
     }
     if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
@@ -2950,7 +2950,7 @@
         x: contextGeometry.targetBaseX,
         radius: contextGeometry.radius,
         color: state.groupingContextColor,
-        fallback: "#c58b00"
+        fallback: "#b18437"
       });
     }
 
@@ -3752,7 +3752,7 @@
       drawCtx.stroke();
       drawCtx.beginPath();
       drawCtx.arc(handle.x, handle.y, handle.radius + 12, 0, Math.PI * 2);
-      drawCtx.strokeStyle = "rgba(0, 103, 168, 0.86)";
+      drawCtx.strokeStyle = "rgba(111, 127, 79, 0.86)";
       drawCtx.lineWidth = 2;
       drawCtx.stroke();
       drawCtx.fillStyle = "rgba(251, 250, 241, 0.92)";
