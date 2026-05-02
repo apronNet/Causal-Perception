@@ -343,6 +343,7 @@ h3 {
   display: none;
 }
 
+/* app.js toggles these when context, drag, rail, crosshair, trajectory, or tunnel controls are inactive. */
 .context-dependent-control.is-retracted,
 .custom-start-dependent-control.is-retracted,
 .rail-dependent-control.is-retracted,
@@ -859,6 +860,7 @@ canvas {
   aspect-ratio: 16 / 9;
 }
 
+/* app.js owns these cursor states during drag-position, rail/crosshair, and trajectory editing. */
 canvas.start-drag-enabled {
   cursor: grab;
 }
@@ -990,6 +992,7 @@ canvas.trajectory-edit-enabled:active {
   color: var(--ink);
 }
 
+/* Shared utility for generated links, warnings, and panels that app.js reveals after user actions. */
 .hidden {
   display: none;
 }

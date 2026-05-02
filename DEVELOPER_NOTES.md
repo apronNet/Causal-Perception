@@ -1,21 +1,60 @@
 # Launching Video Maker Code Notes
 
-This app is a single-page stimulus generator.
+This is a browser-only, single-page stimulus generator. There is no build step.
 
 - `index.html` defines the visible controls and export buttons.
 - `styles.css` controls layout and the Swiss-style interface.
-- `app.js` holds presets, parameter defaults, rendering, preview playback, and export.
+- `app.js` holds presets, parameter defaults, state, rendering, preview playback, PsychoPy export, and condition-set export.
+- `shared-presets.json` is the committed source for presets that should load for everyone.
 
-To add a new adjustable parameter:
+## Main Code Path
+
+1. HTML controls are registered in `controlIds`.
+2. Defaults come from `stimulusDefaults` and `presentationDefaults`.
+3. `cloneState()` reads the current controls into the canonical stimulus object.
+4. `getGeometry()` turns that state into contact time, object positions, and launch direction.
+5. `drawFrame()` renders both preview and exported frames.
+6. `exportVideo()` writes the movie and prepares PsychoPy CSV plus metadata JSON sidecars.
+
+## Add A New Adjustable Parameter
+
+Touch every relevant point below. Missing one is the usual source of silent bugs.
 
 1. Add the control in `index.html`.
 2. Add its id to `controlIds` in `app.js`.
 3. Add a default in `stimulusDefaults` or `presentationDefaults`.
-4. Read it in `cloneState()`.
-5. Use it in the relevant drawing helper.
-6. Add it to `buildMetadata()` and `buildPsychopyCsv()` if it should be saved for PsychoPy.
+4. Add short hover copy in `parameterHelp`.
+5. Read it in `cloneState()`.
+6. If it needs a visible value, update `formatValue()` and `formatUnitHint()`.
+7. If it should appear in the preview summary, update `refreshSummary()` and possibly `getStandards()`.
+8. If it creates a participant-visible cue, update `getExperimentWarnings()`.
+9. Use it in the relevant motion or drawing helper.
+10. If it should be reproducible, update `getExportFilenameBase()`, `buildPsychopyMetadata()`, and `buildPsychopyCsv()`.
+11. If condition sets need it, update `withCondition()`, `stateFromConditionParameters()`, `buildConditionSetCsv()`, and the relevant `buildConditionSet()` family.
 
-Main-event motion is computed by `getMainEventState()`.
-Context-event motion is computed by `getContextMotionState()` plus `getDirectedEventState()`, so the context row can have its own speed, acceleration, delay, overlap, target ratio, and angle.
+## Context Pairs
 
-For PsychoPy, export the movie and the PsychoPy CSV. Put the movie file in a `stimuli/` folder, use the CSV as a loop conditions file, and set the Builder MovieStim filename field to `$movieFile`.
+Context 1 uses the normal context controls. Context 2 and later are stored as JSON in `contextPairSnapshots` and rendered dynamically. When a new context pair is added, it copies the current original pair; later edits to the original pair do not automatically change that copied pair.
+
+Many context rows auto-shrink and re-space so up to 10 pairs fit vertically. If a lab changes the stage size, check `getAutoContextPairRadius()` and `getAutoContextPairSpacing()`.
+
+## Motion Conventions
+
+- Position units are pixels.
+- Time units are milliseconds.
+- Speed uses px/s.
+- Acceleration uses px/s^2.
+- `gapPx < 0` means overlap.
+- `gapPx = 0` means the borders just touch.
+- `gapPx > 0` means a visible gap.
+- `contextOffsetMs < 0` means the context event happens earlier than the original pair.
+
+Main-event motion is computed by `getMainEventState()`. Context-event motion is computed by `getContextMotionState()` plus `getDirectedEventState()`, so context rows can have their own speed, acceleration, delay, overlap, target ratio, angle, occlusion, and visible duration.
+
+## PsychoPy Export
+
+For one stimulus, export the movie and the PsychoPy CSV. Put the movie file in a `stimuli/` folder, use the CSV as a loop conditions file, and set the Builder MovieStim filename field to `$movieFile`.
+
+Condition sets are batch plans, not rendered movies. `buildConditionSet()` creates rows and expected filenames; the lab still needs matching movie files for those rows.
+
+Browser MediaRecorder cannot reliably embed custom MP4/WebM metadata. The app therefore exports a metadata JSON sidecar. Treat the CSV and JSON as the durable parameter record.

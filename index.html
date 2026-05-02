@@ -96,6 +96,7 @@
               <p class="context-copy-note context-dependent-control">
                 New pairs copy the original pair when added. High counts auto-shrink all pairs to fit.
               </p>
+              <!-- JSON for Context 2+ parameter snapshots; Context 1 uses the visible controls above. -->
               <input id="contextPairSnapshots" type="hidden" />
             </div>
           </section>
@@ -441,6 +442,7 @@
                   <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                   <output data-for="selectedTrajectoryAngle"></output>
                 </label>
+                <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
                 <input id="trajectoryOverrides" type="hidden" value="{}" />
                   </div>
                 </div>
@@ -476,6 +478,7 @@
                 <input id="railStartY" type="hidden" />
                 <input id="railEndX" type="hidden" />
                 <input id="railEndY" type="hidden" />
+                <!-- JSON for extra rail segments after Rail 1. -->
                 <input id="railSegments" type="hidden" />
               </div>
             </div>

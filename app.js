@@ -1,4 +1,15 @@
 (async function () {
+  /*
+   * Maintainer map
+   * 1. DOM/control registry: every adjustable HTML control is listed in controlIds.
+   * 2. Presets/defaults: built-ins are partial parameter records merged in applyPreset().
+   * 3. State serialization: cloneState() is the canonical in-memory stimulus object.
+   * 4. Context pairs: Context 1 uses normal controls; Context 2+ use JSON snapshots.
+   * 5. Motion model: getGeometry() and event-state helpers turn parameters into positions.
+   * 6. Drawing: drawFrame() is the one render entry point for preview and export.
+   * 7. Export/PsychoPy: CSV/JSON schemas are the durable record of stimulus settings.
+   * 8. Condition sets: buildConditionSet() exports experiment plans, not rendered videos.
+   */
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d");
   const STAGE_WIDTH = 960;
@@ -99,6 +110,12 @@
   const contextPositionPairList = document.getElementById("contextPositionPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
 
+  /*
+   * Parameter propagation rule
+   * A new adjustable setting normally needs: an HTML id, an entry here, a default
+   * below, a cloneState() field, tooltip copy in parameterHelp, rendering or
+   * export use, and CSV/metadata fields if it matters for an experiment record.
+   */
   const controlIds = [
     "durationMs",
     "leadInMs",
@@ -198,6 +215,7 @@
     "fileLabel"
   ];
 
+  // User-facing tooltip copy. Keep it plain: what changes, not implementation detail.
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
     presetNameInput: "Changes: the name used when saving the current settings. Browser saves are local; shared presets must be added to shared-presets.json.",
@@ -297,6 +315,12 @@
     conditionSetSelect: "Changes: which multi-condition manifest is exported for later batch stimulus generation and PsychoPy condition-table setup."
   };
 
+  /*
+   * Presets are partial overrides, not full states.
+   * applyPreset() merges these values with stimulusDefaults and
+   * presentationDefaults. Shared lab presets live in shared-presets.json;
+   * "Save local" writes browser-only localStorage presets.
+   */
   const presets = {
     canonical: {
       label: "Clear launch (0% overlap)",
@@ -971,6 +995,13 @@
     return value === "launcher-front" ? value : "target-front";
   }
 
+  /*
+   * Hidden JSON controls
+   * contextPairSnapshots: array of Context 2+ parameter snapshots. Context 1
+   * uses the ordinary context controls, so it is not stored in this array.
+   * railSegments: extra rails after Rail 1, each with start/end coordinates.
+   * trajectoryOverrides: object mapping target ids to degree offsets.
+   */
   function parseContextPairSnapshots(value) {
     if (!value) {
       return [];
@@ -1026,6 +1057,7 @@
     return JSON.stringify(parseTrajectoryOverrides(overrides));
   }
 
+  // Canonical state snapshot used by preview, export, metadata, and condition sets.
   function cloneState() {
     return {
       durationMs: Number(controls.durationMs.value),
@@ -1592,6 +1624,12 @@
     });
   }
 
+  /*
+   * Context pair model
+   * Context 1 is controlled by the visible "Context 1" controls. Additional
+   * pairs are dynamically rendered from contextPairSnapshots so each pair can
+   * diverge after it is added. Radius and row spacing auto-fit at high counts.
+   */
   function getContextPairCount(state) {
     if (state.contextMode === "none") {
       return 0;
@@ -2529,6 +2567,11 @@
     statusText.textContent = "Preset removed.";
   }
 
+  /*
+   * Main state hydrator. Use this instead of assigning many controls by hand:
+   * it normalizes legacy values, syncs button facades, rebuilds dynamic context
+   * editors, recalculates auto-fit rows, refreshes text, and redraws once.
+   */
   function setControls(values) {
     const normalizedValues = { ...values };
     if (normalizedValues.contextMode === "pass") {
@@ -2578,6 +2621,7 @@
     drawFrame(cloneState(), 0, ctx);
   }
 
+  // Presets can omit context-specific fields; this keeps Context 1 symmetric with the original pair.
   function withContextMotionDefaults(values) {
     return {
       ...values,
@@ -2686,6 +2730,7 @@
     };
   }
 
+  // Derived labels and measurements shown in the UI and exported for audit.
   function getStandards(state) {
     const overlapPercent = clamp((-state.gapPx / (state.ballRadius * 2)) * 100, 0, 100);
     const gapMagnitude = Math.max(0, state.gapPx);
@@ -3174,6 +3219,13 @@
     return palette;
   }
 
+  /*
+   * Motion model contract
+   * Units are px, ms, px/s, and px/s^2. gapPx < 0 means overlap, gapPx = 0
+   * means borders just touch, and gapPx > 0 means a visible spatial gap.
+   * solveTravelMs() finds the contact time from distance/speed/acceleration.
+   * A 20 px/s floor prevents negative acceleration from reversing direction.
+   */
   function displacementAt(elapsedMs, initialVelocity, acceleration) {
     const minVelocity = 20;
     const velocity = Math.max(minVelocity, initialVelocity);
@@ -3623,6 +3675,13 @@
     };
   }
 
+  /*
+   * Geometry contract
+   * This is the main adaptation point for labs changing the physical layout.
+   * It computes start points, closest approach, contact time, O2 onset
+   * (stopTime + delayMs), outgoing direction, and context mirroring. remainingMs
+   * reserves 240 ms so the launched object has a short visible post-contact run.
+   */
   function getGeometry(state, laneY, options = {}) {
     const radius = state.ballRadius;
     const scope = options.scope || "original";
@@ -3832,6 +3891,7 @@
     };
   }
 
+  // Converts a Context 2+ snapshot into a normal event state so drawing code stays shared.
   function getContextPairSnapshotState(snapshot, baseState, laneY, directionSign = 1) {
     const sourceLaneY = Number(snapshot.laneY) || getMainLaneY(baseState);
     const yShift = laneY - sourceLaneY;
@@ -4397,6 +4457,7 @@
     return Math.floor(t / 120) % 2 === 0;
   }
 
+  // Single render entry point. Preview and export both call this, so timing cues stay aligned.
   function drawFrame(state, t, drawCtx) {
     if (drawCtx === ctx) {
       resizePreviewCanvas();
@@ -5299,6 +5360,13 @@
     return filename.replace(/\.(webm|mp4)$/i, "-metadata.json");
   }
 
+  /*
+   * Export schema invariant
+   * The movie filename is a readable label, but the CSV and metadata JSON are
+   * the durable parameter records. Keep these functions synchronized when a
+   * parameter changes: buildPsychopyMetadata(), buildPsychopyCsv(),
+   * withCondition(), stateFromConditionParameters(), and buildConditionSetCsv().
+   */
   function buildPsychopyMetadata(state, filename, exportDetails = {}) {
     const standards = getStandards(state);
     const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(state));
@@ -5952,6 +6020,11 @@
     };
   }
 
+  /*
+   * Condition sets are experiment plans. They export rows and expected movie
+   * filenames for PsychoPy loops; they do not render every movie automatically.
+   * The option values in index.html's conditionSetSelect must match these kinds.
+   */
   function buildConditionSet(kind, baseState) {
     const base = {
       ...baseState,
@@ -5978,6 +6051,7 @@
       soundEnabled: false
     };
 
+    // Psychometric grid: vary only overlap and delay while holding visual format fixed.
     if (kind === "delayOverlap") {
       const overlaps = [0, 25, 50, 75, 100];
       const delays = [0, 50, 90, 140];
@@ -6008,6 +6082,7 @@
       };
     }
 
+    // Overlap continuum: seven equal steps matching Ohl/Rolfs-style boundary tests.
     if (kind === "ohl7") {
       const overlaps = [0, 16.7, 33.3, 50, 66.7, 83.3, 100];
       return {
@@ -6030,6 +6105,7 @@
       };
     }
 
+    // Finer overlap continuum: nine steps for launch/pass response curves.
     if (kind === "kominsky9") {
       const overlaps = [0, 12.5, 25, 37.5, 50, 62.5, 75, 87.5, 100];
       return {
@@ -6052,6 +6128,7 @@
       };
     }
 
+    // Causal capture: compare no context, mere motion, launch context, and pass-like context.
     if (kind === "captureContext") {
       const contexts = [
         { contextMode: "none", label: "no-context" },
@@ -6079,6 +6156,7 @@
       };
     }
 
+    // Context duration: keep context synchronized, vary how much context is visible.
     if (kind === "captureDuration") {
       const durations = [750, 500, 100, 50];
       return {
@@ -6100,6 +6178,7 @@
       };
     }
 
+    // Context timing: keep the test event fixed, shift the context earlier.
     if (kind === "captureTiming") {
       const offsets = [0, -50, -100, -200];
       return {
@@ -6121,6 +6200,7 @@
       };
     }
 
+    // Direction phase: test whether capture depends on same/opposite motion direction.
     if (kind === "captureDirection") {
       const conditions = [
         { contextMode: "launch", contextDirection: "same", label: "same-direction-launch" },
@@ -6146,6 +6226,7 @@
       };
     }
 
+    // Adaptation transfer: compare ambiguous tests at same and shifted screen locations.
     if (kind === "retinotopicTransfer") {
       const ambiguousGap = Math.round(-0.5 * base.ballRadius * 2);
       const shiftedX = 150;
@@ -6220,6 +6301,7 @@
       };
     }
 
+    // Feature transfer: cross direction, speed, and color while preserving launch structure.
     if (kind === "featureTransfer") {
       return {
         family: "Feature-transfer plan",
@@ -6306,6 +6388,7 @@
       };
     }
 
+    // Category carve-up: build exemplars for launching, triggering, entraining, and controls.
     if (kind === "categoryCarveup") {
       return {
         family: "Causal category carve-up",
@@ -6372,6 +6455,7 @@
       };
     }
 
+    // Context after adaptation: before/after rows test whether context still shifts judgments.
     if (kind === "contextAdaptation") {
       const contexts = [
         { contextMode: "none", label: "no-context", role: "local-detector-test" },
@@ -6437,6 +6521,7 @@
       };
     }
 
+    // Fallback direction-transfer family used when no more specific kind is matched.
     const directions = [
       { label: "same-direction", contextDirection: "same", targetAngle: 0 },
       { label: "opposite-context", contextDirection: "opposite", targetAngle: 0 },
@@ -6460,6 +6545,12 @@
     };
   }
 
+  /*
+   * Browser export path
+   * MediaRecorder writes the movie. Custom MP4/WebM metadata cannot be embedded
+   * reliably in a browser-only app, so exportVideo() also prepares CSV and JSON
+   * sidecars that record the exact parameters.
+   */
   async function exportVideo() {
     if (isExporting) {
       return;
@@ -6923,6 +7014,7 @@
     syncAllChoiceControlButtons();
   }
 
+  // Boot order matters: load preset sources, seed controls, bind events, then draw the first preset.
   loadHiddenBuiltInPresets();
   await loadSharedPresets();
   loadCustomPresets();
