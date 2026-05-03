@@ -466,7 +466,7 @@ const browserProbe = String.raw`
   const realismOnsetSec = realismExport.metadata.timing.targetOnsetSec;
   const realismRgb = hexToRgb(realismExport.metadata.parameters.targetColor);
   const realismBoxes = [];
-  for (const offsetSec of [0.18, 0.58, 1.02]) {
+  for (const offsetSec of [0.08, 0.22, 0.58, 1.02]) {
     const frame = await sampleVideo(realismExport.video, realismOnsetSec + offsetSec);
     const box = componentBox(frame, realismRgb);
     realismBoxes.push({
@@ -478,9 +478,13 @@ const browserProbe = String.raw`
     });
   }
   const realismYDrift =
-    realismBoxes[0].centerY === null || realismBoxes[2].centerY === null
+    realismBoxes[0].centerY === null || realismBoxes[3].centerY === null
       ? null
-      : Math.abs(realismBoxes[2].centerY - realismBoxes[0].centerY);
+      : Math.abs(realismBoxes[3].centerY - realismBoxes[0].centerY);
+  const realismEarlyStepPx =
+    realismBoxes[0].centerX === null || realismBoxes[1].centerX === null
+      ? null
+      : Math.hypot(realismBoxes[1].centerX - realismBoxes[0].centerX, realismBoxes[1].centerY - realismBoxes[0].centerY);
   const realismSoundEvents = realismExport.metadata.sound?.cueEvents || [];
   const realismSoundLabels = realismSoundEvents.map((event) => event.label);
 
@@ -574,8 +578,10 @@ const browserProbe = String.raw`
       defaultChecked: realismChecked,
       manualControlsDisabled: realismManualDisabled,
       metadataRealism: realismExport.metadata.billiard?.realism,
+      realismVelocityScale: realismExport.metadata.billiard?.realismVelocityScale,
       effectiveFrictionPxPerSec2: realismExport.metadata.billiard?.frictionPxPerSec2,
       samples: realismBoxes,
+      earlyStepPx: realismEarlyStepPx === null ? null : Number(realismEarlyStepPx.toFixed(2)),
       targetYDriftPx: realismYDrift === null ? null : Number(realismYDrift.toFixed(2)),
       nonStraightTargetPath: realismYDrift !== null && realismYDrift > 6,
       soundLabels: realismSoundLabels,

@@ -34,6 +34,7 @@
     restitution: 0.94,
     wallRestitution: 0.88,
     stopSpeed: 8,
+    velocityScale: 1.35,
     minCutDeg: 9,
     maxCutDeg: 26,
     tangentTransfer: 0.16,
@@ -340,7 +341,7 @@
     physicsEngineEnabled:
       "Changes: turns Billiard on. It uses ball size to estimate mass, solves a simple collision, and then lets balls slow and bounce off table rails.",
     billiardRealismEnabled:
-      "Changes: uses deterministic cut, spin, rail scatter, and ball recollisions for a more billiard-like display. Turn off to edit manual friction and bounce controls.",
+      "Changes: uses a quicker initial shot with deterministic cut, spin, rail scatter, and ball recollisions. Turn off to edit manual friction and bounce controls.",
     billiardFriction:
       "Changes: table friction after impact. Higher values make balls lose speed sooner, so weak shots stop before reaching a rail.",
     billiardRestitution: "Changes: ball-to-ball bounce. Higher values keep more speed after impact.",
@@ -3432,7 +3433,7 @@
       return {
         label: "Billiard display",
         summary: state.billiardRealismEnabled
-          ? "Realism adds deterministic cut, spin, rail scatter, and possible recollisions."
+          ? "Realism uses a quicker initial shot, then adds cut, spin, rail scatter, and possible recollisions."
           : "Ball size sets mass; table friction and rail bounce control post-impact motion.",
         note: "Billiard turns off delay, gaps, tunnels, markers, sudden color changes, and manual trajectories.",
         literature:
@@ -4260,8 +4261,9 @@
     const cutRadians = Math.sign(cutUnit || 1) * (cutMagnitudeDeg * Math.PI) / 180;
     const normal = rotateVector(geometry.approachUnitX, geometry.approachUnitY, cutRadians);
     const tangent = { x: -normal.y, y: normal.x };
-    const incomingVx = geometry.approachUnitX * geometry.launcherImpactSpeed;
-    const incomingVy = geometry.approachUnitY * geometry.launcherImpactSpeed;
+    const realismImpactSpeed = geometry.launcherImpactSpeed * BILLIARD_REALISM.velocityScale;
+    const incomingVx = geometry.approachUnitX * realismImpactSpeed;
+    const incomingVy = geometry.approachUnitY * realismImpactSpeed;
     const normalSpeed = Math.max(0, incomingVx * normal.x + incomingVy * normal.y);
     const tangentSpeed = incomingVx * tangent.x + incomingVy * tangent.y;
     const launcherMass = getEqualDensityDiscMass(geometry.radius);
@@ -4269,7 +4271,7 @@
     const massSum = Math.max(0.001, launcherMass + targetMass);
     const restitution = getBilliardRestitution(state);
     const spinSign = signedDeterministicUnit(seed, "spin") >= 0 ? 1 : -1;
-    const spinSpeed = geometry.launcherImpactSpeed * BILLIARD_REALISM.tangentTransfer * spinSign;
+    const spinSpeed = realismImpactSpeed * BILLIARD_REALISM.tangentTransfer * spinSign;
     const launcherNormalSpeed = ((launcherMass - restitution * targetMass) / massSum) * normalSpeed;
     const targetNormalSpeed = (((1 + restitution) * launcherMass) / massSum) * normalSpeed;
     const launcherTangentSpeed = tangentSpeed * 0.9 - spinSpeed * 0.35;
@@ -7702,6 +7704,8 @@
       billiard: {
         enabled: state.physicsEngineEnabled,
         realism: state.physicsEngineEnabled ? state.billiardRealismEnabled : "",
+        realismVelocityScale:
+          state.physicsEngineEnabled && state.billiardRealismEnabled ? BILLIARD_REALISM.velocityScale : "",
         frictionPxPerSec2: state.physicsEngineEnabled ? state.billiardFriction : "",
         ballRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
         wallRestitution: state.physicsEngineEnabled ? state.billiardWallRestitution : "",
@@ -7760,6 +7764,8 @@
       physicsEngineEnabled: state.physicsEngineEnabled,
       billiardEnabled: state.physicsEngineEnabled,
       billiardRealismEnabled: state.physicsEngineEnabled ? state.billiardRealismEnabled : "",
+      billiardRealismVelocityScale:
+        state.physicsEngineEnabled && state.billiardRealismEnabled ? BILLIARD_REALISM.velocityScale : "",
       billiardFrictionPxPerSec2: state.physicsEngineEnabled ? state.billiardFriction : "",
       billiardBallRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
       billiardWallRestitution: state.physicsEngineEnabled ? state.billiardWallRestitution : "",
