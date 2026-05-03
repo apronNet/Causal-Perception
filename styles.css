@@ -325,19 +325,33 @@ h3 {
 }
 
 .preset-compact-grid {
-  grid-template-columns: minmax(150px, 1.35fr) minmax(118px, 0.85fr) repeat(4, auto);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: end;
   gap: 6px;
 }
 
-.preset-compact-grid .secondary-button,
-.preset-compact-grid .download-link {
-  min-height: 26px;
-  padding: 4px 7px;
-  white-space: nowrap;
+.preset-scenario-field,
+.preset-name-field {
+  grid-column: span 2;
 }
 
-.preset-storage-note {
+.preset-compact-grid .secondary-button,
+.preset-compact-grid .download-link {
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  padding: 4px 5px;
+  font-size: 0.54rem;
+  letter-spacing: 0.025em;
+  line-height: 1.05;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.preset-storage-note,
+#presetSummary,
+#presetJsonLink {
   margin: 0;
   grid-column: 1 / -1;
 }
