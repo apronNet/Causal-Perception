@@ -2487,14 +2487,16 @@
         return `
           <div class="fracture-target-row">
             <strong>${pair.label}</strong>
-            <label><input data-fracture-target="${launcherKey}" type="checkbox"${targets[launcherKey] ? " checked" : ""} /> O1</label>
-            <label><input data-fracture-target="${targetKey}" type="checkbox"${targets[targetKey] ? " checked" : ""} /> O2</label>
+            <span class="fracture-target-options">
+              <label><input data-fracture-target="${launcherKey}" type="checkbox"${targets[launcherKey] ? " checked" : ""} /> O1</label>
+              <label><input data-fracture-target="${targetKey}" type="checkbox"${targets[targetKey] ? " checked" : ""} /> O2</label>
+            </span>
           </div>`;
       })
       .join("");
 
     fractureTargetList.innerHTML = `
-      <p class="fracture-target-note">Choose which objects get cracks after their contact time.</p>
+      <div class="fracture-target-note">Fracture targets <small>cracks appear after contact</small></div>
       <div class="fracture-target-grid">${rows}</div>`;
   }
 

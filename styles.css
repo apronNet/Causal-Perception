@@ -630,34 +630,52 @@ input[type="color"] {
 }
 
 .fracture-target-list {
-  grid-column: 1 / -1;
+  grid-column: 1 / -1 !important;
   display: grid;
-  gap: 4px;
-  padding: 5px;
+  grid-template-columns: minmax(110px, 0.22fr) minmax(0, 1fr);
+  gap: 5px;
+  align-items: stretch;
+  width: 100%;
+  padding: 4px;
   border: 1px solid var(--line);
   background: var(--paper-soft);
 }
 
 .fracture-target-note {
+  display: grid;
+  align-content: center;
+  gap: 2px;
   margin: 0;
   color: var(--muted);
-  font-size: 0.58rem;
-  font-weight: 760;
+  font-size: 0.54rem;
+  font-weight: 860;
+  letter-spacing: 0.055em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.fracture-target-note small {
+  color: var(--muted);
+  font-size: 0.46rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.05;
+  text-transform: none;
 }
 
 .fracture-target-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 4px;
 }
 
 .fracture-target-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
   align-items: center;
-  min-height: 26px;
-  padding: 4px 5px;
+  min-height: 22px;
+  padding: 3px 4px;
   border: 1px solid var(--line);
   background: var(--paper);
 }
@@ -665,7 +683,7 @@ input[type="color"] {
 .fracture-target-row strong {
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.56rem;
+  font-size: 0.5rem;
   font-weight: 840;
   letter-spacing: 0.045em;
   text-transform: uppercase;
@@ -673,19 +691,25 @@ input[type="color"] {
   white-space: nowrap;
 }
 
+.fracture-target-options {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .fracture-target-row label {
-  display: inline-grid;
-  grid-template-columns: auto auto;
+  display: inline-flex;
   gap: 3px;
   align-items: center;
   color: var(--ink);
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 840;
+  line-height: 1;
 }
 
 .fracture-target-row input {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   accent-color: var(--accent);
 }
 
