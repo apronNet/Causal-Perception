@@ -291,7 +291,7 @@ h3 {
 
 .position-header-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(128px, 0.85fr)) repeat(2, minmax(130px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   align-items: center;
 }
@@ -304,6 +304,10 @@ h3 {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 4px;
   align-items: center;
+}
+
+.compact-offset-field .range-pair {
+  min-width: 0;
 }
 
 .compact-offset-field > span {
