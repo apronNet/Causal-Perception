@@ -21,6 +21,12 @@
   --grid-unit: 12px;
   --content-max: 1280px;
   --layout-max: 1364px;
+  --type-label: 0.62rem;
+  --type-label-small: 0.52rem;
+  --type-button: 0.64rem;
+  --type-input: 0.7rem;
+  --control-height: 1.75rem;
+  --choice-height: 1.8rem;
 }
 
 * {
@@ -77,13 +83,13 @@ h3 {
   font-family: inherit;
   margin: 0;
   font-weight: 800;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
 }
 
 h1 {
   max-width: none;
-  font-size: clamp(1.9rem, 3.2vw, 3.25rem);
-  line-height: 0.94;
+  font-size: 2.72rem;
+  line-height: 1.16;
 }
 
 .title-block {
@@ -96,15 +102,15 @@ h1 {
   max-width: none;
   margin: 5px 0 0 2px;
   color: var(--muted);
-  font-size: clamp(0.78rem, 1vw, 0.92rem);
+  font-size: 0.9rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   line-height: 1.25;
 }
 
 .michotte-card {
   display: grid;
-  grid-template-columns: 176px max-content;
+  grid-template-columns: 176px minmax(0, 12rem);
   align-items: end;
   gap: 12px;
   align-self: end;
@@ -139,7 +145,7 @@ h1 {
 
 .michotte-card strong {
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .michotte-name-link {
@@ -159,13 +165,13 @@ h1 {
 }
 
 h2 {
-  font-size: 0.96rem;
-  line-height: 1;
+  font-size: 1rem;
+  line-height: 1.1;
 }
 
 h3 {
-  font-size: 0.92rem;
-  line-height: 1.08;
+  font-size: 0.94rem;
+  line-height: 1.12;
 }
 
 .microcopy,
@@ -179,7 +185,7 @@ h3 {
 
 .app-grid {
   display: grid;
-  grid-template-columns: minmax(500px, 560px) minmax(500px, 790px);
+  grid-template-columns: minmax(460px, 560px) minmax(460px, 790px);
   gap: 14px;
   max-width: var(--layout-max);
   margin: 0 auto;
@@ -208,6 +214,8 @@ h3 {
   position: sticky;
   top: 12px;
   justify-self: center;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 
 .panel-block {
@@ -256,8 +264,9 @@ h3 {
 
 .psychopy-panel > summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(54px, 0.6fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(54px, 0.5fr) auto auto auto;
   align-items: center;
+  gap: 8px;
 }
 
 .psychopy-panel > summary::after {
@@ -343,14 +352,14 @@ h3 {
 .preset-compact-grid .download-link {
   width: 100%;
   min-width: 0;
-  min-height: 26px;
-  padding: 4px 5px;
-  font-size: 0.54rem;
-  letter-spacing: 0.025em;
-  line-height: 1.05;
+  min-height: var(--choice-height);
+  padding: 5px 6px;
+  font-size: 0.58rem;
+  letter-spacing: 0;
+  line-height: 1.12;
   text-align: center;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
 
 .preset-storage-note,
@@ -392,6 +401,10 @@ h3 {
 }
 
 .behavior-choice-field {
+  grid-column: span 2;
+}
+
+.triad-choice-field {
   grid-column: span 2;
 }
 
@@ -445,7 +458,7 @@ h3 {
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
-  letter-spacing: normal;
+  letter-spacing: 0;
   line-height: 1;
   text-transform: none;
   text-decoration: none;
@@ -466,29 +479,30 @@ h3 {
 .choice-button {
   width: 100%;
   min-width: 0;
-  min-height: 26px;
-  padding: 4px 5px;
+  min-height: var(--choice-height);
+  padding: 5px 6px;
   background: var(--paper);
   color: var(--ink);
-  font-size: 0.55rem;
+  font-size: var(--type-button);
   letter-spacing: 0;
-  line-height: 1.05;
+  line-height: 1.15;
   text-align: center;
   text-transform: none;
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: keep-all;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: balance;
 }
 
 .compact-choice-row .choice-button,
 .wide-choice-field .choice-button {
-  min-height: 22px;
-  padding: 2px 4px;
-  font-size: 0.52rem;
+  min-height: 1.7rem;
+  padding: 4px 5px;
+  font-size: 0.6rem;
 }
 
 .behavior-choice-row .choice-button {
-  min-height: 24px;
+  min-height: var(--choice-height);
   padding-inline: 5px;
 }
 
@@ -534,8 +548,9 @@ h3 {
 
 .subgroup-title {
   color: var(--muted);
-  font-size: 0.58rem;
-  letter-spacing: 0.08em;
+  font-size: var(--type-label);
+  letter-spacing: 0;
+  line-height: 1.15;
   text-transform: uppercase;
 }
 
@@ -553,18 +568,19 @@ h3 {
 
 .field > span {
   color: var(--ink);
-  font-size: 0.52rem;
+  font-size: var(--type-label);
   font-weight: 800;
-  line-height: 1.04;
+  line-height: 1.15;
   text-transform: uppercase;
-  letter-spacing: 0.045em;
+  letter-spacing: 0;
 }
 
 .unit-label {
   color: var(--muted);
-  font-size: 0.44rem;
+  font-size: var(--type-label-small);
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
+  line-height: 1.1;
   text-transform: none;
 }
 
@@ -610,15 +626,15 @@ input[type="number"],
 textarea,
 select {
   width: 100%;
-  min-height: 24px;
+  min-height: var(--control-height);
   border: 1px solid var(--line);
   border-radius: 0;
-  padding: 3px 5px;
+  padding: 4px 6px;
   background: var(--paper);
   color: var(--ink);
   font: inherit;
-  font-size: 0.6rem;
-  line-height: 1.05;
+  font-size: var(--type-input);
+  line-height: 1.2;
 }
 
 input[type="text"]:focus,
@@ -633,8 +649,8 @@ button:focus-visible,
 
 .range-pair {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px;
-  gap: 3px;
+  grid-template-columns: minmax(0, 1fr) 4.75rem;
+  gap: 4px;
   align-items: center;
 }
 
@@ -644,17 +660,17 @@ input[type="range"] {
 }
 
 .fine-input {
-  height: 24px;
-  min-height: 24px;
-  padding: 2px 3px;
-  font-size: 0.58rem;
+  height: auto;
+  min-height: var(--control-height);
+  padding: 3px 4px;
+  font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 input[type="color"] {
   width: 100%;
-  height: 24px;
+  height: var(--control-height);
   border: 1px solid var(--line);
   border-radius: 0;
   padding: 3px;
@@ -681,8 +697,8 @@ input[type="color"] {
 }
 
 .checkbox-field input {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--accent);
 }
 
@@ -713,7 +729,7 @@ input[type="color"] {
   color: var(--muted);
   font-size: 0.54rem;
   font-weight: 860;
-  letter-spacing: 0.055em;
+  letter-spacing: 0;
   line-height: 1.05;
   text-transform: uppercase;
 }
@@ -735,24 +751,25 @@ input[type="color"] {
 
 .fracture-target-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(4.75rem, 1fr) auto;
   gap: 4px;
   align-items: center;
-  min-height: 22px;
+  min-height: 26px;
   padding: 3px 4px;
   border: 1px solid var(--line);
   background: var(--paper);
 }
 
 .fracture-target-row strong {
-  overflow: hidden;
+  overflow: visible;
   color: var(--muted);
-  font-size: 0.5rem;
+  font-size: 0.58rem;
   font-weight: 840;
-  letter-spacing: 0.045em;
+  letter-spacing: 0;
   text-transform: uppercase;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .fracture-target-options {
@@ -789,13 +806,13 @@ button,
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  min-height: 30px;
+  min-height: 2rem;
   border-radius: 0;
   padding: 6px 10px;
   font: inherit;
-  font-size: 0.57rem;
+  font-size: var(--type-button);
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   text-transform: uppercase;
   border: 1px solid var(--line);
   cursor: pointer;
@@ -910,20 +927,21 @@ button:disabled {
   color: var(--muted);
   font-size: 0.44rem;
   font-weight: 900;
-  letter-spacing: 0.075em;
+  letter-spacing: 0;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .utility-strip em {
-  overflow: hidden;
+  overflow: visible;
   color: var(--ink);
   font-size: 0.56rem;
   font-style: normal;
   font-weight: 840;
   line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .summary-details {
@@ -966,7 +984,7 @@ button:disabled {
   color: var(--ink);
   font-size: 0.6rem;
   font-weight: 900;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .summary-strip {
@@ -993,19 +1011,20 @@ button:disabled {
   color: var(--muted);
   font-size: 0.42rem;
   line-height: 1;
-  letter-spacing: 0.07em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .summary-strip em {
-  overflow: hidden;
+  overflow: visible;
   color: var(--ink);
   font-size: 0.52rem;
   font-style: normal;
   font-weight: 800;
   line-height: 1.08;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .artifact-card {
@@ -1031,18 +1050,19 @@ button:disabled {
 .artifact-card b {
   color: var(--muted);
   font-size: 0.52rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .artifact-card em {
-  overflow: hidden;
+  overflow: visible;
   color: var(--ink);
   font-size: 0.66rem;
   font-style: normal;
   font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .validation-list {
@@ -1121,6 +1141,7 @@ canvas.trajectory-edit-enabled:active {
   position: absolute;
   display: inline-flex;
   align-items: center;
+  max-width: calc(50% - 14px);
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--line);
@@ -1129,7 +1150,9 @@ canvas.trajectory-edit-enabled:active {
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
+  line-height: 1.12;
+  white-space: normal;
 }
 
 #scenarioBadge {
@@ -1145,6 +1168,7 @@ canvas.trajectory-edit-enabled:active {
 .preview-timer-badge {
   right: 10px;
   bottom: 10px;
+  max-width: none;
   min-height: 26px;
   padding: 0 8px;
   border: 1px solid rgba(251, 250, 241, 0.34);
@@ -1164,7 +1188,7 @@ canvas.trajectory-edit-enabled:active {
 
 .video-panel h2 {
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .video-panel {
@@ -1279,7 +1303,7 @@ canvas.trajectory-edit-enabled:active {
 .feedback-panel label {
   font-size: 0.68rem;
   font-weight: 900;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -1324,6 +1348,7 @@ canvas.trajectory-edit-enabled:active {
 
   .psychopy-panel > summary {
     grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 6px;
   }
 
   .export-summary-status {
@@ -1332,6 +1357,11 @@ canvas.trajectory-edit-enabled:active {
 
   .summary-export-button {
     min-width: 0;
+  }
+
+  .summary-download-link {
+    grid-column: 2 / -1;
+    width: 100%;
   }
 
   .utility-strip {
@@ -1347,7 +1377,15 @@ canvas.trajectory-edit-enabled:active {
   }
 }
 
-@media (max-width: 1020px) {
+@media (max-width: 1080px) {
+  h1 {
+    font-size: 2.2rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.82rem;
+  }
+
   .app-grid {
     grid-template-columns: 1fr;
   }
@@ -1370,10 +1408,68 @@ canvas.trajectory-edit-enabled:active {
   }
 }
 
+@media (max-width: 1080px) and (min-width: 721px) {
+  .control-grid,
+  .control-subgrid,
+  .preset-compact-grid,
+  .button-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .context-toggle-field,
+  .context-copy-note,
+  .special-note,
+  .control-subgroup,
+  .wide-copy,
+  .fracture-target-list,
+  .context-pair-list {
+    grid-column: 1 / -1;
+  }
+
+  .range-pair {
+    grid-template-columns: minmax(0, 1fr) 5.1rem;
+  }
+
+  .utility-strip,
+  .summary-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .utility-strip span:nth-child(3n),
+  .summary-strip span:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .utility-strip span:nth-child(n + 4),
+  .summary-strip span:nth-child(n + 4) {
+    border-top: 1px solid var(--line);
+  }
+
+  .export-summary-status {
+    white-space: normal;
+    text-overflow: clip;
+  }
+}
+
 @media (max-width: 720px) {
+  :root {
+    --choice-height: 2.75rem;
+    --control-height: 2.75rem;
+  }
+
   .page-shell {
     width: calc(100vw - 16px);
     padding-top: 12px;
+  }
+
+  h1 {
+    font-size: 1.9rem;
+    line-height: 1.08;
+  }
+
+  .app-subtitle {
+    font-size: 0.78rem;
   }
 
   .topbar {
@@ -1401,6 +1497,12 @@ canvas.trajectory-edit-enabled:active {
     padding: 12px;
   }
 
+  .collapsible-panel > summary,
+  .summary-details > summary,
+  .psychopy-panel > summary {
+    min-height: 44px;
+  }
+
   .panel-block {
     padding: 14px;
   }
@@ -1418,6 +1520,15 @@ canvas.trajectory-edit-enabled:active {
   .artifact-card,
   .button-row {
     grid-template-columns: 1fr;
+  }
+
+  .preset-compact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .preset-scenario-field,
+  .preset-name-field {
+    grid-column: 1 / -1;
   }
 
   .wide-copy {
@@ -1469,21 +1580,46 @@ canvas.trajectory-edit-enabled:active {
   }
 
   .range-pair {
-    grid-template-columns: minmax(0, 1fr) 68px;
+    grid-template-columns: minmax(0, 1fr) 5.4rem;
+    min-height: 44px;
+  }
+
+  input[type="range"] {
+    min-height: 44px;
   }
 
   input[type="text"],
   input[type="number"],
   select,
   .fine-input {
-    min-height: 36px;
+    min-height: 44px;
     font-size: 16px;
+  }
+
+  .checkbox-field input {
+    width: 22px;
+    height: 22px;
   }
 
   button,
   .download-link {
-    min-height: 40px;
+    min-height: 44px;
     font-size: 0.72rem;
+  }
+
+  .checkbox-field {
+    min-height: 44px;
+  }
+
+  .choice-button,
+  .compact-choice-row .choice-button,
+  .wide-choice-field .choice-button,
+  .behavior-choice-row .choice-button,
+  .preset-compact-grid .secondary-button,
+  .preset-compact-grid .download-link {
+    min-height: 44px;
+    font-size: 0.72rem;
+    line-height: 1.18;
   }
 
   .context-toggle-inline {
