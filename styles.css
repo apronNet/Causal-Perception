@@ -910,7 +910,7 @@ button:disabled {
 
 .summary-compose-button {
   min-height: 2.15rem;
-  min-width: 78px;
+  min-width: 104px;
   padding: 5px 7px;
   white-space: normal;
 }
