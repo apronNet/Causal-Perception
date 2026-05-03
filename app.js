@@ -149,7 +149,6 @@
   const feedbackMessage = document.getElementById("feedbackMessage");
   const feedbackMailLink = document.getElementById("feedbackMailLink");
   const contextMovementPairList = document.getElementById("contextMovementPairList");
-  const contextPositionPairList = document.getElementById("contextPositionPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
   const fractureTargetList = document.getElementById("fractureTargetList");
   const groupingEnabledControl = document.getElementById("groupingEnabled");
@@ -2822,7 +2821,7 @@
   }
 
   function renderContextPairEditors() {
-    const containers = [contextMovementPairList, contextPositionPairList, contextColorPairList];
+    const containers = [contextMovementPairList, contextColorPairList];
     if (containers.some((container) => !container)) {
       return;
     }
@@ -2838,15 +2837,18 @@
 
     const snapshots = state.contextPairSnapshots || [];
     const movementCards = [];
-    const positionCards = [];
     const colorCards = [];
 
     for (let pairNumber = 2; pairNumber <= pairCount; pairNumber += 1) {
       const snapshot = normalizeContextPairSnapshot(snapshots[pairNumber - 2], state, pairNumber - 1);
       movementCards.push(`
         <details class="control-subgroup collapsible-subgroup context-pair-editor">
-          <summary><h3 class="subgroup-title">Context ${pairNumber} movement</h3></summary>
+          <summary><h3 class="subgroup-title">Context ${pairNumber}</h3></summary>
           <div class="control-subgrid">
+            ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
+            ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
+            ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
+            ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
             ${renderContextRange(pairNumber, "Movement", "leadInMs", "Lead-in", snapshot, "int", 0, 1800, 10)}
             ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "O1 speed", snapshot, "float1", 80, 6500, 1)}
             ${renderContextRange(pairNumber, "Movement", "launcherAccel", "O1 accel.", snapshot, "accel", -1500, 3000, 50)}
@@ -2869,17 +2871,6 @@
           </div>
         </details>`);
 
-      positionCards.push(`
-        <details class="control-subgroup collapsible-subgroup context-pair-editor">
-          <summary><h3 class="subgroup-title">Context ${pairNumber} starting position</h3></summary>
-          <div class="control-subgrid">
-            ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
-            ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
-            ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
-            ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
-          </div>
-        </details>`);
-
       colorCards.push(`
         <div class="control-subgroup context-pair-editor">
           <h3 class="subgroup-title">Context ${pairNumber} color</h3>
@@ -2892,7 +2883,6 @@
     }
 
     contextMovementPairList.innerHTML = movementCards.join("");
-    contextPositionPairList.innerHTML = positionCards.join("");
     contextColorPairList.innerHTML = colorCards.join("");
     enhanceRangePrecision();
     syncAllChoiceControlButtons();
@@ -7162,7 +7152,7 @@
   }
 
   function bindContextPairEditors() {
-    [contextMovementPairList, contextPositionPairList, contextColorPairList].forEach((container) => {
+    [contextMovementPairList, contextColorPairList].forEach((container) => {
       if (!container) {
         return;
       }
