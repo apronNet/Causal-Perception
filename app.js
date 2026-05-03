@@ -136,12 +136,6 @@
   const feedbackPanel = document.getElementById("feedbackPanel");
   const feedbackMessage = document.getElementById("feedbackMessage");
   const feedbackMailLink = document.getElementById("feedbackMailLink");
-  const relationMetric = document.getElementById("relationMetric");
-  const categoryMetric = document.getElementById("categoryMetric");
-  const captureMetric = document.getElementById("captureMetric");
-  const timingMetric = document.getElementById("timingMetric");
-  const outputMetric = document.getElementById("outputMetric");
-  const fileMetric = document.getElementById("fileMetric");
   const contextMovementPairList = document.getElementById("contextMovementPairList");
   const contextPositionPairList = document.getElementById("contextPositionPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
@@ -3762,31 +3756,6 @@
     };
   }
 
-  function updateStandards(state, standards = getStandards(state)) {
-    if (!relationMetric || !categoryMetric || !captureMetric || !timingMetric) {
-      return;
-    }
-
-    relationMetric.textContent = standards.relation;
-    categoryMetric.textContent = standards.category;
-    captureMetric.textContent = describeUtilityContext(state);
-    timingMetric.textContent = standards.timing;
-  }
-
-  function describeUtilityContext(state) {
-    if (state.contextMode === "none") {
-      return "no context";
-    }
-    const contextType = state.contextMode === "single" ? "single object" : "nearby launch";
-    const timing =
-      state.contextOffsetMs === 0
-        ? "sync"
-        : `${Math.abs(Math.round(state.contextOffsetMs))} ms ${state.contextOffsetMs < 0 ? "early" : "late"}`;
-    const pairCount = getContextPairCount(state);
-    const countText = pairCount > 1 ? ` x${pairCount}` : "";
-    return `${contextType}${countText}, ${timing}`;
-  }
-
   function describeContext(state) {
     if (state.contextMode === "none") {
       return "none";
@@ -4083,12 +4052,6 @@
     if (summaryBitrate) {
       summaryBitrate.textContent = `${Number(state.videoBitrate).toFixed(1)} Mbps`;
     }
-    if (outputMetric) {
-      outputMetric.textContent = `${Math.round(state.fps)} fps / ${exportSize.width} x ${exportSize.height}`;
-    }
-    if (fileMetric) {
-      fileMetric.textContent = state.fileLabel || "causal-launching";
-    }
   }
 
   function refreshText() {
@@ -4124,7 +4087,6 @@
     }
     refreshSummary(state, copy, standards);
     renderExperimentWarnings(state);
-    updateStandards(state, standards);
   }
 
   function clamp(value, min, max) {
@@ -4637,6 +4599,42 @@
     body.vy = rotated.y;
   }
 
+  function getSolidPairNormal(launcher, target, dx, dy, distance) {
+    if (distance > 0.001) {
+      return { x: dx / distance, y: dy / distance };
+    }
+    const relativeVx = target.vx - launcher.vx;
+    const relativeVy = target.vy - launcher.vy;
+    const relativeSpeed = Math.hypot(relativeVx, relativeVy);
+    if (relativeSpeed > 0.001) {
+      return { x: relativeVx / relativeSpeed, y: relativeVy / relativeSpeed };
+    }
+    return { x: 1, y: 0 };
+  }
+
+  function clampBilliardBodyToBounds(body, bounds) {
+    body.x = clamp(body.x, bounds.left + body.radius, bounds.right - body.radius);
+    body.y = clamp(body.y, bounds.top + body.radius, bounds.bottom - body.radius);
+  }
+
+  function separateBilliardPairWithinBounds(launcher, target, bounds) {
+    const dx = target.x - launcher.x;
+    const dy = target.y - launcher.y;
+    const distance = Math.hypot(dx, dy);
+    const minDistance = launcher.radius + target.radius;
+    if (distance >= minDistance - 0.001) {
+      return;
+    }
+    const normal = getSolidPairNormal(launcher, target, dx, dy, distance);
+    const correction = (minDistance - distance) / 2 + 0.01;
+    launcher.x -= normal.x * correction;
+    launcher.y -= normal.y * correction;
+    target.x += normal.x * correction;
+    target.y += normal.y * correction;
+    clampBilliardBodyToBounds(launcher, bounds);
+    clampBilliardBodyToBounds(target, bounds);
+  }
+
   function applyRealisticRailBounce(body, state, seed, elapsedMs, events, bounds = getBilliardBounds(state, null)) {
     const radius = body.radius;
     const wallRestitution = getBilliardWallRestitution(state);
@@ -4698,13 +4696,14 @@
   ) {
     const dx = target.x - launcher.x;
     const dy = target.y - launcher.y;
-    const distance = Math.max(0.001, Math.hypot(dx, dy));
+    const distance = Math.hypot(dx, dy);
     const minDistance = launcher.radius + target.radius;
     if (distance > minDistance + 0.35) {
       return lastCollisionElapsedMs;
     }
-    const nx = dx / distance;
-    const ny = dy / distance;
+    const normal = getSolidPairNormal(launcher, target, dx, dy, distance);
+    const nx = normal.x;
+    const ny = normal.y;
     const relativeVx = target.vx - launcher.vx;
     const relativeVy = target.vy - launcher.vy;
     const velocityAlongNormal = relativeVx * nx + relativeVy * ny;
@@ -4719,10 +4718,6 @@
       launcher.y -= ny * correction;
       target.x += nx * correction;
       target.y += ny * correction;
-    }
-
-    if (elapsedMs - lastCollisionElapsedMs < 65) {
-      return lastCollisionElapsedMs;
     }
 
     const restitution = getBilliardRestitution(state);
@@ -4742,8 +4737,11 @@
       target.vx = targetVelocity.x;
       target.vy = targetVelocity.y;
     }
-    events?.push({ type: "recollision", body: "pair", elapsedMs });
-    return elapsedMs;
+    if (elapsedMs - lastCollisionElapsedMs >= 65) {
+      events?.push({ type: "recollision", body: "pair", elapsedMs });
+      return elapsedMs;
+    }
+    return lastCollisionElapsedMs;
   }
 
   function advanceRealisticBilliardPair(geometry, elapsedMs, state, options = {}) {
@@ -4810,10 +4808,9 @@
       }
     }
 
-    bodies.launcher.x = clamp(bodies.launcher.x, bounds.left + bodies.launcher.radius, bounds.right - bodies.launcher.radius);
-    bodies.launcher.y = clamp(bodies.launcher.y, bounds.top + bodies.launcher.radius, bounds.bottom - bodies.launcher.radius);
-    bodies.target.x = clamp(bodies.target.x, bounds.left + bodies.target.radius, bounds.right - bodies.target.radius);
-    bodies.target.y = clamp(bodies.target.y, bounds.top + bodies.target.radius, bounds.bottom - bodies.target.radius);
+    clampBilliardBodyToBounds(bodies.launcher, bounds);
+    clampBilliardBodyToBounds(bodies.target, bounds);
+    separateBilliardPairWithinBounds(bodies.launcher, bodies.target, bounds);
     return options.collectEvents ? { ...bodies, events } : bodies;
   }
 

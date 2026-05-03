@@ -312,6 +312,78 @@ const browserProbe = String.raw`
     return { video, metadata };
   };
 
+  const parseCsvLine = (line) => {
+    const cells = [];
+    let cell = "";
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+      if (char === '"' && quoted && line[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else if (char === '"') {
+        quoted = !quoted;
+      } else if (char === "," && !quoted) {
+        cells.push(cell);
+        cell = "";
+      } else {
+        cell += char;
+      }
+    }
+    cells.push(cell);
+    return cells;
+  };
+
+  const parseCsvRows = (csv) => {
+    const lines = csv.trim().split(/\r?\n/);
+    const headers = parseCsvLine(lines.shift() || "");
+    return lines.map((line) => {
+      const cells = parseCsvLine(line);
+      return Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""]));
+    });
+  };
+
+  const exportFrameLogRows = async () => {
+    const link = document.getElementById("positionCsvLink");
+    const previousHref = link.href;
+    document.getElementById("positionCsvButton").click();
+    await wait(() => link.href && link.href !== previousHref, 15000, "frame log CSV");
+    const csv = await fetch(link.href).then((response) => response.text());
+    return parseCsvRows(csv);
+  };
+
+  const getMinimumVisiblePairMargin = (rows, eventName = "original pair") => {
+    const byFrame = new Map();
+    rows.forEach((row) => {
+      if (row.event !== eventName || row.visible !== "true" || (row.role !== "O1" && row.role !== "O2")) {
+        return;
+      }
+      const key = row.frame + "::" + row.event;
+      const entry = byFrame.get(key) || {};
+      entry[row.role] = row;
+      byFrame.set(key, entry);
+    });
+    let best = null;
+    byFrame.forEach((entry) => {
+      if (!entry.O1 || !entry.O2) {
+        return;
+      }
+      const distance = Math.hypot(Number(entry.O2.xPx) - Number(entry.O1.xPx), Number(entry.O2.yPx) - Number(entry.O1.yPx));
+      const minDistance = Number(entry.O1.radiusPx) + Number(entry.O2.radiusPx);
+      const margin = distance - minDistance;
+      if (!best || margin < best.marginPx) {
+        best = {
+          frame: Number(entry.O1.frame),
+          movieTimeMs: Number(entry.O1.movieTimeMs),
+          distancePx: Number(distance.toFixed(3)),
+          minDistancePx: Number(minDistance.toFixed(3)),
+          marginPx: Number(margin.toFixed(3))
+        };
+      }
+    });
+    return best;
+  };
+
   await wait(() => window.launchingVideoMakerReady && document.getElementById("outputFormat"), 15000, "app ready");
 
   const commonControls = () => {
@@ -459,6 +531,35 @@ const browserProbe = String.raw`
   const billiardFrame = await sampleVideo(billiardExport.video, 1.75);
   const billiardTarget = componentBox(billiardFrame, hexToRgb(billiardExport.metadata.parameters.targetColor));
   const rightRailCenterX = billiardFrame.width - billiardTarget.radius;
+
+  const solidAudit = async (realismEnabled) => {
+    commonControls();
+    setControl("durationMs", 2800);
+    setControl("fps", 144);
+    setControl("launcherSpeed", 6500);
+    setControl("launcherVisibleMs", 2800);
+    setControl("targetVisibleMs", 2800);
+    setControl("targetTravelMs", 2800);
+    setControl("physicsEngineEnabled", true);
+    setControl("billiardRealismEnabled", realismEnabled);
+    if (!realismEnabled) {
+      setControl("billiardFriction", 0);
+      setControl("billiardRestitution", 1);
+      setControl("billiardWallRestitution", 1);
+      setControl("billiardStopSpeed", 0);
+    }
+    setControl("fileLabel", realismEnabled ? "probe-solid-realism" : "probe-solid-manual");
+    const rows = await exportFrameLogRows();
+    const minimumMargin = getMinimumVisiblePairMargin(rows);
+    return {
+      realismEnabled,
+      frameCount: new Set(rows.map((row) => row.frame)).size,
+      minimumMargin,
+      neverOverlaps: minimumMargin !== null && minimumMargin.marginPx >= -0.02
+    };
+  };
+  const solidManualAudit = await solidAudit(false);
+  const solidRealismAudit = await solidAudit(true);
 
   commonControls();
   setControl("durationMs", 3600);
@@ -665,6 +766,10 @@ const browserProbe = String.raw`
       targetCenterX: billiardTarget.centerX === null ? null : Number(billiardTarget.centerX.toFixed(2)),
       rightRailCenterX: Number(rightRailCenterX.toFixed(2)),
       stoppedBeforeRightRail: billiardTarget.centerX !== null && billiardTarget.centerX < rightRailCenterX - 8
+    },
+    billiardSolidPairs: {
+      manual: solidManualAudit,
+      realism: solidRealismAudit
     },
     singleContextBilliard: {
       sampledSec: 3.25,
