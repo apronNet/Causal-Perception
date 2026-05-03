@@ -230,6 +230,7 @@
     "railSegments",
     "crosshairBlinkEnabled",
     "crosshairBlinkMs",
+    "crosshairPostBlinkMode",
     "trajectoryEditEnabled",
     "selectedTrajectoryBall",
     "selectedTrajectoryAngle",
@@ -363,6 +364,8 @@
       "Changes: makes the crosshair blink before balls appear. During this pre-ball window the event clock has not started.",
     crosshairBlinkMs:
       "Changes: duration of the pre-ball crosshair blink. If this is long, increase Video duration so the launch still has time to play after the blink.",
+    crosshairPostBlinkMode:
+      "Changes: whether the crosshair disappears after the blink or stays visible during the launch.",
     trajectoryEditEnabled:
       "Changes: shows editable vector arrows in the preview. Move an arrow head to set that ball's trajectory; use Angle for exact numeric entry.",
     selectedTrajectoryAngle:
@@ -995,6 +998,7 @@
     railSegments: "[]",
     crosshairBlinkEnabled: false,
     crosshairBlinkMs: 600,
+    crosshairPostBlinkMode: "hide",
     trajectoryEditEnabled: false,
     selectedTrajectoryBall: "originalTarget",
     selectedTrajectoryAngle: 0,
@@ -1048,6 +1052,7 @@
   const customStartDependentControls = Array.from(document.querySelectorAll(".custom-start-dependent-control"));
   const railDependentControls = Array.from(document.querySelectorAll(".rail-dependent-control"));
   const crosshairDependentControls = Array.from(document.querySelectorAll(".crosshair-dependent-control"));
+  const crosshairBlinkDependentControls = Array.from(document.querySelectorAll(".crosshair-blink-dependent-control"));
   const trajectoryDependentControls = Array.from(document.querySelectorAll(".trajectory-dependent-control"));
   const textBoxDependentControls = Array.from(document.querySelectorAll(".text-box-dependent-control"));
   const originalPairContextLabels = Array.from(document.querySelectorAll(".original-pair-context-label"));
@@ -1415,6 +1420,7 @@
       railSegments: parseRailSegments(controls.railSegments.value),
       crosshairBlinkEnabled: controls.crosshairBlinkEnabled.checked,
       crosshairBlinkMs: Number(controls.crosshairBlinkMs.value),
+      crosshairPostBlinkMode: controls.crosshairPostBlinkMode.value,
       trajectoryEditEnabled: controls.trajectoryEditEnabled.checked,
       selectedTrajectoryBall: controls.selectedTrajectoryBall.value,
       selectedTrajectoryAngle: Number(controls.selectedTrajectoryAngle.value),
@@ -2203,7 +2209,8 @@
       crosshairX: presentationDefaults.crosshairX,
       crosshairY: presentationDefaults.crosshairY,
       crosshairBlinkEnabled: true,
-      crosshairBlinkMs: blinkMs
+      crosshairBlinkMs: blinkMs,
+      crosshairPostBlinkMode: "hide"
     };
   }
 
@@ -2694,8 +2701,8 @@
     for (let pairNumber = 2; pairNumber <= pairCount; pairNumber += 1) {
       const snapshot = normalizeContextPairSnapshot(snapshots[pairNumber - 2], state, pairNumber - 1);
       movementCards.push(`
-        <div class="control-subgroup context-pair-editor">
-          <h3 class="subgroup-title">Context ${pairNumber} movement</h3>
+        <details class="control-subgroup collapsible-subgroup context-pair-editor">
+          <summary><h3 class="subgroup-title">Context ${pairNumber} movement</h3></summary>
           <div class="control-subgrid">
             ${renderContextRange(pairNumber, "Movement", "leadInMs", "Lead-in", snapshot, "int", 0, 1800, 10)}
             ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "O1 speed", snapshot, "float1", 80, 6500, 1)}
@@ -2717,18 +2724,18 @@
             ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
           </div>
-        </div>`);
+        </details>`);
 
       positionCards.push(`
-        <div class="control-subgroup context-pair-editor">
-          <h3 class="subgroup-title">Context ${pairNumber} position</h3>
+        <details class="control-subgroup collapsible-subgroup context-pair-editor">
+          <summary><h3 class="subgroup-title">Context ${pairNumber} position</h3></summary>
           <div class="control-subgrid">
             ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
             ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
             ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
             ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
           </div>
-        </div>`);
+        </details>`);
 
       colorCards.push(`
         <div class="control-subgroup context-pair-editor">
@@ -2953,8 +2960,12 @@
 
   function syncCrosshairControlVisibility() {
     const enabled = Boolean(controls.crosshairEnabled.checked);
+    const blinkEnabled = enabled && Boolean(controls.crosshairBlinkEnabled.checked);
     crosshairDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
+    });
+    crosshairBlinkDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !blinkEnabled);
     });
   }
 
@@ -4488,6 +4499,46 @@
     };
   }
 
+  function getManualPostCollisionBodies(geometry, state) {
+    const launcherMass = getEqualDensityDiscMass(geometry.radius);
+    const targetMass = getEqualDensityDiscMass(geometry.radius);
+    return {
+      launcher: {
+        id: "launcher",
+        x: geometry.launcherStopX,
+        y: geometry.launcherStopY,
+        vx: geometry.approachUnitX * geometry.launcherPostSpeed,
+        vy: geometry.approachUnitY * geometry.launcherPostSpeed,
+        radius: geometry.radius,
+        mass: launcherMass,
+        railBounces: 0
+      },
+      target: {
+        id: "target",
+        x: geometry.targetBaseX,
+        y: geometry.targetBaseY,
+        vx: geometry.targetUnitX * geometry.targetSpeed,
+        vy: geometry.targetUnitY * geometry.targetSpeed,
+        radius: geometry.radius,
+        mass: targetMass,
+        railBounces: 0
+      }
+    };
+  }
+
+  function getAdaptiveBilliardStepSec(bodies, remainingSec) {
+    const maxSpeed = Math.max(
+      Math.hypot(bodies.launcher.vx, bodies.launcher.vy),
+      Math.hypot(bodies.target.vx, bodies.target.vy)
+    );
+    const minRadius = Math.max(1, Math.min(bodies.launcher.radius, bodies.target.radius));
+    if (maxSpeed <= 0.001) {
+      return Math.min(BILLIARD_REALISM.stepSec, remainingSec);
+    }
+    const solidStep = clamp((minRadius * 0.45) / maxSpeed, 1 / 300, BILLIARD_REALISM.stepSec);
+    return Math.min(solidStep, remainingSec);
+  }
+
   function advanceRealisticBodyPosition(body, stepSec, friction, stopSpeed) {
     const speed = Math.hypot(body.vx, body.vy);
     if (speed <= stopSpeed || speed <= 0.001 || stepSec <= 0) {
@@ -4527,6 +4578,34 @@
     }
   }
 
+  function getBilliardBounds(state, geometry) {
+    const radius = Math.max(1, Number(geometry?.radius) || PHYSICS_ENGINE.baseRadius);
+    const bounds = {
+      left: 0,
+      right: STAGE_WIDTH,
+      top: 0,
+      bottom: STAGE_HEIGHT
+    };
+    if (!state || state.contextMode === "none") {
+      return bounds;
+    }
+    const pairCount = getContextPairCount(state);
+    const preferredSpacing = Math.abs(Number(state.contextYOffset)) || 112;
+    const spacing = getAutoContextPairSpacing(radius, pairCount, preferredSpacing);
+    const halfBand = Math.max(radius + 2, spacing / 2 - TUNNEL_ROW_CLEARANCE);
+    const laneY = Number(geometry?.laneY);
+    if (!Number.isFinite(laneY)) {
+      return bounds;
+    }
+    bounds.top = Math.max(0, laneY - halfBand);
+    bounds.bottom = Math.min(STAGE_HEIGHT, laneY + halfBand);
+    if (bounds.bottom - bounds.top < radius * 2) {
+      bounds.top = clamp(laneY - radius, 0, Math.max(0, STAGE_HEIGHT - radius * 2));
+      bounds.bottom = bounds.top + radius * 2;
+    }
+    return bounds;
+  }
+
   function normalizeRadians(value) {
     let angle = Number(value) || 0;
     while (angle > Math.PI) {
@@ -4558,29 +4637,33 @@
     body.vy = rotated.y;
   }
 
-  function applyRealisticRailBounce(body, state, seed, elapsedMs, events) {
+  function applyRealisticRailBounce(body, state, seed, elapsedMs, events, bounds = getBilliardBounds(state, null)) {
     const radius = body.radius;
     const wallRestitution = getBilliardWallRestitution(state);
     let hitX = 0;
     let hitY = 0;
-    if (body.x < radius) {
-      body.x = radius;
+    const left = bounds.left + radius;
+    const right = bounds.right - radius;
+    const top = bounds.top + radius;
+    const bottom = bounds.bottom - radius;
+    if (body.x < left) {
+      body.x = left;
       body.vx = Math.abs(body.vx) * wallRestitution;
       body.vy *= wallRestitution;
       hitX = -1;
-    } else if (body.x > STAGE_WIDTH - radius) {
-      body.x = STAGE_WIDTH - radius;
+    } else if (body.x > right) {
+      body.x = right;
       body.vx = -Math.abs(body.vx) * wallRestitution;
       body.vy *= wallRestitution;
       hitX = 1;
     }
-    if (body.y < radius) {
-      body.y = radius;
+    if (body.y < top) {
+      body.y = top;
       body.vy = Math.abs(body.vy) * wallRestitution;
       body.vx *= wallRestitution;
       hitY = -1;
-    } else if (body.y > STAGE_HEIGHT - radius) {
-      body.y = STAGE_HEIGHT - radius;
+    } else if (body.y > bottom) {
+      body.y = bottom;
       body.vy = -Math.abs(body.vy) * wallRestitution;
       body.vx *= wallRestitution;
       hitY = 1;
@@ -4603,7 +4686,16 @@
     return true;
   }
 
-  function applyRealisticPairCollision(launcher, target, state, seed, elapsedMs, events, lastCollisionElapsedMs) {
+  function applyRealisticPairCollision(
+    launcher,
+    target,
+    state,
+    seed,
+    elapsedMs,
+    events,
+    lastCollisionElapsedMs,
+    options = {}
+  ) {
     const dx = target.x - launcher.x;
     const dy = target.y - launcher.y;
     const distance = Math.max(0.001, Math.hypot(dx, dy));
@@ -4621,11 +4713,13 @@
       return lastCollisionElapsedMs;
     }
 
-    const correction = overlap / 2 + 0.01;
-    launcher.x -= nx * correction;
-    launcher.y -= ny * correction;
-    target.x += nx * correction;
-    target.y += ny * correction;
+    if (overlap > 0) {
+      const correction = overlap / 2 + 0.01;
+      launcher.x -= nx * correction;
+      launcher.y -= ny * correction;
+      target.x += nx * correction;
+      target.y += ny * correction;
+    }
 
     if (elapsedMs - lastCollisionElapsedMs < 65) {
       return lastCollisionElapsedMs;
@@ -4639,13 +4733,15 @@
     target.vx += (impulse / target.mass) * nx;
     target.vy += (impulse / target.mass) * ny;
 
-    const scatter = getRealismScatterRadians(seed, `recollision-${Math.round(elapsedMs)}`, BILLIARD_REALISM.recollisionScatterDeg);
-    const launcherVelocity = rotateVector(launcher.vx, launcher.vy, -scatter * 0.55);
-    const targetVelocity = rotateVector(target.vx, target.vy, scatter);
-    launcher.vx = launcherVelocity.x;
-    launcher.vy = launcherVelocity.y;
-    target.vx = targetVelocity.x;
-    target.vy = targetVelocity.y;
+    if (options.scatter !== false) {
+      const scatter = getRealismScatterRadians(seed, `recollision-${Math.round(elapsedMs)}`, BILLIARD_REALISM.recollisionScatterDeg);
+      const launcherVelocity = rotateVector(launcher.vx, launcher.vy, -scatter * 0.55);
+      const targetVelocity = rotateVector(target.vx, target.vy, scatter);
+      launcher.vx = launcherVelocity.x;
+      launcher.vy = launcherVelocity.y;
+      target.vx = targetVelocity.x;
+      target.vy = targetVelocity.y;
+    }
     events?.push({ type: "recollision", body: "pair", elapsedMs });
     return elapsedMs;
   }
@@ -4653,19 +4749,21 @@
   function advanceRealisticBilliardPair(geometry, elapsedMs, state, options = {}) {
     const maxElapsedMs = Math.max(0, Number(elapsedMs) || 0);
     const seed = getBilliardRealismSeed(state, geometry);
-    const bodies = getRealisticPostCollisionBodies(geometry, state);
+    const useRealism = options.realism !== false;
+    const bodies = useRealism ? getRealisticPostCollisionBodies(geometry, state) : getManualPostCollisionBodies(geometry, state);
     const friction = getBilliardFriction(state);
     const stopSpeed = getBilliardStopSpeed(state);
     const events = [];
+    const bounds = getBilliardBounds(state, geometry);
     let elapsedSec = 0;
     let lastPairCollisionElapsedMs = -Infinity;
     let stepCount = 0;
 
     const requestedStepCount = Math.ceil((maxElapsedMs / 1000) / BILLIARD_REALISM.stepSec) + 1;
-    const maxStepCount = Math.max(BILLIARD_REALISM.maxSteps, requestedStepCount);
+    const maxStepCount = Math.max(BILLIARD_REALISM.maxSteps, requestedStepCount * 3);
     while (elapsedSec * 1000 < maxElapsedMs - 0.001 && stepCount < maxStepCount) {
       const remainingSec = maxElapsedMs / 1000 - elapsedSec;
-      const stepSec = Math.min(BILLIARD_REALISM.stepSec, remainingSec);
+      const stepSec = getAdaptiveBilliardStepSec(bodies, remainingSec);
       elapsedSec += stepSec;
       const eventElapsedMs = elapsedSec * 1000;
       advanceRealisticBodyPosition(bodies.launcher, stepSec, friction, stopSpeed);
@@ -4675,19 +4773,21 @@
         state,
         seed,
         eventElapsedMs,
-        options.collectEvents ? events : null
+        options.collectEvents ? events : null,
+        bounds
       );
       const targetRail = applyRealisticRailBounce(
         bodies.target,
         state,
         seed,
         eventElapsedMs,
-        options.collectEvents ? events : null
+        options.collectEvents ? events : null,
+        bounds
       );
-      if (launcherRail) {
+      if (launcherRail && useRealism) {
         steerBankedVelocityToward(bodies.launcher, bodies.target, seed, eventElapsedMs);
       }
-      if (targetRail) {
+      if (targetRail && useRealism) {
         steerBankedVelocityToward(bodies.target, bodies.launcher, seed, eventElapsedMs);
       }
       lastPairCollisionElapsedMs = applyRealisticPairCollision(
@@ -4697,7 +4797,8 @@
         seed,
         eventElapsedMs,
         options.collectEvents ? events : null,
-        lastPairCollisionElapsedMs
+        lastPairCollisionElapsedMs,
+        { scatter: useRealism }
       );
       stepCount += 1;
 
@@ -4709,10 +4810,10 @@
       }
     }
 
-    bodies.launcher.x = clamp(bodies.launcher.x, bodies.launcher.radius, STAGE_WIDTH - bodies.launcher.radius);
-    bodies.launcher.y = clamp(bodies.launcher.y, bodies.launcher.radius, STAGE_HEIGHT - bodies.launcher.radius);
-    bodies.target.x = clamp(bodies.target.x, bodies.target.radius, STAGE_WIDTH - bodies.target.radius);
-    bodies.target.y = clamp(bodies.target.y, bodies.target.radius, STAGE_HEIGHT - bodies.target.radius);
+    bodies.launcher.x = clamp(bodies.launcher.x, bounds.left + bodies.launcher.radius, bounds.right - bodies.launcher.radius);
+    bodies.launcher.y = clamp(bodies.launcher.y, bounds.top + bodies.launcher.radius, bounds.bottom - bodies.launcher.radius);
+    bodies.target.x = clamp(bodies.target.x, bounds.left + bodies.target.radius, bounds.right - bodies.target.radius);
+    bodies.target.y = clamp(bodies.target.y, bounds.top + bodies.target.radius, bounds.bottom - bodies.target.radius);
     return options.collectEvents ? { ...bodies, events } : bodies;
   }
 
@@ -5327,33 +5428,11 @@
     let targetY = geometry.targetBaseY;
     if (state.physicsEngineEnabled && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
-      const pairBodies = state.billiardRealismEnabled ? advanceRealisticBilliardPair(geometry, targetElapsed, state) : null;
-      const launcherBody =
-        pairBodies?.launcher ||
-        advanceBilliardBody(
-          {
-            x: geometry.launcherStopX,
-            y: geometry.launcherStopY,
-            vx: geometry.approachUnitX * geometry.launcherPostSpeed,
-            vy: geometry.approachUnitY * geometry.launcherPostSpeed,
-            radius: geometry.radius
-          },
-          targetElapsed,
-          state
-        );
-      const targetBody =
-        pairBodies?.target ||
-        advanceBilliardBody(
-          {
-            x: geometry.targetBaseX,
-            y: geometry.targetBaseY,
-            vx: geometry.targetUnitX * geometry.targetSpeed,
-            vy: geometry.targetUnitY * geometry.targetSpeed,
-            radius: geometry.radius
-          },
-          targetElapsed,
-          state
-        );
+      const pairBodies = advanceRealisticBilliardPair(geometry, targetElapsed, state, {
+        realism: state.billiardRealismEnabled
+      });
+      const launcherBody = pairBodies.launcher;
+      const targetBody = pairBodies.target;
       launcherX = launcherBody.x;
       launcherY = launcherBody.y;
       targetX = targetBody.x;
@@ -5426,33 +5505,11 @@
 
     if (eventState.physicsEngineEnabled && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
-      const pairBodies = eventState.billiardRealismEnabled ? advanceRealisticBilliardPair(geometry, targetElapsed, eventState) : null;
-      const launcherBody =
-        pairBodies?.launcher ||
-        advanceBilliardBody(
-          {
-            x: geometry.launcherStopX,
-            y: geometry.launcherStopY,
-            vx: geometry.approachUnitX * geometry.launcherPostSpeed,
-            vy: geometry.approachUnitY * geometry.launcherPostSpeed,
-            radius: geometry.radius
-          },
-          targetElapsed,
-          eventState
-        );
-      const targetBody =
-        pairBodies?.target ||
-        advanceBilliardBody(
-          {
-            x: geometry.targetBaseX,
-            y: geometry.targetBaseY,
-            vx: geometry.targetUnitX * geometry.targetSpeed,
-            vy: geometry.targetUnitY * geometry.targetSpeed,
-            radius: geometry.radius
-          },
-          targetElapsed,
-          eventState
-        );
+      const pairBodies = advanceRealisticBilliardPair(geometry, targetElapsed, eventState, {
+        realism: eventState.billiardRealismEnabled
+      });
+      const launcherBody = pairBodies.launcher;
+      const targetBody = pairBodies.target;
       launcherX = launcherBody.x;
       launcherY = launcherBody.y;
       targetX = targetBody.x;
@@ -6255,6 +6312,10 @@
     return Math.floor(t / 120) % 2 === 0;
   }
 
+  function shouldDrawCrosshairAfterBlink(state) {
+    return !state.crosshairBlinkEnabled || state.crosshairPostBlinkMode === "stay";
+  }
+
   // Single render entry point. Preview and export both call this, so timing cues stay aligned.
   function drawFrame(state, t, drawCtx) {
     if (drawCtx === ctx) {
@@ -6291,7 +6352,9 @@
     }
 
     drawFixation(drawCtx, state);
-    drawCrosshairFeature(drawCtx, state, 1);
+    if (shouldDrawCrosshairAfterBlink(state)) {
+      drawCrosshairFeature(drawCtx, state, 1);
+    }
     drawTextBoxFeature(drawCtx, state);
 
     if (drawCtx === ctx) {
@@ -7611,7 +7674,10 @@
       return [];
     }
 
-    return advanceRealisticBilliardPair(geometry, simulationLimitMs, eventState, { collectEvents: true }).events
+    return advanceRealisticBilliardPair(geometry, simulationLimitMs, eventState, {
+      collectEvents: true,
+      realism: eventState.billiardRealismEnabled
+    }).events
       .filter((event) => {
         if (event.type === "rail" && event.body === "launcher") {
           return event.elapsedMs <= launcherElapsedLimitMs;
@@ -7639,43 +7705,7 @@
     if (!eventState.physicsEngineEnabled || baseMovieTimeMs >= state.durationMs) {
       return [];
     }
-    if (eventState.billiardRealismEnabled) {
-      return getRealisticBilliardSoundEvents(eventState, geometry, state, baseMovieTimeMs, labelPrefix, scopePrefix);
-    }
-
-    const movieRemainingMs = Math.max(0, state.durationMs - baseMovieTimeMs);
-    const launcherElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.launcherVisibleMs)));
-    const targetElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.targetVisibleMs)));
-    return [
-      ...getBilliardWallSoundEventsForBody(
-        {
-          x: geometry.launcherStopX,
-          y: geometry.launcherStopY,
-          vx: geometry.approachUnitX * geometry.launcherPostSpeed,
-          vy: geometry.approachUnitY * geometry.launcherPostSpeed,
-          radius: geometry.radius
-        },
-        eventState,
-        baseMovieTimeMs,
-        launcherElapsedLimitMs,
-        `${labelPrefix} O1 rail collision`,
-        `${scopePrefix}LauncherRail`
-      ),
-      ...getBilliardWallSoundEventsForBody(
-        {
-          x: geometry.targetBaseX,
-          y: geometry.targetBaseY,
-          vx: geometry.targetUnitX * geometry.targetSpeed,
-          vy: geometry.targetUnitY * geometry.targetSpeed,
-          radius: geometry.radius
-        },
-        eventState,
-        baseMovieTimeMs,
-        targetElapsedLimitMs,
-        `${labelPrefix} O2 rail collision`,
-        `${scopePrefix}TargetRail`
-      )
-    ];
+    return getRealisticBilliardSoundEvents(eventState, geometry, state, baseMovieTimeMs, labelPrefix, scopePrefix);
   }
 
   function getImpactSoundEvents(state) {
@@ -8089,6 +8119,7 @@
       railSegments: JSON.stringify(getRailSegments(state).slice(1)),
       crosshairBlinkEnabled: state.crosshairBlinkEnabled,
       crosshairBlinkMs: state.crosshairBlinkMs,
+      crosshairPostBlinkMode: state.crosshairPostBlinkMode,
       fractureEnabled: state.fractureEnabled,
       contextFractureEnabled: state.contextFractureEnabled,
       fractureTargets: JSON.stringify(state.fractureTargets),
@@ -8550,6 +8581,11 @@
       railSegments: readConditionParameter(parameters, "railSegments", baseState.railSegments),
       crosshairBlinkEnabled: readConditionParameter(parameters, "crosshairBlinkEnabled", baseState.crosshairBlinkEnabled),
       crosshairBlinkMs: readConditionParameter(parameters, "crosshairBlinkMs", baseState.crosshairBlinkMs),
+      crosshairPostBlinkMode: readConditionParameter(
+        parameters,
+        "crosshairPostBlinkMode",
+        baseState.crosshairPostBlinkMode
+      ),
       trajectoryEditEnabled: readConditionParameter(parameters, "trajectoryEditEnabled", baseState.trajectoryEditEnabled),
       selectedTrajectoryBall: readConditionParameter(parameters, "selectedTrajectoryBall", baseState.selectedTrajectoryBall),
       selectedTrajectoryAngle: readConditionParameter(parameters, "selectedTrajectoryAngle", baseState.selectedTrajectoryAngle),
@@ -8753,6 +8789,7 @@
       railSegments: JSON.stringify(condition.parameters.railSegments || []),
       crosshairBlinkEnabled: condition.parameters.crosshairBlinkEnabled,
       crosshairBlinkMs: condition.parameters.crosshairBlinkMs,
+      crosshairPostBlinkMode: condition.parameters.crosshairPostBlinkMode,
       fractureEnabled: condition.parameters.fractureEnabled,
       contextFractureEnabled: condition.parameters.contextFractureEnabled,
       fractureTargets: JSON.stringify(condition.parameters.fractureTargets || {}),
@@ -8968,6 +9005,7 @@
         railSegments: condition.railSegments,
         crosshairBlinkEnabled: condition.crosshairBlinkEnabled,
         crosshairBlinkMs: condition.crosshairBlinkMs,
+        crosshairPostBlinkMode: condition.crosshairPostBlinkMode,
         trajectoryEditEnabled: condition.trajectoryEditEnabled,
         selectedTrajectoryBall: condition.selectedTrajectoryBall,
         selectedTrajectoryAngle: condition.selectedTrajectoryAngle,

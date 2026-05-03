@@ -179,8 +179,8 @@
                   </label>
                 </div>
               </div>
-              <div class="control-subgroup context-dependent-control">
-                <h3 class="subgroup-title">Context 1 movement</h3>
+              <details class="control-subgroup collapsible-subgroup context-dependent-control">
+                <summary><h3 class="subgroup-title">Context 1 movement</h3></summary>
                 <div class="control-subgrid">
                   <label class="field">
                     <span>Lead-in</span>
@@ -251,7 +251,7 @@
                     <output data-for="contextTargetVisibleMs"></output>
                   </label>
                 </div>
-              </div>
+              </details>
               <div id="contextMovementPairList" class="context-pair-list context-dependent-control"></div>
             </div>
           </section>
@@ -305,8 +305,8 @@
                   </label>
                 </div>
               </div>
-              <div class="control-subgroup context-dependent-control">
-                <h3 class="subgroup-title">Context 1 position</h3>
+              <details class="control-subgroup collapsible-subgroup context-dependent-control">
+                <summary><h3 class="subgroup-title">Context 1 position</h3></summary>
                 <div class="control-subgrid">
                   <input id="contextYOffset" type="hidden" />
                   <label class="field">
@@ -329,7 +329,7 @@
                     <output data-for="contextOccluderWidth"></output>
                   </label>
                 </div>
-              </div>
+              </details>
               <div id="contextPositionPairList" class="context-pair-list context-dependent-control"></div>
               <label class="field checkbox-field custom-start-dependent-control is-retracted">
                 <input id="customStartKeepRowsHorizontal" type="checkbox" />
@@ -491,6 +491,14 @@
                   <span>Blink time</span>
                   <input id="crosshairBlinkMs" data-format="ms" min="100" max="3000" step="50" type="range" />
                   <output data-for="crosshairBlinkMs"></output>
+                </label>
+                <label class="field wide-choice-field crosshair-blink-dependent-control is-retracted">
+                  <span>After blink</span>
+                  <input id="crosshairPostBlinkMode" type="hidden" value="hide" />
+                  <span class="choice-row two-choice-row" role="group" aria-label="Crosshair after blink">
+                    <button class="choice-button" data-choice-for="crosshairPostBlinkMode" data-choice-value="hide" type="button">Disappear</button>
+                    <button class="choice-button" data-choice-for="crosshairPostBlinkMode" data-choice-value="stay" type="button">Stay</button>
+                  </span>
                 </label>
                 <label class="field checkbox-field">
                   <input id="textBoxEnabled" type="checkbox" />

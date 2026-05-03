@@ -431,6 +431,7 @@ h3 {
 .custom-start-dependent-control.is-retracted,
 .rail-dependent-control.is-retracted,
 .crosshair-dependent-control.is-retracted,
+.crosshair-blink-dependent-control.is-retracted,
 .trajectory-dependent-control.is-retracted,
 .text-box-dependent-control.is-retracted,
 .billiard-dependent-control.is-retracted,
@@ -513,6 +514,18 @@ h3 {
   color: var(--paper);
 }
 
+.choice-button:not(.is-active):hover {
+  background: var(--paper);
+  border-color: var(--accent-dark);
+  color: var(--ink);
+}
+
+.choice-button.is-active:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
 .control-subgroup {
   grid-column: 1 / -1;
   display: grid;
@@ -520,6 +533,46 @@ h3 {
   padding: 5px;
   border: 1px solid var(--line);
   background: var(--paper-soft);
+}
+
+.collapsible-subgroup {
+  gap: 0;
+  padding: 0;
+}
+
+.collapsible-subgroup > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-height: 2.35rem;
+  padding: 5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.collapsible-subgroup > summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-subgroup > summary::after {
+  content: "+";
+  color: var(--accent-dark);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.collapsible-subgroup[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.collapsible-subgroup[open] > summary::after {
+  content: "-";
+}
+
+.collapsible-subgroup > .control-subgrid {
+  padding: 5px;
 }
 
 .billiard-header-row {
