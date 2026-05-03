@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Launching Video Maker</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111514'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23ff2f2f'/%3E%3Ccircle cx='21' cy='16' r='5' fill='%2327c76f'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=20260503-sequence" />
+    <link rel="stylesheet" href="styles.css?v=20260503-starting-position" />
   </head>
   <body>
     <div class="page-shell">
@@ -103,12 +103,13 @@
 
           <section class="panel-block">
             <div class="section-heading movement-heading">
-              <h2>03 Movement</h2>
+              <h2>03 Starting Position and Movement</h2>
               <div class="movement-header-controls">
-                <label class="field checkbox-field">
+                <label class="field checkbox-field manual-edit-checkbox-field">
                   <input id="trajectoryEditEnabled" type="checkbox" />
-                  <span>Individual trajectories</span>
+                  <span>Manually adjust starting positions and trajectories</span>
                 </label>
+                <input id="customStartEnabled" type="checkbox" hidden />
               </div>
             </div>
             <div class="control-grid">
@@ -259,34 +260,8 @@
                 </div>
               </details>
               <div id="contextMovementPairList" class="context-pair-list context-dependent-control"></div>
-              <label class="field trajectory-dependent-control trajectory-selected-field is-retracted">
-                <span>Selected trajectory</span>
-                <input id="selectedTrajectoryBall" data-format="trajectoryTarget" type="hidden" value="originalTarget" />
-                <output data-for="selectedTrajectoryBall"></output>
-              </label>
-              <label class="field trajectory-dependent-control is-retracted">
-                <span>Angle</span>
-                <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
-                <output data-for="selectedTrajectoryAngle"></output>
-              </label>
-              <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
-              <input id="trajectoryOverrides" type="hidden" value="{}" />
-            </div>
-          </section>
-
-          <section class="panel-block">
-            <div class="section-heading position-heading">
-              <h2>04 Position</h2>
-              <div class="position-header-controls">
-                <label class="field checkbox-field">
-                  <input id="customStartEnabled" type="checkbox" />
-                  <span>Move start points</span>
-                </label>
-              </div>
-            </div>
-            <div class="control-grid">
               <div class="control-subgroup">
-                <h3 class="subgroup-title original-pair-context-label">Original pair</h3>
+                <h3 class="subgroup-title original-pair-context-label">Original pair starting position</h3>
                 <div class="control-subgrid">
                   <label class="field">
                     <span>Radius</span>
@@ -310,7 +285,7 @@
                 </div>
               </div>
               <details class="control-subgroup collapsible-subgroup context-dependent-control">
-                <summary><h3 class="subgroup-title">Context 1 position</h3></summary>
+                <summary><h3 class="subgroup-title">Context 1 starting position</h3></summary>
                 <div class="control-subgrid">
                   <input id="contextYOffset" type="hidden" />
                   <label class="field">
@@ -335,14 +310,31 @@
                 </div>
               </details>
               <div id="contextPositionPairList" class="context-pair-list context-dependent-control"></div>
-              <label class="field checkbox-field custom-start-dependent-control is-retracted">
-                <input id="customStartKeepRowsHorizontal" type="checkbox" />
-                <span>Keep each set horizontal</span>
-              </label>
-              <label class="field checkbox-field custom-start-dependent-control is-retracted">
-                <input id="customStartAlignStartsVertical" type="checkbox" />
-                <span>Align starting balls vertically</span>
-              </label>
+              <div class="control-subgroup trajectory-dependent-control custom-start-dependent-control is-retracted">
+                <h3 class="subgroup-title">Manual editing</h3>
+                <div class="control-subgrid">
+                  <label class="field trajectory-selected-field">
+                    <span>Selected trajectory</span>
+                    <input id="selectedTrajectoryBall" data-format="trajectoryTarget" type="hidden" value="originalTarget" />
+                    <output data-for="selectedTrajectoryBall"></output>
+                  </label>
+                  <label class="field">
+                    <span>Angle</span>
+                    <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
+                    <output data-for="selectedTrajectoryAngle"></output>
+                  </label>
+                  <label class="field checkbox-field">
+                    <input id="customStartKeepRowsHorizontal" type="checkbox" />
+                    <span>Keep each set horizontal</span>
+                  </label>
+                  <label class="field checkbox-field">
+                    <input id="customStartAlignStartsVertical" type="checkbox" />
+                    <span>Align starting balls vertically</span>
+                  </label>
+                </div>
+              </div>
+              <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
+              <input id="trajectoryOverrides" type="hidden" value="{}" />
               <input id="originalLauncherStartX" type="hidden" />
               <input id="originalLauncherStartY" type="hidden" />
               <input id="originalTargetStartX" type="hidden" />
@@ -357,7 +349,7 @@
           </section>
 
           <details class="panel-block collapsible-panel special-panel">
-            <summary><h2>05 Special features</h2></summary>
+            <summary><h2>04 Special features</h2></summary>
             <div class="panel-content">
               <div class="control-grid">
                 <div class="control-subgroup">
@@ -559,7 +551,7 @@
           </details>
 
           <details class="panel-block collapsible-panel background-panel" data-default-collapsed>
-            <summary><h2>06 Background</h2></summary>
+            <summary><h2>05 Background</h2></summary>
             <div class="panel-content">
               <div class="control-grid">
                 <label class="field triad-choice-field">
@@ -589,7 +581,7 @@
           </details>
 
           <details class="panel-block collapsible-panel color-panel">
-            <summary><h2>07 Color</h2></summary>
+            <summary><h2>06 Color</h2></summary>
             <div class="panel-content">
             <div class="control-grid">
               <label class="field">
@@ -647,7 +639,7 @@
 
           <details class="panel-block collapsible-panel psychopy-panel">
             <summary>
-              <h2>08 PsychoPy / Export</h2>
+              <h2>07 PsychoPy / Export</h2>
               <span id="statusText" class="status-text export-summary-status" aria-live="polite">Ready.</span>
               <button id="sequenceAddClipButton" class="secondary-button summary-compose-button" type="button">Add clip</button>
               <button id="exportButton" class="accent-button summary-export-button" type="button">Export video</button>
@@ -845,6 +837,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-sequence"></script>
+    <script src="app.js?v=20260503-starting-position"></script>
   </body>
 </html>

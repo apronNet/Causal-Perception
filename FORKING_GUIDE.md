@@ -102,8 +102,7 @@ Keep controls near the conceptual feature they change.
 
 | Section | Owns | Does not own |
 | --- | --- | --- |
-| Movement | Lead-in, speed, acceleration, delay, O2 angle, individual trajectories, travel time, visibility timing, after-contact behavior. | Contact geometry or object radius. |
-| Position | Radius, overlap/gap, tunnels, move-start editing. | Hidden whole-stimulus x/y offsets; keep those internal unless a specific experiment needs them exposed. |
+| Starting Position and Movement | Radius, overlap/gap, tunnels, manual start points, trajectory vectors, lead-in, speed, acceleration, delay, O2 angle, travel time, visibility timing, and after-contact behavior. | Hidden whole-stimulus x/y offsets; keep those internal unless a specific experiment needs them exposed. |
 | Context | Number of added pairs, context timing, context direction, and copied context-pair state. | Global export behavior. |
 | Special features | Participant-visible cues such as grouping, marker, contact guide, fracture, Billiard, crosshair, blink, rail, text, and sound. | Ordinary motion parameters that define the base launch. |
 | PsychoPy / Export | File format, FPS, aspect ratio, bitrate, Add clip, CSV, JSON, frame log, and condition sets. | Participant-visible stimulus design. |
@@ -256,7 +255,7 @@ Use this update rule:
 
 Examples:
 
-- Moving **Individual trajectories** into Movement requires README and this guide to describe trajectories as movement controls.
+- Combining manual start-point and trajectory editing requires README and this guide to describe one visible editing switch while preserving both state fields.
 - Hiding x/y offsets while keeping the hidden fields requires this guide to say that whole-stimulus offsets are internal unless a specific experiment needs them exposed.
 - Adding a new output artifact requires README, developer notes, and the forking guide to say when to use it and how it relates to the movie.
 

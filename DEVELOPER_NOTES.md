@@ -94,7 +94,7 @@ Keep the documentation updated with every project adjustment, including changes 
 - If a code path changes, update the relevant checklist in this file.
 - If a feature changes what participants see or hear, include its experimental meaning, not only its UI label.
 
-Current ownership reminder: **Individual trajectories** belongs to Movement. **Move start points** belongs to Position. Whole-stimulus x/y offsets are internal hidden fields unless a specific experiment needs them exposed.
+Current ownership reminder: **Manually adjust starting positions and trajectories** is one visible switch in Starting Position and Movement. Keep the separate `trajectoryEditEnabled` and `customStartEnabled` state fields for preset, metadata, and condition compatibility. Whole-stimulus x/y offsets are internal hidden fields unless a specific experiment needs them exposed.
 
 ## Utility Interface Benchmarks
 

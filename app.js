@@ -372,7 +372,7 @@
     crosshairPostBlinkMode:
       "Changes: whether the crosshair disappears after the blink or stays visible during the launch.",
     trajectoryEditEnabled:
-      "Changes: shows editable vector arrows in the preview. Move an arrow head to set that ball's trajectory; use Angle for exact numeric entry.",
+      "Changes: shows editable start points and trajectory vectors in the preview. Use Angle for exact trajectory entry.",
     selectedTrajectoryAngle:
       "Changes: angle of the selected trajectory vector. Moving a preview arrow updates this value; 0 follows the default path.",
     textBoxEnabled: "Changes: adds a simple text label to preview and export.",
@@ -381,7 +381,8 @@
     textBoxSize: "Changes: text size in pixels.",
     textBoxX: "Changes: horizontal position of the text box.",
     textBoxY: "Changes: vertical position of the text box.",
-    customStartEnabled: "Changes: enables start-point editing in the preview. Use for: placing O1 and O2 start positions manually; exports use the positions but hide the rings.",
+    customStartEnabled:
+      "Changes: enables the same manual start-point and trajectory editing switch. Exports use these positions but hide editing handles.",
     customStartKeepRowsHorizontal: "Changes: keeps each event row level while moving start points. Use for: O1 and O2 share one y-position within each pair.",
     customStartAlignStartsVertical: "Changes: keeps O1 starts on one vertical line when context is shown.",
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
@@ -2863,7 +2864,7 @@
 
       positionCards.push(`
         <details class="control-subgroup collapsible-subgroup context-pair-editor">
-          <summary><h3 class="subgroup-title">Context ${pairNumber} position</h3></summary>
+          <summary><h3 class="subgroup-title">Context ${pairNumber} starting position</h3></summary>
           <div class="control-subgrid">
             ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
             ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
@@ -3101,6 +3102,45 @@
       startDragTarget = null;
       hideParameterTooltip();
     }
+  }
+
+  function syncManualStartTrajectoryControls() {
+    const enabled = Boolean(controls.trajectoryEditEnabled.checked || controls.customStartEnabled.checked);
+    controls.trajectoryEditEnabled.checked = enabled;
+    controls.customStartEnabled.checked = enabled;
+    return enabled;
+  }
+
+  function applyManualStartTrajectoryEditing(enabled) {
+    activePresetKey = null;
+    const isEnabled = Boolean(enabled);
+    controls.trajectoryEditEnabled.checked = isEnabled;
+    controls.customStartEnabled.checked = isEnabled;
+    const billiardWasOn = Boolean(isEnabled && controls.physicsEngineEnabled.checked);
+    if (billiardWasOn) {
+      controls.physicsEngineEnabled.checked = false;
+      syncBilliardControlVisibility();
+    }
+    if (isEnabled) {
+      controls.customStartKeepRowsHorizontal.checked = true;
+      controls.customStartAlignStartsVertical.checked = true;
+      initializeCustomStartPositions();
+      enforceCustomStartConstraints();
+    } else {
+      resetCustomStartPositionsToAutomatic();
+    }
+    syncTrajectoryControlVisibility();
+    syncStartDragUi();
+    syncSpecialDragUi();
+    updateOutputs();
+    refreshText();
+    updateCompatibilityNotice(cloneState());
+    statusText.textContent = isEnabled
+      ? billiardWasOn
+        ? "Manual editing on; Billiard turned off."
+        : "Move start points or trajectory vectors in the preview."
+      : READY_STATUS;
+    drawIdlePreview();
   }
 
   function syncSpecialDragUi() {
@@ -3688,6 +3728,10 @@
       }
     });
     syncAllChoiceControlButtons();
+    const manualEditingEnabled = syncManualStartTrajectoryControls();
+    if (manualEditingEnabled && controls.physicsEngineEnabled.checked) {
+      controls.physicsEngineEnabled.checked = false;
+    }
     customStartPositionsInitialized = Boolean(controls.customStartEnabled.checked);
     syncContextControlVisibility();
     syncContextPairSnapshots();
@@ -10500,25 +10544,9 @@
         });
         return;
       }
-      if (id === "trajectoryEditEnabled") {
+      if (id === "trajectoryEditEnabled" || id === "customStartEnabled") {
         control.addEventListener("change", () => {
-          activePresetKey = null;
-          const billiardWasOn = Boolean(control.checked && controls.physicsEngineEnabled.checked);
-          if (billiardWasOn) {
-            controls.physicsEngineEnabled.checked = false;
-            syncBilliardControlVisibility();
-          }
-          syncTrajectoryControlVisibility();
-          syncSpecialDragUi();
-          updateOutputs();
-          refreshText();
-          updateCompatibilityNotice(cloneState());
-          statusText.textContent = control.checked
-            ? billiardWasOn
-              ? "Individual trajectories on; Billiard turned off."
-              : "Move a trajectory vector in the preview."
-            : READY_STATUS;
-          drawIdlePreview();
+          applyManualStartTrajectoryEditing(control.checked);
         });
         return;
       }
@@ -10544,25 +10572,6 @@
           updateOutputs();
           refreshText();
           statusText.textContent = `${getTrajectoryTargetLabel(controls.selectedTrajectoryBall.value)} trajectory updated.`;
-          drawIdlePreview();
-        });
-        return;
-      }
-      if (id === "customStartEnabled") {
-        control.addEventListener("change", () => {
-          activePresetKey = null;
-          if (control.checked) {
-            controls.customStartKeepRowsHorizontal.checked = true;
-            controls.customStartAlignStartsVertical.checked = true;
-            initializeCustomStartPositions();
-            enforceCustomStartConstraints();
-          } else {
-            resetCustomStartPositionsToAutomatic();
-          }
-          syncStartDragUi();
-          updateOutputs();
-          refreshText();
-          statusText.textContent = control.checked ? "Start-point editing on." : READY_STATUS;
           drawIdlePreview();
         });
         return;
