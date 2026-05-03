@@ -89,6 +89,7 @@
   const summaryTargetAngle = document.getElementById("summaryTargetAngle");
   const summaryRadius = document.getElementById("summaryRadius");
   const summaryAfter = document.getElementById("summaryAfter");
+  const summaryTargetTravel = document.getElementById("summaryTargetTravel");
   const summaryLauncherVisible = document.getElementById("summaryLauncherVisible");
   const summaryTargetVisible = document.getElementById("summaryTargetVisible");
   const summaryContext = document.getElementById("summaryContext");
@@ -149,6 +150,7 @@
     "launcherBehavior",
     "targetAngle",
     "targetTravelMode",
+    "targetTravelMs",
     "launcherVisibleMs",
     "targetVisibleMs",
     "delayMs",
@@ -179,6 +181,7 @@
     "contextTargetAccel",
     "contextTargetAngle",
     "contextTargetTravelMode",
+    "contextTargetTravelMs",
     "contextLauncherVisibleMs",
     "contextTargetVisibleMs",
     "renderMode",
@@ -267,7 +270,9 @@
     launcherBehavior: "Changes: what O1 does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of O2 motion after contact. Use for: straight launch versus angled launch.",
     targetTravelMode:
-      "Changes: whether O2 keeps moving until it can leave the frame, or parks at the screen edge. O2 on-screen still controls when O2 disappears.",
+      "Legacy saved value from the old two-choice travel control. New stimuli use Travel after collision instead.",
+    targetTravelMs:
+      "Changes: how long O2 keeps moving after it starts at collision. After this time, O2 stops in place if it is still visible.",
     launcherVisibleMs:
       "Changes: how long O1 stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
     targetVisibleMs:
@@ -304,7 +309,9 @@
     contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
     contextTargetTravelMode:
-      "Changes: whether context O2 keeps moving until it can leave the frame, or parks at the screen edge. Context O2 on-screen still controls when it disappears.",
+      "Legacy saved value from the old context travel control. New stimuli use Travel after collision instead.",
+    contextTargetTravelMs:
+      "Changes: how long context O2 keeps moving after it starts at context collision. After this time, it stops in place if still visible.",
     contextLauncherVisibleMs:
       "Changes: how long context O1 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     contextTargetVisibleMs:
@@ -914,6 +921,7 @@
     launcherVisibleMs: 9000,
     targetVisibleMs: 9000,
     targetTravelMode: "continue",
+    targetTravelMs: 9000,
     contextPairCount: 1,
     contextPairSnapshots: "[]",
     contextDurationMs: 750,
@@ -931,6 +939,7 @@
     contextTargetAccel: 0,
     contextTargetAngle: controlDefaults.targetAngle,
     contextTargetTravelMode: "continue",
+    contextTargetTravelMs: 9000,
     contextLauncherVisibleMs: 9000,
     contextTargetVisibleMs: 9000,
     contactOcclusionMode: "target-front",
@@ -1292,6 +1301,7 @@
         targetAccel: normalizeSnapshotNumber(normalized.targetAccel, state.contextTargetAccel),
         targetAngle: clamp(Math.round(normalizeSnapshotNumber(normalized.targetAngle, state.contextTargetAngle)), -90, 90),
         targetTravelMode: normalizeTargetTravelMode(normalized.targetTravelMode || state.contextTargetTravelMode),
+        targetTravelMs: Math.max(0, normalizeSnapshotNumber(normalized.targetTravelMs, state.contextTargetTravelMs)),
         launcherVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.launcherVisibleMs, state.contextLauncherVisibleMs)),
         targetVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.targetVisibleMs, state.contextTargetVisibleMs)),
         launcherFractureEnabled: Boolean(normalized.launcherFractureEnabled),
@@ -1313,6 +1323,7 @@
       launcherBehavior: controls.launcherBehavior.value,
       targetAngle: Number(controls.targetAngle.value),
       targetTravelMode: normalizeTargetTravelMode(controls.targetTravelMode.value),
+      targetTravelMs: Number(controls.targetTravelMs.value),
       launcherVisibleMs: Number(controls.launcherVisibleMs.value),
       targetVisibleMs: Number(controls.targetVisibleMs.value),
       delayMs: Number(controls.delayMs.value),
@@ -1343,6 +1354,7 @@
       contextTargetAccel: Number(controls.contextTargetAccel.value),
       contextTargetAngle: Number(controls.contextTargetAngle.value),
       contextTargetTravelMode: normalizeTargetTravelMode(controls.contextTargetTravelMode.value),
+      contextTargetTravelMs: Number(controls.contextTargetTravelMs.value),
       contextLauncherVisibleMs: Number(controls.contextLauncherVisibleMs.value),
       contextTargetVisibleMs: Number(controls.contextTargetVisibleMs.value),
       renderMode: controls.renderMode.value,
@@ -1766,6 +1778,7 @@
       ["contextTargetAccel", "targetAccel"],
       ["contextTargetAngle", "targetAngle"],
       ["contextTargetTravelMode", "targetTravelMode"],
+      ["contextTargetTravelMs", "targetTravelMs"],
       ["contextLauncherVisibleMs", "launcherVisibleMs"],
       ["contextTargetVisibleMs", "targetVisibleMs"],
       ["contextFractureEnabled", "fractureEnabled"],
@@ -1844,6 +1857,7 @@
       launcherBehavior: Math.abs(collision.launcherPostSpeedRatio) <= PHYSICS_ENGINE.stopThreshold ? "stop" : "continue",
       targetAngle: 0,
       targetTravelMode: "continue",
+      targetTravelMs: Math.max(Number(state?.durationMs) || stimulusDefaults.targetTravelMs, 1800),
       delayMs: 0,
       gapPx: 0,
       contactOcclusionMode: "target-front",
@@ -1865,6 +1879,7 @@
       targetSpeedRatio: physics.targetSpeedRatio,
       targetAccel: physics.targetAccel,
       targetTravelMode: physics.targetTravelMode,
+      targetTravelMs: physics.targetTravelMs,
       launcherBehavior: physics.launcherBehavior,
       targetAngle: physics.targetAngle,
       delayMs: physics.delayMs,
@@ -1894,6 +1909,7 @@
       targetSpeedRatio: originalPhysics.targetSpeedRatio,
       targetAccel: originalPhysics.targetAccel,
       targetTravelMode: originalPhysics.targetTravelMode,
+      targetTravelMs: originalPhysics.targetTravelMs,
       launcherBehavior: originalPhysics.launcherBehavior,
       targetAngle: originalPhysics.targetAngle,
       delayMs: originalPhysics.delayMs,
@@ -1906,6 +1922,7 @@
       contextTargetSpeedRatio: contextPhysics.targetSpeedRatio,
       contextTargetAccel: contextPhysics.targetAccel,
       contextTargetTravelMode: contextPhysics.targetTravelMode,
+      contextTargetTravelMs: contextPhysics.targetTravelMs,
       contextLauncherBehavior: contextPhysics.launcherBehavior,
       contextTargetAngle: contextPhysics.targetAngle,
       contextDelayMs: contextPhysics.delayMs,
@@ -1935,6 +1952,7 @@
       targetSpeedRatio: originalPhysics.targetSpeedRatio,
       targetAccel: originalPhysics.targetAccel,
       targetTravelMode: originalPhysics.targetTravelMode,
+      targetTravelMs: originalPhysics.targetTravelMs,
       launcherBehavior: originalPhysics.launcherBehavior,
       targetAngle: originalPhysics.targetAngle,
       delayMs: originalPhysics.delayMs,
@@ -1949,6 +1967,7 @@
       contextTargetSpeedRatio: contextPhysics.targetSpeedRatio,
       contextTargetAccel: contextPhysics.targetAccel,
       contextTargetTravelMode: contextPhysics.targetTravelMode,
+      contextTargetTravelMs: contextPhysics.targetTravelMs,
       contextLauncherBehavior: contextPhysics.launcherBehavior,
       contextTargetAngle: contextPhysics.targetAngle,
       contextDelayMs: contextPhysics.delayMs,
@@ -2299,6 +2318,7 @@
       targetAccel: state.targetAccel,
       targetAngle: state.targetAngle,
       targetTravelMode: state.targetTravelMode,
+      targetTravelMs: state.targetTravelMs,
       launcherVisibleMs: state.launcherVisibleMs,
       targetVisibleMs: state.targetVisibleMs,
       launcherFractureEnabled: isFractureTargetEnabled(state, "originalLauncher"),
@@ -2508,10 +2528,7 @@
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "O2 speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
             ${renderContextRange(pairNumber, "Movement", "targetAccel", "O2 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
-            ${renderContextSelect(pairNumber, "Movement", "targetTravelMode", "O2 travel", snapshot, [
-              ["continue", "Offscreen"],
-              ["park", "Park"]
-            ])}
+            ${renderContextRange(pairNumber, "Movement", "targetTravelMs", "Travel after collision", snapshot, "ms", 0, 12000, 50)}
             ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 100, 12000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 100, 12000, 50)}
           </div>
@@ -3326,6 +3343,7 @@
       contextTargetAccel: values.contextTargetAccel ?? values.targetAccel ?? stimulusDefaults.contextTargetAccel,
       contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle,
       contextTargetTravelMode: values.contextTargetTravelMode ?? values.targetTravelMode ?? stimulusDefaults.contextTargetTravelMode,
+      contextTargetTravelMs: values.contextTargetTravelMs ?? values.targetTravelMs ?? stimulusDefaults.contextTargetTravelMs,
       contextLauncherVisibleMs:
         values.contextLauncherVisibleMs ?? values.launcherVisibleMs ?? stimulusDefaults.contextLauncherVisibleMs,
       contextTargetVisibleMs: values.contextTargetVisibleMs ?? values.targetVisibleMs ?? stimulusDefaults.contextTargetVisibleMs
@@ -3758,6 +3776,9 @@
     if (summaryAfter) {
       summaryAfter.textContent = state.physicsEngineEnabled ? "billiard" : describeLauncherBehavior(state.launcherBehavior);
     }
+    if (summaryTargetTravel) {
+      summaryTargetTravel.textContent = formatValue("ms", state.targetTravelMs);
+    }
     if (summaryLauncherVisible) {
       summaryLauncherVisible.textContent = formatValue("visibilityMs", state.launcherVisibleMs);
     }
@@ -3975,21 +3996,6 @@
     return Math.max(0, velocity * t + 0.5 * a * t * t);
   }
 
-  function freeDisplacementAt(elapsedMs, initialVelocity, acceleration) {
-    const t = Math.max(0, elapsedMs) / 1000;
-    const velocity = Math.max(0, Number(initialVelocity) || 0);
-    const a = Number(acceleration) || 0;
-    if (Math.abs(a) < 0.001) {
-      return velocity * t;
-    }
-    if (a < 0) {
-      const stopTime = velocity > 0 ? velocity / Math.abs(a) : 0;
-      const activeTime = Math.min(t, stopTime);
-      return Math.max(0, velocity * activeTime + 0.5 * a * activeTime * activeTime);
-    }
-    return Math.max(0, velocity * t + 0.5 * a * t * t);
-  }
-
   function signedDisplacementAt(elapsedMs, initialVelocity, acceleration = 0) {
     const t = Math.max(0, elapsedMs) / 1000;
     return (Number(initialVelocity) || 0) * t + 0.5 * (Number(acceleration) || 0) * t * t;
@@ -4039,12 +4045,9 @@
   }
 
   function getTargetMoveDistance(state, geometry, elapsedMs) {
-    const travelMode = normalizeTargetTravelMode(state.targetTravelMode);
-    const rawDistance =
-      travelMode === "park"
-        ? freeDisplacementAt(elapsedMs, geometry.targetSpeed, geometry.targetAccel)
-        : displacementAt(elapsedMs, geometry.targetSpeed, geometry.targetAccel);
-    return travelMode === "park" ? Math.min(rawDistance, geometry.targetParkDistance) : rawDistance;
+    const travelLimitMs = Math.max(0, Number(state.targetTravelMs) || 0);
+    const activeElapsedMs = Math.min(Math.max(0, Number(elapsedMs) || 0), travelLimitMs);
+    return displacementAt(activeElapsedMs, geometry.targetSpeed, geometry.targetAccel);
   }
 
   function billiardDistanceAt(elapsedSec, speed, friction) {
@@ -4669,13 +4672,11 @@
     const customTargetUnit = rotateVector(approachUnitX, approachUnitY, angleRad);
     const targetUnitX = usesCustomStarts ? customTargetUnit.x : directionSign * Math.cos(angleRad);
     const targetUnitY = usesCustomStarts ? customTargetUnit.y : Math.sin(angleRad);
-    const targetParkDistance = getParkDistanceToStageEdge(targetBase.x, targetBase.y, targetUnitX, targetUnitY, radius);
     const targetDistance = getTargetMoveDistance(
-      { ...state, targetTravelMode: normalizeTargetTravelMode(state.targetTravelMode) },
+      state,
       {
         targetSpeed,
-        targetAccel: effectiveTargetAccel,
-        targetParkDistance
+        targetAccel: effectiveTargetAccel
       },
       remainingMs
     );
@@ -4706,7 +4707,7 @@
       targetSpeed,
       targetAccel: effectiveTargetAccel,
       targetTravelMode: normalizeTargetTravelMode(state.targetTravelMode),
-      targetParkDistance,
+      targetTravelMs: state.targetTravelMs,
       physicsCollision,
       angleRad,
       targetDistance,
@@ -4802,6 +4803,7 @@
       targetAccel: state.contextTargetAccel,
       targetAngle: state.contextTargetAngle,
       targetTravelMode: state.contextTargetTravelMode,
+      targetTravelMs: state.contextTargetTravelMs,
       contactOcclusionMode: state.contextContactOcclusionMode,
       fractureEnabled: state.contextFractureEnabled,
       launcherVisibleMs: state.contextLauncherVisibleMs,
@@ -4932,6 +4934,7 @@
       targetAccel: Number(snapshot.targetAccel) || 0,
       targetAngle: Number(snapshot.targetAngle) || 0,
       targetTravelMode: normalizeTargetTravelMode(snapshot.targetTravelMode || baseState.targetTravelMode),
+      targetTravelMs: Math.max(0, Number(snapshot.targetTravelMs) || baseState.targetTravelMs),
       launcherFractureEnabled: Boolean(snapshot.launcherFractureEnabled),
       targetFractureEnabled: Boolean(snapshot.targetFractureEnabled ?? snapshot.fractureEnabled),
       fractureEnabled: Boolean(snapshot.fractureEnabled),
@@ -6608,21 +6611,21 @@
       getGapFilenamePart(state),
       `r${compactNumber(state.ballRadius)}px`,
       `ratio${compactNumber(state.targetSpeedRatio * 100)}pct`,
-      `after${sanitizeLabel(state.launcherBehavior)}`,
-      getContextFilenamePart(state)
+      `after${sanitizeLabel(state.launcherBehavior)}`
     ];
+    if (state.targetTravelMs < state.durationMs) {
+      parts.push(`o2travel${compactNumber(state.targetTravelMs)}ms`);
+    }
     if (state.launcherAccel !== 0 || state.targetAccel !== 0) {
       parts.push(`accel${compactNumber(state.launcherAccel)}-${compactNumber(state.targetAccel)}`);
     }
     if (state.physicsEngineEnabled) {
       parts.push(`billiard-drag${compactNumber(state.billiardFriction)}-rail${compactNumber(state.billiardWallRestitution, 2)}`);
     }
-    if (state.targetTravelMode === "park") {
-      parts.push("o2-park");
-    }
     if (state.launcherVisibleMs < state.durationMs || state.targetVisibleMs < state.durationMs) {
       parts.push(`vis${compactNumber(state.launcherVisibleMs)}-${compactNumber(state.targetVisibleMs)}ms`);
     }
+    parts.push(getContextFilenamePart(state));
     if (state.occluderEnabled) {
       parts.push(`occ${compactNumber(state.occluderWidth)}px`);
     }
@@ -7031,6 +7034,8 @@
         intendedDurationSec: getIntendedDurationSec(state),
         impactSec: Number((standards.impactMs / 1000).toFixed(3)),
         targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3)),
+        targetTravelAfterCollisionSec: Number((state.targetTravelMs / 1000).toFixed(3)),
+        contextTargetTravelAfterCollisionSec: Number((state.contextTargetTravelMs / 1000).toFixed(3)),
         objectVisibleSec: {
           launcher: Number((state.launcherVisibleMs / 1000).toFixed(3)),
           target: Number((state.targetVisibleMs / 1000).toFixed(3)),
@@ -7108,6 +7113,7 @@
       physicsRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
       targetAngleDegrees: state.targetAngle,
       targetTravelMode: state.targetTravelMode,
+      targetTravelAfterCollisionMs: state.targetTravelMs,
       launcherVisibleMs: state.launcherVisibleMs,
       targetVisibleMs: state.targetVisibleMs,
       contactDelayMs: state.delayMs,
@@ -7142,6 +7148,7 @@
       contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
       contextTargetAngleDegrees: state.contextTargetAngle,
       contextTargetTravelMode: state.contextTargetTravelMode,
+      contextTargetTravelAfterCollisionMs: state.contextTargetTravelMs,
       contextLauncherVisibleMs: state.contextLauncherVisibleMs,
       contextTargetVisibleMs: state.contextTargetVisibleMs,
       groupingMode: state.groupingMode,
@@ -7359,6 +7366,11 @@
       targetTravelMode: normalizeTargetTravelMode(
         readConditionParameter(parameters, "targetTravelMode", baseState.targetTravelMode)
       ),
+      targetTravelMs: readConditionParameter(
+        parameters,
+        "targetTravelAfterCollisionMs",
+        readConditionParameter(parameters, "targetTravelMs", baseState.targetTravelMs)
+      ),
       launcherVisibleMs: readConditionParameter(parameters, "launcherVisibleMs", baseState.launcherVisibleMs),
       targetVisibleMs: readConditionParameter(parameters, "targetVisibleMs", baseState.targetVisibleMs),
       delayMs: readConditionParameter(parameters, "contactDelayMs", baseState.delayMs),
@@ -7406,6 +7418,11 @@
       contextTargetAngle: readConditionParameter(parameters, "contextTargetAngleDegrees", baseState.contextTargetAngle),
       contextTargetTravelMode: normalizeTargetTravelMode(
         readConditionParameter(parameters, "contextTargetTravelMode", baseState.contextTargetTravelMode)
+      ),
+      contextTargetTravelMs: readConditionParameter(
+        parameters,
+        "contextTargetTravelAfterCollisionMs",
+        readConditionParameter(parameters, "contextTargetTravelMs", baseState.contextTargetTravelMs)
       ),
       contextLauncherVisibleMs: readConditionParameter(
         parameters,
@@ -7582,6 +7599,7 @@
       physicsRestitution: condition.parameters.physicsRestitution,
       targetAngleDegrees: condition.parameters.targetAngleDegrees,
       targetTravelMode: condition.parameters.targetTravelMode,
+      targetTravelAfterCollisionMs: condition.parameters.targetTravelAfterCollisionMs,
       launcherVisibleMs: condition.parameters.launcherVisibleMs,
       targetVisibleMs: condition.parameters.targetVisibleMs,
       contactDelayMs: condition.parameters.contactDelayMs,
@@ -7615,6 +7633,7 @@
       contextTargetAccelerationPxPerSec2: condition.parameters.contextTargetAccelerationPxPerSec2,
       contextTargetAngleDegrees: condition.parameters.contextTargetAngleDegrees,
       contextTargetTravelMode: condition.parameters.contextTargetTravelMode,
+      contextTargetTravelAfterCollisionMs: condition.parameters.contextTargetTravelAfterCollisionMs,
       contextLauncherVisibleMs: condition.parameters.contextLauncherVisibleMs,
       contextTargetVisibleMs: condition.parameters.contextTargetVisibleMs,
       renderMode: condition.parameters.renderMode,
@@ -7781,6 +7800,7 @@
         launcherBehavior: condition.launcherBehavior,
         targetAngleDegrees: condition.targetAngle,
         targetTravelMode: condition.targetTravelMode,
+        targetTravelAfterCollisionMs: condition.targetTravelMs,
         launcherVisibleMs: condition.launcherVisibleMs,
         targetVisibleMs: condition.targetVisibleMs,
         contactDelayMs: condition.delayMs,
@@ -7811,6 +7831,7 @@
         contextTargetAccelerationPxPerSec2: condition.contextTargetAccel,
         contextTargetAngleDegrees: condition.contextTargetAngle,
         contextTargetTravelMode: condition.contextTargetTravelMode,
+        contextTargetTravelAfterCollisionMs: condition.contextTargetTravelMs,
         contextLauncherVisibleMs: condition.contextLauncherVisibleMs,
         contextTargetVisibleMs: condition.contextTargetVisibleMs,
         renderMode: condition.renderMode,

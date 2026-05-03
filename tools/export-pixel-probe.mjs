@@ -245,7 +245,7 @@ const browserProbe = String.raw`
     setChoice("objectStyle", "flat");
     setControl("launcherVisibleMs", 9000);
     setControl("targetVisibleMs", 9000);
-    setChoice("targetTravelMode", "continue");
+    setControl("targetTravelMs", 9000);
   };
 
   commonControls();
@@ -297,6 +297,35 @@ const browserProbe = String.raw`
   }
 
   commonControls();
+  setControl("durationMs", 1200);
+  setControl("gapPx", 0);
+  setControl("targetTravelMs", 150);
+  setControl("targetVisibleMs", 9000);
+  setControl("fileLabel", "probe-travel-time");
+  const travelExport = await exportAndRead();
+  const travelOnsetSec = travelExport.metadata.timing.targetOnsetSec;
+  const travelRgb = hexToRgb(travelExport.metadata.parameters.targetColor);
+  const travelOffsets = [0.04, 0.14, 0.28, 0.38];
+  const travelBoxes = [];
+  for (const offsetSec of travelOffsets) {
+    const frame = await sampleVideo(travelExport.video, travelOnsetSec + offsetSec);
+    const box = componentBox(frame, travelRgb);
+    travelBoxes.push({
+      timeSec: Number((travelOnsetSec + offsetSec).toFixed(3)),
+      offsetFromO2StartSec: offsetSec,
+      centerX: box.centerX === null ? null : Number(box.centerX.toFixed(2)),
+      centerY: box.centerY === null ? null : Number(box.centerY.toFixed(2)),
+      greenPixelCount: box.count
+    });
+  }
+  const travelDelta = (from, to) =>
+    from.centerX === null || to.centerX === null
+      ? null
+      : Math.hypot(to.centerX - from.centerX, to.centerY - from.centerY);
+  const movingWindowPx = travelDelta(travelBoxes[0], travelBoxes[1]);
+  const stoppedWindowPx = travelDelta(travelBoxes[2], travelBoxes[3]);
+
+  commonControls();
   setControl("durationMs", 1800);
   setControl("launcherSpeed", 500);
   setControl("physicsEngineEnabled", true);
@@ -322,6 +351,16 @@ const browserProbe = String.raw`
       targetOnsetSec: onsetSec,
       targetVisibleMs: 150,
       samples: visibilitySamples
+    },
+    travelTime: {
+      targetOnsetSec: travelOnsetSec,
+      targetTravelAfterCollisionMs: travelExport.metadata.parameters.targetTravelMs,
+      metadataTravelAfterCollisionSec: travelExport.metadata.timing.targetTravelAfterCollisionSec,
+      samples: travelBoxes,
+      movingWindowPx: movingWindowPx === null ? null : Number(movingWindowPx.toFixed(2)),
+      stoppedWindowPx: stoppedWindowPx === null ? null : Number(stoppedWindowPx.toFixed(2)),
+      movingBeforeLimit: movingWindowPx !== null && movingWindowPx > 2,
+      stoppedAfterLimit: stoppedWindowPx !== null && stoppedWindowPx < 2.5
     },
     billiard: {
       sampledSec: 1.75,

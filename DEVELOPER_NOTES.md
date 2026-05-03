@@ -51,7 +51,9 @@ Many context rows auto-shrink and re-space so up to 10 pairs fit vertically. If 
 - `gapPx > 0` means a visible gap.
 - `contextOffsetMs < 0` means the context event happens earlier than the original pair.
 
-Main-event motion is computed by `getMainEventState()`. Context-event motion is computed by `getContextMotionState()` plus `getDirectedEventState()`, so context rows can have their own speed, acceleration, delay, overlap, target ratio, angle, occlusion, and visible duration.
+Main-event motion is computed by `getMainEventState()`. Context-event motion is computed by `getContextMotionState()` plus `getDirectedEventState()`, so context rows can have their own speed, acceleration, delay, overlap, target ratio, angle, travel time after collision, occlusion, and visible duration.
+
+`targetTravelMs` controls how long O2 keeps moving after collision. `targetVisibleMs` is separate: it controls whether O2 disappears while still on screen.
 
 Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table drag, and reflects balls off stage bounds. If table drag stops a ball before the next wall, the ball stops there; do not force a wall contact.
 

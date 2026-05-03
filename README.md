@@ -24,7 +24,7 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 ## Core Controls
 
-**Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, O2 travel mode, and what O1 does after contact. O2 on-screen time starts when O2 starts moving, not when the video starts.
+**Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, travel time after collision, and what O1 does after contact. Travel time controls how long O2 keeps moving after contact; O2 on-screen time controls when O2 disappears.
 
 **Position** controls contact geometry. `Overlap / gap = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap. Tunnel occluders can hide the contact region.
 
