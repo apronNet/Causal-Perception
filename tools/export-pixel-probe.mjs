@@ -318,18 +318,21 @@ const browserProbe = String.raw`
   commonControls();
   setControl("durationMs", 1000);
   setControl("gapPx", 0);
+  setControl("launcherVisibleMs", 150);
   setControl("targetVisibleMs", 150);
-  setControl("fileLabel", "probe-o2-visible");
+  setControl("fileLabel", "probe-visible-time");
   const visibilityExport = await exportAndRead();
   const onsetSec = visibilityExport.metadata.timing.targetOnsetSec;
   const visibilitySamples = [];
   for (const offsetSec of [-0.05, 0.1, 0.22]) {
     const frame = await sampleVideo(visibilityExport.video, onsetSec + offsetSec);
-    const box = componentBox(frame, hexToRgb(visibilityExport.metadata.parameters.targetColor));
+    const red = componentBox(frame, hexToRgb(visibilityExport.metadata.parameters.launcherColor));
+    const green = componentBox(frame, hexToRgb(visibilityExport.metadata.parameters.targetColor));
     visibilitySamples.push({
       timeSec: Number((onsetSec + offsetSec).toFixed(3)),
       offsetFromO2StartSec: offsetSec,
-      greenPixelCount: box.count
+      redPixelCount: red.count,
+      greenPixelCount: green.count
     });
   }
 
@@ -454,10 +457,17 @@ const browserProbe = String.raw`
         centerGapPx: sample.centerGapPx
       }))
     },
-    o2Visibility: {
+    objectVisibility: {
       targetOnsetSec: onsetSec,
+      launcherVisibleMs: 150,
       targetVisibleMs: 150,
-      samples: visibilitySamples
+      samples: visibilitySamples,
+      launcherVisibleBeforeO2Start: visibilitySamples[0].redPixelCount > 0,
+      launcherVisibleAfterShortPostStart: visibilitySamples[1].redPixelCount > 0,
+      launcherHiddenAfterLauncherLimit: visibilitySamples[2].redPixelCount === 0,
+      targetVisibleBeforeO2Start: visibilitySamples[0].greenPixelCount > 0,
+      targetVisibleAfterShortPostStart: visibilitySamples[1].greenPixelCount > 0,
+      targetHiddenAfterTargetLimit: visibilitySamples[2].greenPixelCount === 0
     },
     travelTime: {
       rangeCaps,

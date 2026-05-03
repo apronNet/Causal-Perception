@@ -286,7 +286,7 @@
     targetTravelMs:
       "Changes: how long O2 keeps moving after it starts at collision. To let O2 move offscreen, keep Video duration and O2 on-screen long enough too.",
     launcherVisibleMs:
-      "Changes: how long O1 stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
+      "Changes: how long O1 stays visible after O2 starts moving. O1 stays visible before contact so the event is inspectable.",
     targetVisibleMs:
       "Changes: how long O2 stays visible after O2 starts moving. O2 is still visible before contact. Longer than the remaining clip means it stays visible until the clip ends or moves offscreen.",
     delayMs: "Changes: time between contact and O2 motion. Short delays look more directly causal; long delays look less like immediate launching.",
@@ -323,7 +323,7 @@
     contextTargetTravelMs:
       "Changes: how long context O2 keeps moving after it starts at context collision. To let it move offscreen, keep Video duration and context O2 on-screen long enough too.",
     contextLauncherVisibleMs:
-      "Changes: how long context O1 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
+      "Changes: how long context O1 stays visible after context O2 starts moving. Context O1 stays visible before contact.",
     contextTargetVisibleMs:
       "Changes: how long context O2 stays visible after that context O2 starts moving. It stays visible before contact.",
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
@@ -3952,8 +3952,11 @@
     return !Number.isFinite(limit) || localTimeMs <= limit;
   }
 
-  function isLauncherVisibleAt(eventTimeMs, visibleMs) {
-    return isObjectVisibleAt(eventTimeMs, visibleMs);
+  function isLauncherVisibleAt(eventTimeMs, geometry, visibleMs) {
+    if (eventTimeMs < geometry.targetStartTime) {
+      return true;
+    }
+    return isObjectVisibleAt(eventTimeMs - geometry.targetStartTime, visibleMs);
   }
 
   function isTargetVisibleAt(eventTimeMs, geometry, visibleMs) {
@@ -5638,7 +5641,7 @@
         tunnelLaneYs
       );
       if (
-        isLauncherVisibleAt(t, eventState.launcherVisibleMs) &&
+        isLauncherVisibleAt(t, singleEvent.geometry, eventState.launcherVisibleMs) &&
         (!eventState.occluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds))
       ) {
         drawRenderedObject(
@@ -5664,7 +5667,7 @@
       y: contextEvent.launcherY,
       fill: colors.launcher.fill,
       outline: colors.launcher.outline,
-      visible: isLauncherVisibleAt(t, eventState.launcherVisibleMs),
+      visible: isLauncherVisibleAt(t, contextEvent.geometry, eventState.launcherVisibleMs),
       cracked: shouldDrawFracture(state, contextEvent, `${pairKey}Launcher`)
     };
     const target = {
@@ -5885,7 +5888,7 @@
       y: eventState.launcherY,
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
-      visible: isLauncherVisibleAt(eventState.time, state.launcherVisibleMs),
+      visible: isLauncherVisibleAt(eventState.time, eventState.geometry, state.launcherVisibleMs),
       cracked: shouldDrawFracture(state, eventState, "originalLauncher")
     };
     const target = {
@@ -5907,7 +5910,7 @@
       y: eventState.launcherY,
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
-      visible: isLauncherVisibleAt(eventState.time, state.launcherVisibleMs),
+      visible: isLauncherVisibleAt(eventState.time, eventState.geometry, state.launcherVisibleMs),
       cracked: shouldDrawFracture(state, eventState, "originalLauncher")
     };
     const target = {
@@ -7369,10 +7372,7 @@
 
   function getRealisticBilliardSoundEvents(eventState, geometry, state, baseMovieTimeMs, labelPrefix, scopePrefix) {
     const movieRemainingMs = Math.max(0, state.durationMs - baseMovieTimeMs);
-    const launcherElapsedLimitMs = Math.min(
-      movieRemainingMs,
-      Math.max(0, Number(eventState.launcherVisibleMs) - geometry.targetStartTime)
-    );
+    const launcherElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.launcherVisibleMs)));
     const targetElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.targetVisibleMs)));
     const simulationLimitMs = Math.max(launcherElapsedLimitMs, targetElapsedLimitMs);
     if (simulationLimitMs <= 0) {
@@ -7412,10 +7412,7 @@
     }
 
     const movieRemainingMs = Math.max(0, state.durationMs - baseMovieTimeMs);
-    const launcherElapsedLimitMs = Math.min(
-      movieRemainingMs,
-      Math.max(0, Number(eventState.launcherVisibleMs) - geometry.targetStartTime)
-    );
+    const launcherElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.launcherVisibleMs)));
     const targetElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.targetVisibleMs)));
     return [
       ...getBilliardWallSoundEventsForBody(
