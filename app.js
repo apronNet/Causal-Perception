@@ -2461,8 +2461,15 @@
             `<button class="choice-button" data-choice-for="${id}" data-choice-value="${value}" type="button">${text}</button>`
         )
         .join("");
-      const fieldClass = field === "contactOcclusionMode" ? " field wide-choice-field" : " field";
-      const rowClass = options.length === 2 ? "two-choice-row" : "three-choice-row";
+      const fieldClass =
+        field === "contactOcclusionMode"
+          ? " field wide-choice-field"
+          : field === "launcherBehavior"
+            ? " field behavior-choice-field"
+            : " field";
+      const rowClass = `${options.length === 2 ? "two-choice-row" : "three-choice-row"}${
+        field === "launcherBehavior" ? " behavior-choice-row" : ""
+      }`;
       return `<label class="${fieldClass.trim()}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row ${rowClass}" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
     }
 

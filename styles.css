@@ -373,6 +373,10 @@ h3 {
   grid-column: span 2;
 }
 
+.behavior-choice-field {
+  grid-column: span 2;
+}
+
 .context-toggle-field {
   grid-column: 1 / -1;
 }
@@ -441,14 +445,19 @@ h3 {
 }
 
 .choice-button {
+  width: 100%;
+  min-width: 0;
   min-height: 26px;
-  padding: 3px 4px;
+  padding: 4px 5px;
   background: var(--paper);
   color: var(--ink);
-  font-size: 0.49rem;
-  letter-spacing: 0.018em;
-  line-height: 0.95;
-  overflow-wrap: normal;
+  font-size: 0.55rem;
+  letter-spacing: 0;
+  line-height: 1.05;
+  text-align: center;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
   word-break: keep-all;
 }
 
@@ -456,8 +465,12 @@ h3 {
 .wide-choice-field .choice-button {
   min-height: 22px;
   padding: 2px 4px;
-  font-size: 0.46rem;
-  letter-spacing: 0.012em;
+  font-size: 0.52rem;
+}
+
+.behavior-choice-row .choice-button {
+  min-height: 24px;
+  padding-inline: 5px;
 }
 
 .choice-button.is-active {
@@ -1376,6 +1389,11 @@ canvas.trajectory-edit-enabled:active {
   .artifact-card,
   .button-row {
     grid-template-columns: 1fr;
+  }
+
+  .wide-choice-field,
+  .behavior-choice-field {
+    grid-column: auto;
   }
 
   .utility-strip span,

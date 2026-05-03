@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Launching Video Maker</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111514'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23ff2f2f'/%3E%3Ccircle cx='21' cy='16' r='5' fill='%2327c76f'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=20260503-utility-strip" />
+    <link rel="stylesheet" href="styles.css?v=20260503-choice-fit" />
   </head>
   <body>
     <div class="page-shell">
@@ -124,10 +124,10 @@
                     <input id="launcherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="launcherAccel"></output>
                   </label>
-                  <label class="field">
+                  <label class="field behavior-choice-field">
                     <span>After contact</span>
                     <input id="launcherBehavior" type="hidden" value="stop" />
-                    <span class="choice-row three-choice-row" role="group" aria-label="After contact">
+                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="After contact">
                       <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="stop" type="button">Stop</button>
                       <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="continue" type="button">Pass</button>
                       <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Together</button>
@@ -197,10 +197,10 @@
                     <input id="contextLauncherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="contextLauncherAccel"></output>
                   </label>
-                  <label class="field">
+                  <label class="field behavior-choice-field">
                     <span>After contact</span>
                     <input id="contextLauncherBehavior" type="hidden" value="stop" />
-                    <span class="choice-row three-choice-row" role="group" aria-label="Context after contact">
+                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="Context after contact">
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="stop" type="button">Stop</button>
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="continue" type="button">Pass</button>
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Together</button>
