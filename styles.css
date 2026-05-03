@@ -1,19 +1,19 @@
 /* Launching Video Maker interface theme and layout. */
 :root {
   color-scheme: light;
-  --bg: #ece4d7;
-  --paper: #fffaf0;
-  --paper-soft: #f3ebdf;
-  --ink: #201b17;
-  --muted: #756b60;
-  --line: #29231d;
-  --line-soft: rgba(41, 35, 29, 0.16);
-  --accent: #e86546;
-  --accent-dark: #9a3f2f;
-  --deep: #201b17;
-  --deep-soft: #ddd3c5;
-  --blue: #4d8f8a;
-  --gold: #d7a437;
+  --bg: #ece5da;
+  --paper: #fffaf2;
+  --paper-soft: #f4ede3;
+  --ink: #332f2a;
+  --muted: #756e65;
+  --line: #514941;
+  --line-soft: rgba(81, 73, 65, 0.14);
+  --accent: #aa5a49;
+  --accent-dark: #735047;
+  --deep: #332f2a;
+  --deep-soft: #e0d7cb;
+  --blue: #5b8d88;
+  --gold: #c09a45;
   --shadow: none;
   --radius-lg: 0;
   --radius-md: 0;
@@ -614,7 +614,7 @@ textarea:focus,
 select:focus,
 button:focus-visible,
 .download-link:focus-visible {
-  outline: 3px solid rgba(196, 95, 69, 0.34);
+  outline: 3px solid rgba(170, 90, 73, 0.26);
   outline-offset: 2px;
 }
 
