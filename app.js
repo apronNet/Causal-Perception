@@ -335,7 +335,7 @@
       "Changes: how long context O1 stays visible after context O2 starts moving. Context O1 stays visible before contact.",
     contextTargetVisibleMs:
       "Changes: how long context O2 stays visible after that context O2 starts moving. It stays visible before contact.",
-    renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
+    renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; fixation adds a fixation mark.",
     stageTheme: "Changes: preset background luminance and sets the background color picker.",
     stageColor: "Changes: exact stimulus-field color. Causal-capture displays commonly use bright colored discs on a black field.",
     objectStyle: "Changes: visual rendering of the balls. Simple filled discs are the most controlled; shaded or ring styles are for display variants.",
@@ -1142,6 +1142,10 @@
     return value === "none" ? "none" : "both";
   }
 
+  function normalizeRenderMode(value) {
+    return value === "fixation" ? "fixation" : "stimulus";
+  }
+
   function parseManualGroupingRects(value) {
     if (!value) {
       return [];
@@ -1399,7 +1403,7 @@
       contextTargetTravelMs: Number(controls.contextTargetTravelMs.value),
       contextLauncherVisibleMs: Number(controls.contextLauncherVisibleMs.value),
       contextTargetVisibleMs: Number(controls.contextTargetVisibleMs.value),
-      renderMode: controls.renderMode.value,
+      renderMode: normalizeRenderMode(controls.renderMode.value),
       stageTheme: controls.stageTheme.value,
       stageColor: controls.stageColor.value,
       objectStyle: controls.objectStyle.value,
@@ -3718,13 +3722,14 @@
           ? normalizeOcclusionMode(value)
           : key === "targetTravelMode" || key === "contextTargetTravelMode"
             ? normalizeTargetTravelMode(value)
-          : getHiddenJsonControlValue(key, value);
+            : getHiddenJsonControlValue(key, value);
+      const normalizedControlValue = key === "renderMode" ? normalizeRenderMode(normalizedValue) : normalizedValue;
       if (control.type === "checkbox") {
-        control.checked = Boolean(normalizedValue);
+        control.checked = Boolean(normalizedControlValue);
       } else if (control.type === "range") {
-        setRangeValue(control, normalizedValue);
+        setRangeValue(control, normalizedControlValue);
       } else {
-        control.value = normalizedValue;
+        control.value = normalizedControlValue;
       }
     });
     syncAllChoiceControlButtons();
@@ -4024,10 +4029,9 @@
     const labels = {
       stimulus: "clean",
       clean: "clean",
-      fixation: "fixation",
-      lab: "lab"
+      fixation: "fixation"
     };
-    return labels[value] || value;
+    return labels[normalizeRenderMode(value)] || "clean";
   }
 
   function describeObjectStyle(value) {
@@ -4087,17 +4091,11 @@
     const contactDistance = state.ballRadius * 2 + state.gapPx;
     const targetMotionEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetTravelMs) || 0);
     const targetVisibleEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetVisibleMs) || 0);
-    if (state.renderMode === "lab") {
-      warnings.push("Exported video will include labels. Use Clean stimulus or Fixation for participant movies.");
-    }
     if (state.contactGuideMode !== "none") {
       warnings.push("Contact guide is visible in export. Turn off unless it is a condition.");
     }
     if (state.colorChangeMode !== "none") {
       warnings.push("Color-change cue is visible at contact. Keep only if feature change is part of the condition.");
-    }
-    if (state.trajectoryEditEnabled && Object.keys(state.trajectoryOverrides || {}).length > 0) {
-      warnings.push("Manual trajectory edits are active. Verify the PsychoPy CSV and metadata before reusing this condition.");
     }
     if (state.markerMode !== "none" && state.gapPx > 0) {
       warnings.push("Marker is on: the exported video will show a visible gap cue. Set Marker to None unless this cue is part of the condition.");
@@ -9601,7 +9599,7 @@
   function buildConditionSet(kind, baseState) {
     const base = {
       ...baseState,
-      renderMode: baseState.renderMode === "lab" ? "fixation" : baseState.renderMode,
+      renderMode: normalizeRenderMode(baseState.renderMode),
       objectStyle: "flat",
       stageTheme: baseState.stageTheme,
       stageColor: baseState.stageColor,
