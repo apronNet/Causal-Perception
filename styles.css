@@ -61,7 +61,7 @@ body {
   gap: clamp(18px, 3vw, 42px);
   width: min(100%, var(--layout-max));
   margin: 0 auto 10px;
-  padding: 16px 0 12px;
+  padding: 8px 0 8px;
 }
 
 .topbar,
@@ -82,8 +82,8 @@ h3 {
 
 h1 {
   max-width: none;
-  font-size: clamp(2.15rem, 4vw, 4rem);
-  line-height: 0.92;
+  font-size: clamp(1.9rem, 3.2vw, 3.25rem);
+  line-height: 0.94;
 }
 
 .title-block {
@@ -94,7 +94,7 @@ h1 {
 
 .app-subtitle {
   max-width: none;
-  margin: 9px 0 0 2px;
+  margin: 5px 0 0 2px;
   color: var(--muted);
   font-size: clamp(0.78rem, 1vw, 0.92rem);
   font-weight: 500;
@@ -104,9 +104,9 @@ h1 {
 
 .michotte-card {
   display: grid;
-  grid-template-columns: 224px max-content;
+  grid-template-columns: 176px max-content;
   align-items: end;
-  gap: 16px;
+  gap: 12px;
   align-self: end;
   justify-self: end;
   width: auto;
@@ -123,8 +123,8 @@ h1 {
 
 .michotte-card img {
   display: block;
-  width: 224px;
-  height: 128px;
+  width: 176px;
+  height: 96px;
   object-fit: cover;
   filter: grayscale(1);
 }
@@ -396,6 +396,7 @@ h3 {
 .crosshair-dependent-control.is-retracted,
 .trajectory-dependent-control.is-retracted,
 .text-box-dependent-control.is-retracted,
+.billiard-dependent-control.is-retracted,
 .grouping-dependent-control.is-retracted,
 .fracture-target-list.is-retracted,
 .occluder-width-field.is-retracted {
@@ -447,7 +448,8 @@ h3 {
   font-size: 0.49rem;
   letter-spacing: 0.018em;
   line-height: 0.95;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .compact-choice-row .choice-button,
@@ -1061,9 +1063,17 @@ canvas.trajectory-edit-enabled:active {
 .preview-timer-badge {
   right: 10px;
   bottom: 10px;
-  min-height: 24px;
+  min-height: 26px;
   padding: 0 8px;
-  font-size: 0.56rem;
+  border: 1px solid rgba(251, 250, 241, 0.34);
+  background: rgba(17, 21, 20, 0.74);
+  color: var(--paper);
+  font-size: 0.66rem;
+  font-weight: 820;
+  letter-spacing: 0;
+  text-transform: none;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
 }
 
 .video-panel {

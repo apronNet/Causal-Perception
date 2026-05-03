@@ -52,6 +52,8 @@ Many context rows auto-shrink and re-space so up to 10 pairs fit vertically. If 
 
 Main-event motion is computed by `getMainEventState()`. Context-event motion is computed by `getContextMotionState()` plus `getDirectedEventState()`, so context rows can have their own speed, acceleration, delay, overlap, target ratio, angle, occlusion, and visible duration.
 
+Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table drag, and reflects balls off stage bounds. If table drag stops a ball before the next wall, the ball stops there; do not force a wall contact.
+
 ## PsychoPy Export
 
 For one stimulus, export the movie and the PsychoPy CSV. Put the movie file in a `stimuli/` folder, use the CSV as a loop conditions file, and set the Builder MovieStim filename field to `$movieFile`.
@@ -59,6 +61,8 @@ For one stimulus, export the movie and the PsychoPy CSV. Put the movie file in a
 Condition sets are batch plans, not rendered movies. `buildConditionSet()` creates rows and expected filenames; the lab still needs matching movie files for those rows.
 
 Browser MediaRecorder cannot reliably embed custom MP4/WebM metadata. The app therefore exports a metadata JSON sidecar. Treat the CSV and JSON as the durable parameter record.
+
+For timing, visibility, contact-geometry, or Billiard changes, run `node tools/export-pixel-probe.mjs`. It exports real videos in Chrome and measures decoded pixels without `ffmpeg`.
 
 ## README / GitHub Page
 

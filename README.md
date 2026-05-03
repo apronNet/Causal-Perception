@@ -24,7 +24,7 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 ## Core Controls
 
-**Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, and what O1 does after contact.
+**Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, O2 travel mode, and what O1 does after contact. O2 on-screen time starts when O2 starts moving, not when the video starts.
 
 **Position** controls contact geometry. `Overlap / gap = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap. Tunnel occluders can hide the contact region.
 
@@ -39,13 +39,14 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 Special features are visible or audible stimulus cues. Use them only when the cue is part of the experimental condition.
 
 ![Special feature guide](docs/screenshots/special-features-guide.svg)
+![Billiard guide](docs/screenshots/billiard-guide.svg)
 
 - **Crosshair** adds a draggable fixation-like crosshair to the stimulus.
 - **Blink before launch** shows only the crosshair before the balls appear. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
 - **Rail** adds one or more draggable line segments. Use this for alignment or path-cue manipulations.
 - **Individual trajectories** shows draggable vector arrows in the preview. Drag the arrow head to set that ball's trajectory. The angle slider remains available for exact entry.
 - **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
-- **Physics mode** uses ball size to estimate mass and solve a simple collision. Larger balls are treated as heavier. The mode resets delay, gaps, tunnels, markers, sudden color change, and manual trajectories because those features break the physical-collision assumption.
+- **Billiard** uses ball size to estimate mass, solves a simple collision, then lets balls slow and bank off the field edges. Table drag controls whether a ball reaches a rail; weak shots stop before the wall. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
 - **Impact sound** adds a contact sound. If sound is not a condition, leave it off.
 
 ## Perceptual Grouping
@@ -99,14 +100,14 @@ Movie filename: $movieFile
 
 **Condition set** is not a stimulus-display parameter. It makes a batch plan for an experiment.
 
-Use it when you want many planned trials, such as **Delay x overlap grid** or **Capture: context duration**. Click **Set CSV** to export a PsychoPy-ready table where each row is one planned condition.
+Use it when you want many planned trials, such as **Delay x overlap grid** or **Capture: context duration**. Click **Build CSV** to export a PsychoPy-ready table where each row is one planned condition.
 
 Important points:
 
 - **Export video** exports only the one video currently shown in the preview.
 - **Export PsychoPy CSV** exports a one-row PsychoPy table for the current single video.
-- **Condition set + Set CSV** exports a multi-row experiment plan.
-- **Set JSON** exports the same condition set with fuller parameter records.
+- **Condition set + Build CSV** exports a multi-row experiment plan.
+- **Build JSON** exports the same condition set with fuller parameter records.
 - Condition sets do not automatically render every video in the set. They create expected filenames and parameter rows; you still need matching movie files for those rows.
 
 ## Reproducibility
@@ -114,6 +115,16 @@ Important points:
 The app cannot reliably embed all custom parameter metadata inside MP4/WebM files because browser encoders do not expose stable metadata-writing controls. Use the exported CSV and JSON sidecar as the durable parameter record.
 
 If you publish stimuli, keep the movie, PsychoPy CSV, and metadata JSON together.
+
+## Export Checks
+
+Run this after changing timing, visibility, contact geometry, or Billiard behavior:
+
+```bash
+node tools/export-pixel-probe.mjs
+```
+
+The probe opens the local app in headless Chrome, exports real WebM videos, decodes them back into a canvas, and reports pixel measurements for contact and O2 visibility. It does not need `ffmpeg`.
 
 ## Maintainer Note
 

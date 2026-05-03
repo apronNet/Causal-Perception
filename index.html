@@ -409,12 +409,34 @@
                   </div>
                 </div>
                 <div class="control-subgroup">
-                  <h3 class="subgroup-title">Physics mode</h3>
+                  <h3 class="subgroup-title">Billiard</h3>
                   <div class="control-subgrid">
-                    <input id="physicsEngineEnabled" type="hidden" value="false" />
-                    <button id="physicsModeButton" class="secondary-button full-button" type="button">Apply physics engine</button>
-                    <p class="microcopy wide-copy">
-                      Estimates mass from ball size and solves a simple collision. Turns off delay, gap, tunnels, markers, sudden color change, and manual trajectories.
+                    <label class="field checkbox-field">
+                      <input id="physicsEngineEnabled" type="checkbox" />
+                      <span>Billiard</span>
+                    </label>
+                    <label class="field billiard-dependent-control is-retracted">
+                      <span>Table drag</span>
+                      <input id="billiardFriction" data-format="drag" min="0" max="900" step="10" type="range" />
+                      <output data-for="billiardFriction"></output>
+                    </label>
+                    <label class="field billiard-dependent-control is-retracted">
+                      <span>Ball bounce</span>
+                      <input id="billiardRestitution" data-format="float2" min="0.5" max="1" step="0.01" type="range" />
+                      <output data-for="billiardRestitution"></output>
+                    </label>
+                    <label class="field billiard-dependent-control is-retracted">
+                      <span>Rail bounce</span>
+                      <input id="billiardWallRestitution" data-format="float2" min="0.4" max="1" step="0.01" type="range" />
+                      <output data-for="billiardWallRestitution"></output>
+                    </label>
+                    <label class="field billiard-dependent-control is-retracted">
+                      <span>Stop below</span>
+                      <input id="billiardStopSpeed" data-format="speedOnly" min="0" max="120" step="5" type="range" />
+                      <output data-for="billiardStopSpeed"></output>
+                    </label>
+                    <p class="microcopy wide-copy billiard-dependent-control is-retracted">
+                      Uses ball size to estimate mass, then lets balls slow down and bank off table rails. Low momentum stops before a rail.
                     </p>
                   </div>
                 </div>
@@ -622,7 +644,7 @@
           <details class="panel-block collapsible-panel psychopy-panel">
             <summary>
               <h2>08 PsychoPy / Export</h2>
-              <span id="statusText" class="status-text export-summary-status" aria-live="polite">Ready to export current preview.</span>
+              <span id="statusText" class="status-text export-summary-status" aria-live="polite">Ready.</span>
               <button id="exportButton" class="accent-button summary-export-button" type="button">Export video</button>
               <a id="downloadLink" class="download-link summary-download-link hidden" download>Download video</a>
             </summary>
@@ -704,11 +726,11 @@
                 </select>
               </label>
               <div class="button-row">
-                <button id="conditionJsonButton" class="secondary-button" type="button">Set JSON</button>
-                <button id="conditionCsvButton" class="secondary-button" type="button">Set CSV</button>
+                <button id="conditionJsonButton" class="secondary-button" type="button">Build JSON</button>
+                <button id="conditionCsvButton" class="secondary-button" type="button">Build CSV</button>
               </div>
-              <a id="conditionJsonLink" class="download-link hidden" download>Download set JSON</a>
-              <a id="conditionCsvLink" class="download-link hidden" download>Download set CSV</a>
+              <a id="conditionJsonLink" class="download-link hidden" download>Download condition JSON</a>
+              <a id="conditionCsvLink" class="download-link hidden" download>Download condition CSV</a>
             </div>
             </div>
           </details>
@@ -800,10 +822,10 @@
             </div>
           </div>
         </section>
-        <small>made by runkun and Codex AI. I am very happy to implement new features that your experiment needs! Please reach out email rfan6@illinois.edu</small>
+        <small>Made by runkun and Codex AI. I am very happy to implement new features that your experiment needs! Please reach out email rfan6@illinois.edu</small>
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-github-cleanup"></script>
+    <script src="app.js?v=20260503-billiard-probe"></script>
   </body>
 </html>

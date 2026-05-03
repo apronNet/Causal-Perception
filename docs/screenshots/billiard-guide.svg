@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
+  <title id="title">Billiard mode guide</title>
+  <desc id="desc">A compact guide showing launch, collision, rail bounce, and stop-before-wall behavior.</desc>
+  <rect width="960" height="360" fill="#f5efe3"/>
+  <rect x="28" y="28" width="904" height="248" fill="#101514" stroke="#26221c" stroke-width="3"/>
+  <text x="28" y="318" fill="#26221c" font-family="Avenir Next, Segoe UI, sans-serif" font-size="22" font-weight="800">Billiard: collision, table drag, rail bounce</text>
+  <text x="28" y="344" fill="#6e675c" font-family="Avenir Next, Segoe UI, sans-serif" font-size="15" font-weight="700">If drag uses up the speed before a wall, the ball stops before the rail.</text>
+
+  <line x1="94" y1="152" x2="330" y2="152" stroke="#c45f45" stroke-width="6" marker-end="url(#arrow-red)"/>
+  <circle cx="94" cy="152" r="28" fill="#ff2f2f" stroke="#7c1919" stroke-width="3"/>
+  <circle cx="386" cy="152" r="28" fill="#27c76f" stroke="#12613d" stroke-width="3"/>
+  <text x="72" y="104" fill="#f5efe3" font-family="Avenir Next, Segoe UI, sans-serif" font-size="16" font-weight="800">O1</text>
+  <text x="374" y="104" fill="#f5efe3" font-family="Avenir Next, Segoe UI, sans-serif" font-size="16" font-weight="800">O2</text>
+
+  <path d="M414 152 C520 152 594 118 674 74" fill="none" stroke="#27c76f" stroke-width="6" marker-end="url(#arrow-green)"/>
+  <path d="M702 66 C770 44 884 54 904 96" fill="none" stroke="#27c76f" stroke-width="6" stroke-dasharray="12 10" marker-end="url(#arrow-green)"/>
+  <text x="714" y="42" fill="#f5efe3" font-family="Avenir Next, Segoe UI, sans-serif" font-size="14" font-weight="800">rail bounce</text>
+
+  <path d="M414 206 C502 228 574 236 642 236" fill="none" stroke="#87d8a7" stroke-width="5" marker-end="url(#arrow-light)"/>
+  <circle cx="656" cy="236" r="7" fill="#87d8a7"/>
+  <text x="482" y="260" fill="#f5efe3" font-family="Avenir Next, Segoe UI, sans-serif" font-size="14" font-weight="800">low speed stops here</text>
+
+  <defs>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#c45f45"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#27c76f"/>
+    </marker>
+    <marker id="arrow-light" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#87d8a7"/>
+    </marker>
+  </defs>
+</svg>

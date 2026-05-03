@@ -24,9 +24,8 @@
   const MANUAL_GROUPING_RECT_MIN_SIZE = 24;
   const MANUAL_GROUPING_RECT_MAX = 12;
   const PHYSICS_ENGINE = {
-    restitution: 0.9,
+    restitution: 0.92,
     baseRadius: 28,
-    baseDamping: 260,
     massPower: 2,
     stopThreshold: 0.075
   };
@@ -34,7 +33,7 @@
   const TUNNEL_HEIGHT_RATIO = 3.8;
   const TUNNEL_ROW_CLEARANCE = 8;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
-  const READY_STATUS = "Ready to export current preview.";
+  const READY_STATUS = "Ready.";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
   const SHARED_PRESETS_URL = "shared-presets.json";
@@ -188,6 +187,10 @@
     "manualGroupingRects",
     "contactGuideMode",
     "physicsEngineEnabled",
+    "billiardFriction",
+    "billiardRestitution",
+    "billiardWallRestitution",
+    "billiardStopSpeed",
     "fractureEnabled",
     "contextFractureEnabled",
     "fractureTargets",
@@ -303,7 +306,7 @@
     contextLauncherVisibleMs:
       "Changes: how long context O1 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     contextTargetVisibleMs:
-      "Changes: how long context O2 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
+      "Changes: how long context O2 stays visible after that context O2 starts moving. It stays visible before contact.",
     renderMode: "Changes: what appears in preview/export. Clean stimulus is for participant videos; lab preview shows design aids; fixation adds a fixation mark.",
     stageTheme: "Changes: preset background luminance and sets the background color picker.",
     stageColor: "Changes: exact stimulus-field color. Causal-capture displays commonly use bright colored discs on a black field.",
@@ -315,6 +318,13 @@
     manualGroupingRects:
       "Changes: extra grouping rectangles drawn in preview and export. Use Add rectangle, then drag borders or corners in the preview.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
+    physicsEngineEnabled:
+      "Changes: turns Billiard on. It uses ball size to estimate mass, solves a simple collision, and then lets balls slow and bounce off table rails.",
+    billiardFriction:
+      "Changes: table drag after impact. Higher values make balls lose speed sooner, so weak shots stop before reaching a rail.",
+    billiardRestitution: "Changes: ball-to-ball bounce. Higher values keep more speed after impact.",
+    billiardWallRestitution: "Changes: rail bounce. Higher values keep more speed after a wall bounce.",
+    billiardStopSpeed: "Changes: the speed below which billiard balls are treated as stopped.",
     fractureEnabled:
       "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
     contextFractureEnabled: "Legacy Context 1 O2 fracture value, kept for older presets and exported records.",
@@ -936,6 +946,10 @@
     manualGroupingRects: "[]",
     contactGuideMode: "none",
     physicsEngineEnabled: false,
+    billiardFriction: 180,
+    billiardRestitution: 0.92,
+    billiardWallRestitution: 0.82,
+    billiardStopSpeed: 20,
     fractureEnabled: false,
     contextFractureEnabled: false,
     fractureTargets: "{}",
@@ -1009,6 +1023,7 @@
   const trajectoryDependentControls = Array.from(document.querySelectorAll(".trajectory-dependent-control"));
   const textBoxDependentControls = Array.from(document.querySelectorAll(".text-box-dependent-control"));
   const originalPairContextLabels = Array.from(document.querySelectorAll(".original-pair-context-label"));
+  const billiardDependentControls = Array.from(document.querySelectorAll(".billiard-dependent-control"));
   const groupingDependentControls = Array.from(document.querySelectorAll(".grouping-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
@@ -1335,7 +1350,14 @@
       groupingMode: normalizeGroupingMode(controls.groupingMode.value),
       manualGroupingRects: parseManualGroupingRects(controls.manualGroupingRects.value),
       contactGuideMode: controls.contactGuideMode.value,
-      physicsEngineEnabled: controls.physicsEngineEnabled.value === "true",
+      physicsEngineEnabled:
+        controls.physicsEngineEnabled.type === "checkbox"
+          ? controls.physicsEngineEnabled.checked
+          : controls.physicsEngineEnabled.value === "true",
+      billiardFriction: Number(controls.billiardFriction.value),
+      billiardRestitution: Number(controls.billiardRestitution.value),
+      billiardWallRestitution: Number(controls.billiardWallRestitution.value),
+      billiardStopSpeed: Number(controls.billiardStopSpeed.value),
       fractureEnabled: controls.fractureEnabled.checked,
       contextFractureEnabled: controls.contextFractureEnabled.checked,
       fractureTargets: parseFractureTargets(controls.fractureTargets.value),
@@ -1416,6 +1438,10 @@
         return `${number.toFixed(2)} ×`;
       case "float3":
         return `${number.toFixed(3)} ×`;
+      case "speedOnly":
+        return `${Math.round(number)} px/s`;
+      case "drag":
+        return `${Math.round(number)} px/s^2`;
       case "accel":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} px/s^2`;
       case "degrees":
@@ -1785,14 +1811,17 @@
     return Math.pow(normalizedRadius, PHYSICS_ENGINE.massPower);
   }
 
-  function getPhysicsCollisionValues(launcherRadius, targetRadius = launcherRadius) {
+  function getBilliardRestitution(state) {
+    return clamp(Number(state?.billiardRestitution) || presentationDefaults.billiardRestitution, 0.5, 1);
+  }
+
+  function getPhysicsCollisionValues(launcherRadius, targetRadius = launcherRadius, restitutionValue = PHYSICS_ENGINE.restitution) {
     const launcherMass = getEqualDensityDiscMass(launcherRadius);
     const targetMass = getEqualDensityDiscMass(targetRadius);
     const massSum = Math.max(0.001, launcherMass + targetMass);
-    const restitution = PHYSICS_ENGINE.restitution;
+    const restitution = clamp(Number(restitutionValue) || PHYSICS_ENGINE.restitution, 0.5, 1);
     const launcherPostSpeedRatio = (launcherMass - restitution * targetMass) / massSum;
     const targetSpeedRatio = ((1 + restitution) * launcherMass) / massSum;
-    const targetDamping = -clamp(PHYSICS_ENGINE.baseDamping / Math.max(0.1, targetMass), 40, 1500);
 
     return {
       launcherMass,
@@ -1800,19 +1829,19 @@
       restitution,
       launcherPostSpeedRatio,
       targetSpeedRatio: clamp(targetSpeedRatio, 0.05, 2.5),
-      targetAccel: Math.round(targetDamping)
+      targetAccel: 0
     };
   }
 
-  function getPhysicsControlValuesForRadius(radius) {
-    const collision = getPhysicsCollisionValues(radius);
+  function getPhysicsControlValuesForRadius(radius, state = null) {
+    const collision = getPhysicsCollisionValues(radius, radius, getBilliardRestitution(state));
     return {
       launcherAccel: 0,
       targetSpeedRatio: Number(collision.targetSpeedRatio.toFixed(3)),
       targetAccel: collision.targetAccel,
       launcherBehavior: Math.abs(collision.launcherPostSpeedRatio) <= PHYSICS_ENGINE.stopThreshold ? "stop" : "continue",
       targetAngle: 0,
-      targetTravelMode: "park",
+      targetTravelMode: "continue",
       delayMs: 0,
       gapPx: 0,
       contactOcclusionMode: "target-front",
@@ -1823,10 +1852,13 @@
 
   function applyPhysicsToContextSnapshot(snapshot, baseState, durationMs, visibleMs) {
     const normalized = normalizeContextPairSnapshot(snapshot, baseState, 0);
-    const physics = getPhysicsControlValuesForRadius(normalized.ballRadius || baseState.contextBallRadius || baseState.ballRadius);
+    const physics = getPhysicsControlValuesForRadius(
+      normalized.ballRadius || baseState.contextBallRadius || baseState.ballRadius,
+      baseState
+    );
     return {
       ...normalized,
-      launcherSpeed: Math.max(Number(normalized.launcherSpeed) || baseState.launcherSpeed, 900),
+      launcherSpeed: Math.max(Number(normalized.launcherSpeed) || baseState.launcherSpeed, 20),
       launcherAccel: physics.launcherAccel,
       targetSpeedRatio: physics.targetSpeedRatio,
       targetAccel: physics.targetAccel,
@@ -1843,11 +1875,19 @@
   }
 
   function normalizePhysicsEngineState(state) {
-    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius);
-    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius);
+    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius, state);
+    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius, state);
 
     return {
       ...state,
+      billiardFriction: clamp(Number(state.billiardFriction) || presentationDefaults.billiardFriction, 0, 900),
+      billiardRestitution: getBilliardRestitution(state),
+      billiardWallRestitution: clamp(
+        Number(state.billiardWallRestitution) || presentationDefaults.billiardWallRestitution,
+        0.4,
+        1
+      ),
+      billiardStopSpeed: clamp(Number(state.billiardStopSpeed) || presentationDefaults.billiardStopSpeed, 0, 120),
       launcherAccel: originalPhysics.launcherAccel,
       targetSpeedRatio: originalPhysics.targetSpeedRatio,
       targetAccel: originalPhysics.targetAccel,
@@ -1882,13 +1922,13 @@
     const durationMs = Math.max(state.durationMs, 1800);
     const visibleMs = Math.max(state.launcherVisibleMs, state.targetVisibleMs, durationMs);
     const contextVisibleMs = Math.max(state.contextLauncherVisibleMs, state.contextTargetVisibleMs, durationMs);
-    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius);
-    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius);
+    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius, state);
+    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius, state);
     const physicsValues = {
       ...state,
       physicsEngineEnabled: true,
       durationMs,
-      launcherSpeed: Math.max(state.launcherSpeed, 900),
+      launcherSpeed: Math.max(state.launcherSpeed, 20),
       launcherAccel: originalPhysics.launcherAccel,
       targetSpeedRatio: originalPhysics.targetSpeedRatio,
       targetAccel: originalPhysics.targetAccel,
@@ -1902,7 +1942,7 @@
       contactOcclusionMode: originalPhysics.contactOcclusionMode,
       launcherVisibleMs: visibleMs,
       targetVisibleMs: visibleMs,
-      contextLauncherSpeed: Math.max(state.contextLauncherSpeed, 900),
+      contextLauncherSpeed: Math.max(state.contextLauncherSpeed, 20),
       contextLauncherAccel: contextPhysics.launcherAccel,
       contextTargetSpeedRatio: contextPhysics.targetSpeedRatio,
       contextTargetAccel: contextPhysics.targetAccel,
@@ -1927,8 +1967,7 @@
 
     activePresetKey = null;
     setControls(physicsValues);
-    statusText.textContent =
-      "Physics engine applied. Delay, gaps, tunnels, markers, sudden color, and manual trajectories were disabled.";
+    statusText.textContent = "Billiard on.";
   }
 
   function getBlinkMsControlValue() {
@@ -2084,8 +2123,8 @@
     const requestedRadius = clamp(Math.round(Number(baseRadius) || stimulusDefaults.contextBallRadius), 8, 60);
     const visibleContextPairs = clamp(Math.round(Number(pairCount) || 1), 1, CONTEXT_PAIR_MAX);
     const totalRows = visibleContextPairs + 1;
-    const desiredGap = 12;
-    const verticalMargin = 40;
+    const desiredGap = 18;
+    const verticalMargin = 34;
     const availableHeight = STAGE_HEIGHT - verticalMargin * 2;
     const fitRadius = Math.floor((availableHeight - visibleContextPairs * desiredGap) / (totalRows * 2));
     return clamp(Math.min(requestedRadius, fitRadius), 8, 60);
@@ -2093,11 +2132,11 @@
 
   function getAutoContextPairSpacing(radius, pairCount, preferredSpacing = 112) {
     const visibleContextPairs = clamp(Math.round(Number(pairCount) || 1), 1, CONTEXT_PAIR_MAX);
-    const verticalMargin = 40;
+    const verticalMargin = 34;
     const availableCenterSpan = Math.max(radius * 2, STAGE_HEIGHT - verticalMargin * 2 - radius * 2);
     const fitSpacing = availableCenterSpan / visibleContextPairs;
     const preferred = Math.abs(Number(preferredSpacing)) || 112;
-    const minimumComfortSpacing = radius * 2 + 12;
+    const minimumComfortSpacing = radius * 2 + 18;
     return Math.max(Math.min(preferred, fitSpacing), Math.min(minimumComfortSpacing, fitSpacing));
   }
 
@@ -2721,6 +2760,13 @@
     });
   }
 
+  function syncBilliardControlVisibility() {
+    const enabled = Boolean(controls.physicsEngineEnabled.checked);
+    billiardDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !enabled);
+    });
+  }
+
   function syncTrajectoryControlVisibility() {
     const state = cloneState();
     const enabled = Boolean(state.trajectoryEditEnabled);
@@ -3246,6 +3292,7 @@
     syncStartDragUi();
     syncCrosshairControlVisibility();
     syncRailControlVisibility();
+    syncBilliardControlVisibility();
     syncTrajectoryControlVisibility();
     syncTextBoxControlVisibility();
     syncRailSegments();
@@ -3300,11 +3347,11 @@
   function getDynamicCopy(state) {
     if (state.physicsEngineEnabled) {
       return {
-        label: "Custom physics-engine display",
-        summary: "A hidden equal-density collision solver is controlling post-impact motion.",
-        note: "Delay, gaps, tunnels, markers, sudden color changes, and manual trajectories were reset because they break the physics-engine assumption.",
+        label: "Billiard display",
+        summary: "Ball size sets mass; table drag and rail bounce control post-impact motion.",
+        note: "Billiard turns off delay, gaps, tunnels, markers, sudden color changes, and manual trajectories.",
         literature:
-          "Use this when you want a physically constrained comparison condition rather than a pure Michotte-style parameter manipulation."
+          "Use this for a physically constrained comparison condition rather than a pure Michotte-style parameter manipulation."
       };
     }
 
@@ -3391,7 +3438,7 @@
 
     let category = "launching";
     if (state.physicsEngineEnabled) {
-      category = "physics collision";
+      category = "billiard";
     } else if (state.launcherBehavior === "entrain") {
       category = "entraining";
     } else if (state.launcherBehavior === "continue") {
@@ -3692,7 +3739,7 @@
           : `main ${Math.round(state.ballRadius)} px / context ${Math.round(state.contextBallRadius)} px`;
     }
     if (summaryAfter) {
-      summaryAfter.textContent = state.physicsEngineEnabled ? "physics engine" : describeLauncherBehavior(state.launcherBehavior);
+      summaryAfter.textContent = state.physicsEngineEnabled ? "billiard" : describeLauncherBehavior(state.launcherBehavior);
     }
     if (summaryLauncherVisible) {
       summaryLauncherVisible.textContent = formatValue("visibilityMs", state.launcherVisibleMs);
@@ -3978,6 +4025,98 @@
     return travelMode === "park" ? Math.min(rawDistance, geometry.targetParkDistance) : rawDistance;
   }
 
+  function billiardDistanceAt(elapsedSec, speed, friction) {
+    const safeSpeed = Math.max(0, Number(speed) || 0);
+    const safeFriction = Math.max(0, Number(friction) || 0);
+    const t = Math.max(0, Number(elapsedSec) || 0);
+    if (safeSpeed <= 0 || t <= 0) {
+      return 0;
+    }
+    if (safeFriction <= 0) {
+      return safeSpeed * t;
+    }
+    const stopTime = safeSpeed / safeFriction;
+    const activeTime = Math.min(t, stopTime);
+    return safeSpeed * activeTime - 0.5 * safeFriction * activeTime * activeTime;
+  }
+
+  function billiardTimeForDistance(distance, speed, friction) {
+    const safeDistance = Math.max(0, Number(distance) || 0);
+    const safeSpeed = Math.max(0, Number(speed) || 0);
+    const safeFriction = Math.max(0, Number(friction) || 0);
+    if (safeDistance <= 0 || safeSpeed <= 0) {
+      return 0;
+    }
+    if (safeFriction <= 0) {
+      return safeDistance / safeSpeed;
+    }
+    const discriminant = Math.max(0, safeSpeed * safeSpeed - 2 * safeFriction * safeDistance);
+    return (safeSpeed - Math.sqrt(discriminant)) / safeFriction;
+  }
+
+  function advanceBilliardBody(body, elapsedMs, state) {
+    let x = body.x;
+    let y = body.y;
+    let vx = Number(body.vx) || 0;
+    let vy = Number(body.vy) || 0;
+    let remainingSec = Math.max(0, Number(elapsedMs) || 0) / 1000;
+    const radius = Math.max(1, Number(body.radius) || 1);
+    const friction = clamp(Number(state.billiardFriction) || 0, 0, 900);
+    const wallRestitution = clamp(Number(state.billiardWallRestitution) || presentationDefaults.billiardWallRestitution, 0.4, 1);
+    const stopSpeed = clamp(Number(state.billiardStopSpeed) || 0, 0, 120);
+    let speed = Math.hypot(vx, vy);
+    let bounceCount = 0;
+
+    while (remainingSec > 0.0001 && speed > stopSpeed && bounceCount < 20) {
+      const unitX = vx / speed;
+      const unitY = vy / speed;
+      const possibleDistance = billiardDistanceAt(remainingSec, speed, friction);
+      const wallDistance = getParkDistanceToStageEdge(x, y, unitX, unitY, radius);
+
+      if (!Number.isFinite(wallDistance) || possibleDistance < wallDistance - 0.001) {
+        x += unitX * possibleDistance;
+        y += unitY * possibleDistance;
+        speed = Math.max(0, speed - friction * remainingSec);
+        break;
+      }
+
+      const timeToWall = clamp(billiardTimeForDistance(wallDistance, speed, friction), 0, remainingSec);
+      x += unitX * wallDistance;
+      y += unitY * wallDistance;
+      speed = Math.max(0, speed - friction * timeToWall) * wallRestitution;
+      remainingSec -= timeToWall;
+      if (speed <= stopSpeed) {
+        speed = 0;
+        break;
+      }
+
+      const nearLeft = x <= radius + 0.5 && unitX < 0;
+      const nearRight = x >= STAGE_WIDTH - radius - 0.5 && unitX > 0;
+      const nearTop = y <= radius + 0.5 && unitY < 0;
+      const nearBottom = y >= STAGE_HEIGHT - radius - 0.5 && unitY > 0;
+      if (nearLeft || nearRight) {
+        vx = -unitX * speed;
+      } else {
+        vx = unitX * speed;
+      }
+      if (nearTop || nearBottom) {
+        vy = -unitY * speed;
+      } else {
+        vy = unitY * speed;
+      }
+      x = clamp(x, radius, STAGE_WIDTH - radius);
+      y = clamp(y, radius, STAGE_HEIGHT - radius);
+      bounceCount += 1;
+    }
+
+    if (speed <= stopSpeed) {
+      vx = 0;
+      vy = 0;
+    }
+
+    return { x: clamp(x, radius, STAGE_WIDTH - radius), y: clamp(y, radius, STAGE_HEIGHT - radius), vx, vy };
+  }
+
   function getInsideStrokeRadius(radius, lineWidth) {
     return Math.max(0.1, radius - lineWidth / 2);
   }
@@ -4047,11 +4186,13 @@
 
     const lineWidth = 2;
     drawCtx.beginPath();
-    drawCtx.arc(x, y, getInsideStrokeRadius(radius, lineWidth), 0, Math.PI * 2);
+    drawCtx.arc(x, y, radius, 0, Math.PI * 2);
     drawCtx.fillStyle = fill;
     drawCtx.fill();
+    drawCtx.beginPath();
+    drawCtx.arc(x, y, getInsideStrokeRadius(radius, lineWidth), 0, Math.PI * 2);
     drawCtx.lineWidth = lineWidth;
-    drawCtx.strokeStyle = outline;
+    drawCtx.strokeStyle = fill;
     drawCtx.stroke();
   }
 
@@ -4489,7 +4630,7 @@
         y: launcherStopY - approachUnitY * launcherDistance
       };
     }
-    const physicsCollision = state.physicsEngineEnabled ? getPhysicsCollisionValues(radius) : null;
+    const physicsCollision = state.physicsEngineEnabled ? getPhysicsCollisionValues(radius, radius, getBilliardRestitution(state)) : null;
     const effectiveDelayMs = physicsCollision ? 0 : state.delayMs;
     const effectiveTargetSpeedRatio = physicsCollision ? physicsCollision.targetSpeedRatio : state.targetSpeedRatio;
     const effectiveTargetAccel = physicsCollision ? physicsCollision.targetAccel : state.targetAccel;
@@ -4565,19 +4706,42 @@
 
     let targetX = geometry.targetBaseX;
     let targetY = geometry.targetBaseY;
-    if ((state.physicsEngineEnabled || state.launcherBehavior !== "continue") && t >= geometry.targetStartTime) {
+    if (state.physicsEngineEnabled && t >= geometry.targetStartTime) {
+      const targetElapsed = t - geometry.targetStartTime;
+      const launcherBody = advanceBilliardBody(
+        {
+          x: geometry.launcherStopX,
+          y: geometry.launcherStopY,
+          vx: geometry.approachUnitX * geometry.launcherPostSpeed,
+          vy: geometry.approachUnitY * geometry.launcherPostSpeed,
+          radius: geometry.radius
+        },
+        targetElapsed,
+        state
+      );
+      const targetBody = advanceBilliardBody(
+        {
+          x: geometry.targetBaseX,
+          y: geometry.targetBaseY,
+          vx: geometry.targetUnitX * geometry.targetSpeed,
+          vy: geometry.targetUnitY * geometry.targetSpeed,
+          radius: geometry.radius
+        },
+        targetElapsed,
+        state
+      );
+      launcherX = launcherBody.x;
+      launcherY = launcherBody.y;
+      targetX = targetBody.x;
+      targetY = targetBody.y;
+    } else if (state.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
       const moveDistance = getTargetMoveDistance(state, geometry, targetElapsed);
       targetX += geometry.targetUnitX * moveDistance;
       targetY += geometry.targetUnitY * moveDistance;
     }
 
-    if (state.physicsEngineEnabled && t >= geometry.targetStartTime) {
-      const elapsed = t - geometry.targetStartTime;
-      const moveDistance = signedDisplacementAt(elapsed, geometry.launcherPostSpeed);
-      launcherX = geometry.launcherStopX + geometry.approachUnitX * moveDistance;
-      launcherY = geometry.launcherStopY + geometry.approachUnitY * moveDistance;
-    } else if (state.launcherBehavior === "continue" && t >= geometry.stopTime) {
+    if (!state.physicsEngineEnabled && state.launcherBehavior === "continue" && t >= geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, state.launcherAccel);
       launcherX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
@@ -4635,19 +4799,42 @@
     let targetX = geometry.targetBaseX;
     let targetY = geometry.targetBaseY;
 
-    if ((eventState.physicsEngineEnabled || eventState.launcherBehavior !== "continue") && t >= geometry.targetStartTime) {
+    if (eventState.physicsEngineEnabled && t >= geometry.targetStartTime) {
+      const targetElapsed = t - geometry.targetStartTime;
+      const launcherBody = advanceBilliardBody(
+        {
+          x: geometry.launcherStopX,
+          y: geometry.launcherStopY,
+          vx: geometry.approachUnitX * geometry.launcherPostSpeed,
+          vy: geometry.approachUnitY * geometry.launcherPostSpeed,
+          radius: geometry.radius
+        },
+        targetElapsed,
+        eventState
+      );
+      const targetBody = advanceBilliardBody(
+        {
+          x: geometry.targetBaseX,
+          y: geometry.targetBaseY,
+          vx: geometry.targetUnitX * geometry.targetSpeed,
+          vy: geometry.targetUnitY * geometry.targetSpeed,
+          radius: geometry.radius
+        },
+        targetElapsed,
+        eventState
+      );
+      launcherX = launcherBody.x;
+      launcherY = launcherBody.y;
+      targetX = targetBody.x;
+      targetY = targetBody.y;
+    } else if (eventState.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
       const moveDistance = getTargetMoveDistance(eventState, geometry, targetElapsed);
       targetX += geometry.targetUnitX * moveDistance;
       targetY += geometry.targetUnitY * moveDistance;
     }
 
-    if (eventState.physicsEngineEnabled && t >= geometry.targetStartTime) {
-      const elapsed = t - geometry.targetStartTime;
-      const moveDistance = signedDisplacementAt(elapsed, geometry.launcherPostSpeed);
-      launcherX = geometry.launcherStopX + geometry.approachUnitX * moveDistance;
-      launcherY = geometry.launcherStopY + geometry.approachUnitY * moveDistance;
-    } else if (eventState.launcherBehavior === "continue" && t >= geometry.stopTime) {
+    if (!eventState.physicsEngineEnabled && eventState.launcherBehavior === "continue" && t >= geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, eventState.launcherAccel);
       launcherX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
@@ -6406,7 +6593,10 @@
       parts.push(`accel${compactNumber(state.launcherAccel)}-${compactNumber(state.targetAccel)}`);
     }
     if (state.physicsEngineEnabled) {
-      parts.push("physdisc");
+      parts.push(`billiard-drag${compactNumber(state.billiardFriction)}-rail${compactNumber(state.billiardWallRestitution, 2)}`);
+    }
+    if (state.targetTravelMode === "park") {
+      parts.push("o2-park");
     }
     if (state.launcherVisibleMs < state.durationMs || state.targetVisibleMs < state.durationMs) {
       parts.push(`vis${compactNumber(state.launcherVisibleMs)}-${compactNumber(state.targetVisibleMs)}ms`);
@@ -6832,6 +7022,14 @@
         heightPx: encoded.height
       },
       stageColor: state.stageColor,
+      billiard: {
+        enabled: state.physicsEngineEnabled,
+        frictionPxPerSec2: state.physicsEngineEnabled ? state.billiardFriction : "",
+        ballRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
+        wallRestitution: state.physicsEngineEnabled ? state.billiardWallRestitution : "",
+        stopBelowPxPerSec: state.physicsEngineEnabled ? state.billiardStopSpeed : "",
+        massModel: state.physicsEngineEnabled ? `size-based disc mass, radius^${PHYSICS_ENGINE.massPower}` : ""
+      },
       contextPairSnapshots: state.contextPairSnapshots,
       manualGroupingRects: state.manualGroupingRects,
       trajectoryOverrides: state.trajectoryOverrides,
@@ -6879,8 +7077,13 @@
       targetSpeedRatio: state.targetSpeedRatio,
       targetAccelerationPxPerSec2: state.targetAccel,
       physicsEngineEnabled: state.physicsEngineEnabled,
-      physicsMassModel: state.physicsEngineEnabled ? `equal-density visible discs, mass proportional to radius^${PHYSICS_ENGINE.massPower}` : "",
-      physicsRestitution: state.physicsEngineEnabled ? PHYSICS_ENGINE.restitution : "",
+      billiardEnabled: state.physicsEngineEnabled,
+      billiardFrictionPxPerSec2: state.physicsEngineEnabled ? state.billiardFriction : "",
+      billiardBallRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
+      billiardWallRestitution: state.physicsEngineEnabled ? state.billiardWallRestitution : "",
+      billiardStopBelowPxPerSec: state.physicsEngineEnabled ? state.billiardStopSpeed : "",
+      physicsMassModel: state.physicsEngineEnabled ? `size-based disc mass, radius^${PHYSICS_ENGINE.massPower}` : "",
+      physicsRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
       targetAngleDegrees: state.targetAngle,
       targetTravelMode: state.targetTravelMode,
       launcherVisibleMs: state.launcherVisibleMs,
@@ -6916,6 +7119,7 @@
       contextTargetSpeedRatio: state.contextTargetSpeedRatio,
       contextTargetAccelerationPxPerSec2: state.contextTargetAccel,
       contextTargetAngleDegrees: state.contextTargetAngle,
+      contextTargetTravelMode: state.contextTargetTravelMode,
       contextLauncherVisibleMs: state.contextLauncherVisibleMs,
       contextTargetVisibleMs: state.contextTargetVisibleMs,
       groupingMode: state.groupingMode,
@@ -7103,10 +7307,36 @@
       launcherAccel: readConditionParameter(parameters, "launcherAccelerationPxPerSec2", baseState.launcherAccel),
       targetSpeedRatio: readConditionParameter(parameters, "targetSpeedRatio", baseState.targetSpeedRatio),
       targetAccel: readConditionParameter(parameters, "targetAccelerationPxPerSec2", baseState.targetAccel),
-      physicsEngineEnabled: readConditionParameter(parameters, "physicsEngineEnabled", baseState.physicsEngineEnabled),
+      physicsEngineEnabled: readConditionParameter(
+        parameters,
+        "billiardEnabled",
+        readConditionParameter(parameters, "physicsEngineEnabled", baseState.physicsEngineEnabled)
+      ),
+      billiardFriction: readConditionParameter(
+        parameters,
+        "billiardFrictionPxPerSec2",
+        baseState.billiardFriction
+      ),
+      billiardRestitution: readConditionParameter(
+        parameters,
+        "billiardBallRestitution",
+        readConditionParameter(parameters, "physicsRestitution", baseState.billiardRestitution)
+      ),
+      billiardWallRestitution: readConditionParameter(
+        parameters,
+        "billiardWallRestitution",
+        baseState.billiardWallRestitution
+      ),
+      billiardStopSpeed: readConditionParameter(
+        parameters,
+        "billiardStopBelowPxPerSec",
+        baseState.billiardStopSpeed
+      ),
       launcherBehavior: readConditionParameter(parameters, "launcherBehavior", baseState.launcherBehavior),
       targetAngle: readConditionParameter(parameters, "targetAngleDegrees", baseState.targetAngle),
-      targetTravelMode: readConditionParameter(parameters, "targetTravelMode", baseState.targetTravelMode),
+      targetTravelMode: normalizeTargetTravelMode(
+        readConditionParameter(parameters, "targetTravelMode", baseState.targetTravelMode)
+      ),
       launcherVisibleMs: readConditionParameter(parameters, "launcherVisibleMs", baseState.launcherVisibleMs),
       targetVisibleMs: readConditionParameter(parameters, "targetVisibleMs", baseState.targetVisibleMs),
       delayMs: readConditionParameter(parameters, "contactDelayMs", baseState.delayMs),
@@ -7152,6 +7382,9 @@
         baseState.contextTargetAccel
       ),
       contextTargetAngle: readConditionParameter(parameters, "contextTargetAngleDegrees", baseState.contextTargetAngle),
+      contextTargetTravelMode: normalizeTargetTravelMode(
+        readConditionParameter(parameters, "contextTargetTravelMode", baseState.contextTargetTravelMode)
+      ),
       contextLauncherVisibleMs: readConditionParameter(
         parameters,
         "contextLauncherVisibleMs",
@@ -7318,6 +7551,11 @@
       targetSpeedRatio: condition.parameters.targetSpeedRatio,
       targetAccelerationPxPerSec2: condition.parameters.targetAccelerationPxPerSec2,
       physicsEngineEnabled: condition.parameters.physicsEngineEnabled,
+      billiardEnabled: condition.parameters.billiardEnabled,
+      billiardFrictionPxPerSec2: condition.parameters.billiardFrictionPxPerSec2,
+      billiardBallRestitution: condition.parameters.billiardBallRestitution,
+      billiardWallRestitution: condition.parameters.billiardWallRestitution,
+      billiardStopBelowPxPerSec: condition.parameters.billiardStopBelowPxPerSec,
       physicsMassModel: condition.parameters.physicsMassModel,
       physicsRestitution: condition.parameters.physicsRestitution,
       targetAngleDegrees: condition.parameters.targetAngleDegrees,
@@ -7354,6 +7592,7 @@
       contextTargetSpeedRatio: condition.parameters.contextTargetSpeedRatio,
       contextTargetAccelerationPxPerSec2: condition.parameters.contextTargetAccelerationPxPerSec2,
       contextTargetAngleDegrees: condition.parameters.contextTargetAngleDegrees,
+      contextTargetTravelMode: condition.parameters.contextTargetTravelMode,
       contextLauncherVisibleMs: condition.parameters.contextLauncherVisibleMs,
       contextTargetVisibleMs: condition.parameters.contextTargetVisibleMs,
       renderMode: condition.parameters.renderMode,
@@ -7508,10 +7747,15 @@
         targetSpeedRatio: condition.targetSpeedRatio,
         targetAccelerationPxPerSec2: condition.targetAccel,
         physicsEngineEnabled: condition.physicsEngineEnabled,
+        billiardEnabled: condition.physicsEngineEnabled,
+        billiardFrictionPxPerSec2: condition.physicsEngineEnabled ? condition.billiardFriction : "",
+        billiardBallRestitution: condition.physicsEngineEnabled ? condition.billiardRestitution : "",
+        billiardWallRestitution: condition.physicsEngineEnabled ? condition.billiardWallRestitution : "",
+        billiardStopBelowPxPerSec: condition.physicsEngineEnabled ? condition.billiardStopSpeed : "",
         physicsMassModel: condition.physicsEngineEnabled
-          ? `equal-density visible discs, mass proportional to radius^${PHYSICS_ENGINE.massPower}`
+          ? `size-based disc mass, radius^${PHYSICS_ENGINE.massPower}`
           : "",
-        physicsRestitution: condition.physicsEngineEnabled ? PHYSICS_ENGINE.restitution : "",
+        physicsRestitution: condition.physicsEngineEnabled ? condition.billiardRestitution : "",
         launcherBehavior: condition.launcherBehavior,
         targetAngleDegrees: condition.targetAngle,
         targetTravelMode: condition.targetTravelMode,
@@ -7544,6 +7788,7 @@
         contextTargetSpeedRatio: condition.contextTargetSpeedRatio,
         contextTargetAccelerationPxPerSec2: condition.contextTargetAccel,
         contextTargetAngleDegrees: condition.contextTargetAngle,
+        contextTargetTravelMode: condition.contextTargetTravelMode,
         contextLauncherVisibleMs: condition.contextLauncherVisibleMs,
         contextTargetVisibleMs: condition.contextTargetVisibleMs,
         renderMode: condition.renderMode,
@@ -8476,6 +8721,22 @@
         });
         return;
       }
+      if (id === "physicsEngineEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          syncBilliardControlVisibility();
+          if (control.checked) {
+            applyPhysicsMode();
+            return;
+          }
+          updateOutputs();
+          refreshText();
+          updateCompatibilityNotice(cloneState());
+          statusText.textContent = "Billiard off.";
+          drawIdlePreview();
+        });
+        return;
+      }
       if (id === "crosshairEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
@@ -8727,4 +8988,5 @@
   bindFractureTargetEditors();
   bindStartDragging();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
+  window.launchingVideoMakerReady = true;
 })();
