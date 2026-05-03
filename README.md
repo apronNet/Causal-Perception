@@ -42,7 +42,7 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 - **Blink before launch** shows only the crosshair before the balls appear. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
 - **Rail** adds one or more draggable line segments. Use this for alignment or path-cue manipulations.
 - **Individual trajectories** shows draggable vector arrows in the preview. Drag the arrow head to set that ball's trajectory. The angle slider remains available for exact entry.
-- **Fracture** adds edge-reaching cracks to O2 after impact. Context pairs can be given their own O2 fracture settings.
+- **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
 - **Physics mode** applies a hidden equal-density disc collision solver. Larger balls are treated as heavier. The mode resets delay, gaps, tunnels, markers, sudden color change, and manual trajectories because those features break the physical-collision assumption.
 - **Impact sound** adds a contact sound. If sound is not a condition, leave it off.
 

@@ -124,6 +124,7 @@
   const contextMovementPairList = document.getElementById("contextMovementPairList");
   const contextPositionPairList = document.getElementById("contextPositionPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
+  const fractureTargetList = document.getElementById("fractureTargetList");
 
   /*
    * Parameter propagation rule
@@ -180,6 +181,7 @@
     "physicsEngineEnabled",
     "fractureEnabled",
     "contextFractureEnabled",
+    "fractureTargets",
     "crosshairEnabled",
     "crosshairX",
     "crosshairY",
@@ -289,9 +291,9 @@
     objectStyle: "Changes: visual rendering of the balls. Simple filled discs are the most controlled; shaded or ring styles are for display variants.",
     groupingMode: "Changes: solid boxes that group one pair, every pair separately, or all context pairs together. Use for: testing perceptual grouping.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
-    fractureEnabled: "Changes: adds simple crack lines to O2 after impact. Use for: testing a visible contact consequence.",
-    contextFractureEnabled:
-      "Adds the visible crack cue to Context 1 O2 after its contact. Leave off unless fracture is part of the condition.",
+    fractureEnabled:
+      "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
+    contextFractureEnabled: "Legacy Context 1 O2 fracture value, kept for older presets and exported records.",
     crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
     railEnabled: "Changes: adds one or more draggable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
@@ -903,6 +905,7 @@
     physicsEngineEnabled: false,
     fractureEnabled: false,
     contextFractureEnabled: false,
+    fractureTargets: "{}",
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
@@ -1093,6 +1096,29 @@
     return JSON.stringify(parseTrajectoryOverrides(overrides));
   }
 
+  function parseFractureTargets(value) {
+    if (!value) {
+      return {};
+    }
+    try {
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return {};
+      }
+      return Object.fromEntries(
+        Object.entries(parsed)
+          .filter(([key]) => /^(original|context\d+)(Launcher|Target)$/.test(key))
+          .map(([key, enabled]) => [key, Boolean(enabled)])
+      );
+    } catch {
+      return {};
+    }
+  }
+
+  function serializeFractureTargets(targets) {
+    return JSON.stringify(parseFractureTargets(targets));
+  }
+
   function getHiddenJsonControlValue(key, value) {
     if (key === "contextPairSnapshots") {
       return serializeContextPairSnapshots(typeof value === "string" ? parseContextPairSnapshots(value) : value);
@@ -1102,6 +1128,9 @@
     }
     if (key === "trajectoryOverrides") {
       return serializeTrajectoryOverrides(value);
+    }
+    if (key === "fractureTargets") {
+      return serializeFractureTargets(value);
     }
     return value;
   }
@@ -1144,7 +1173,9 @@
         targetAngle: clamp(Math.round(normalizeSnapshotNumber(normalized.targetAngle, state.contextTargetAngle)), -90, 90),
         launcherVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.launcherVisibleMs, state.contextLauncherVisibleMs)),
         targetVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.targetVisibleMs, state.contextTargetVisibleMs)),
-        fractureEnabled: Boolean(normalized.fractureEnabled)
+        launcherFractureEnabled: Boolean(normalized.launcherFractureEnabled),
+        targetFractureEnabled: Boolean(normalized.targetFractureEnabled ?? normalized.fractureEnabled),
+        fractureEnabled: Boolean(normalized.targetFractureEnabled ?? normalized.fractureEnabled)
       };
     });
   }
@@ -1200,6 +1231,7 @@
       physicsEngineEnabled: controls.physicsEngineEnabled.value === "true",
       fractureEnabled: controls.fractureEnabled.checked,
       contextFractureEnabled: controls.contextFractureEnabled.checked,
+      fractureTargets: parseFractureTargets(controls.fractureTargets.value),
       crosshairEnabled: controls.crosshairEnabled.checked,
       crosshairX: Number(controls.crosshairX.value),
       crosshairY: Number(controls.crosshairY.value),
@@ -1253,6 +1285,7 @@
     };
     state.contextPairCount = getContextPairCount(state);
     state.contextPairSnapshots = normalizeContextPairSnapshotsForState(state);
+    state.fractureTargets = normalizeFractureTargetsForState(state.fractureTargets, state);
     state.railSegments = state.railEnabled ? getRailSegments(state).slice(1) : [];
     state.trajectoryOverrides = parseTrajectoryOverrides(state.trajectoryOverrides);
     return state.physicsEngineEnabled ? normalizePhysicsEngineState(state) : state;
@@ -2103,7 +2136,9 @@
       targetAngle: state.targetAngle,
       launcherVisibleMs: state.launcherVisibleMs,
       targetVisibleMs: state.targetVisibleMs,
-      fractureEnabled: state.fractureEnabled,
+      launcherFractureEnabled: isFractureTargetEnabled(state, "originalLauncher"),
+      targetFractureEnabled: isFractureTargetEnabled(state, "originalTarget"),
+      fractureEnabled: isFractureTargetEnabled(state, "originalTarget"),
       launcherColor: state.launcherColor,
       targetColor: state.targetColor,
       groupingColor: state.groupingOriginalColor,
@@ -2143,6 +2178,83 @@
     const storedOffset = pairIndex === 0 ? state.contextYOffset : Number(snapshot?.yOffset);
     const offset = Number.isFinite(storedOffset) ? storedOffset : getDefaultContextPairOffset(state, pairIndex);
     return clamp(mainLaneY + offset, 44, STAGE_HEIGHT - 44);
+  }
+
+  function getFracturePairDescriptors(state) {
+    const descriptors = [{ key: "original", label: "Original pair", snapshot: null }];
+    const pairCount = getContextPairCount(state);
+    for (let pairNumber = 1; pairNumber <= pairCount; pairNumber += 1) {
+      const snapshot = pairNumber > 1 ? state.contextPairSnapshots?.[pairNumber - 2] || null : null;
+      descriptors.push({ key: `context${pairNumber}`, label: `Context ${pairNumber}`, snapshot });
+    }
+    return descriptors;
+  }
+
+  function getLegacyFractureTargetDefault(state, pairKey, objectRole, snapshot = null) {
+    if (pairKey === "original") {
+      return objectRole === "target";
+    }
+    if (pairKey === "context1") {
+      return objectRole === "target" ? Boolean(state.contextFractureEnabled) : false;
+    }
+    if (!snapshot) {
+      return false;
+    }
+    if (objectRole === "launcher") {
+      return Boolean(snapshot.launcherFractureEnabled);
+    }
+    return Boolean(snapshot.targetFractureEnabled ?? snapshot.fractureEnabled);
+  }
+
+  function getFractureTargetValue(state, targetKey) {
+    const explicitTargets = parseFractureTargets(state.fractureTargets);
+    if (Object.prototype.hasOwnProperty.call(explicitTargets, targetKey)) {
+      return explicitTargets[targetKey];
+    }
+
+    const match = targetKey.match(/^(original|context\d+)(Launcher|Target)$/);
+    if (!match) {
+      return false;
+    }
+
+    const [, pairKey, rawRole] = match;
+    const descriptor = getFracturePairDescriptors(state).find((pair) => pair.key === pairKey);
+    if (!descriptor) {
+      return false;
+    }
+    return getLegacyFractureTargetDefault(
+      state,
+      pairKey,
+      rawRole === "Launcher" ? "launcher" : "target",
+      descriptor.snapshot
+    );
+  }
+
+  function normalizeFractureTargetsForState(targets, state) {
+    const explicitTargets = parseFractureTargets(targets);
+    const normalized = {};
+    getFracturePairDescriptors(state).forEach((pair) => {
+      ["Launcher", "Target"].forEach((role) => {
+        const key = `${pair.key}${role}`;
+        if (Object.prototype.hasOwnProperty.call(explicitTargets, key)) {
+          normalized[key] = explicitTargets[key];
+        }
+      });
+    });
+    return normalized;
+  }
+
+  function getEffectiveFractureTargets(state) {
+    const targets = {};
+    getFracturePairDescriptors(state).forEach((pair) => {
+      targets[`${pair.key}Launcher`] = getFractureTargetValue(state, `${pair.key}Launcher`);
+      targets[`${pair.key}Target`] = getFractureTargetValue(state, `${pair.key}Target`);
+    });
+    return targets;
+  }
+
+  function isFractureTargetEnabled(state, targetKey) {
+    return Boolean(state.fractureEnabled && getFractureTargetValue(state, targetKey));
   }
 
   function contextPairFieldId(pairNumber, group, field) {
@@ -2233,7 +2345,6 @@
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
             ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
             ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
-            ${renderContextCheckbox(pairNumber, "Movement", "fractureEnabled", "O2 fracture", snapshot)}
           </div>
         </div>`);
 
@@ -2267,6 +2378,54 @@
     syncAllChoiceControlButtons();
     syncOccluderWidthVisibility();
     updateOutputs();
+  }
+
+  function syncFractureTargetsToLegacyControls(targets) {
+    const state = cloneState();
+    controls.contextFractureEnabled.checked = Boolean(targets.context1Target);
+
+    const snapshots = [...state.contextPairSnapshots];
+    snapshots.forEach((snapshot, snapshotIndex) => {
+      const pairNumber = snapshotIndex + 2;
+      snapshot.launcherFractureEnabled = Boolean(targets[`context${pairNumber}Launcher`]);
+      snapshot.targetFractureEnabled = Boolean(targets[`context${pairNumber}Target`]);
+      snapshot.fractureEnabled = snapshot.targetFractureEnabled;
+    });
+    controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
+  }
+
+  function renderFractureTargetEditors() {
+    if (!fractureTargetList) {
+      return;
+    }
+
+    const state = cloneState();
+    const pairDescriptors = getFracturePairDescriptors(state);
+    const showEditor = Boolean(state.fractureEnabled && pairDescriptors.length > 1);
+    fractureTargetList.classList.toggle("is-retracted", !showEditor);
+
+    if (!showEditor) {
+      fractureTargetList.replaceChildren();
+      return;
+    }
+
+    const targets = getEffectiveFractureTargets(state);
+    const rows = pairDescriptors
+      .map((pair) => {
+        const launcherKey = `${pair.key}Launcher`;
+        const targetKey = `${pair.key}Target`;
+        return `
+          <div class="fracture-target-row">
+            <strong>${pair.label}</strong>
+            <label><input data-fracture-target="${launcherKey}" type="checkbox"${targets[launcherKey] ? " checked" : ""} /> O1</label>
+            <label><input data-fracture-target="${targetKey}" type="checkbox"${targets[targetKey] ? " checked" : ""} /> O2</label>
+          </div>`;
+      })
+      .join("");
+
+    fractureTargetList.innerHTML = `
+      <p class="fracture-target-note">Choose which objects get cracks after their contact time.</p>
+      <div class="fracture-target-grid">${rows}</div>`;
   }
 
   function updateContextPairSnapshotFromControl(control) {
@@ -2921,6 +3080,7 @@
     syncContextControlVisibility();
     syncContextPairSnapshots();
     renderContextPairEditors();
+    renderFractureTargetEditors();
     lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
     syncStartDragUi();
     syncCrosshairControlVisibility();
@@ -3258,12 +3418,7 @@
   }
 
   function hasAnyFractureEnabled(state) {
-    const contextVisible = getContextPairCount(state) > 0;
-    return Boolean(
-      state.fractureEnabled ||
-        (contextVisible &&
-          (state.contextFractureEnabled || (state.contextPairSnapshots || []).some((snapshot) => snapshot.fractureEnabled)))
-    );
+    return Boolean(state.fractureEnabled && Object.values(getEffectiveFractureTargets(state)).some(Boolean));
   }
 
   function getExperimentWarnings(state) {
@@ -3688,8 +3843,8 @@
     drawCtx.stroke();
   }
 
-  function shouldDrawFracture(state, eventState) {
-    return Boolean(state.fractureEnabled && eventState?.time >= eventState?.geometry?.targetStartTime);
+  function shouldDrawFracture(state, eventState, targetKey) {
+    return Boolean(isFractureTargetEnabled(state, targetKey) && eventState?.time >= eventState?.geometry?.targetStartTime);
   }
 
   function drawFracture(drawCtx, state, x, y, radius) {
@@ -4303,6 +4458,8 @@
       targetSpeedRatio: Number(snapshot.targetSpeedRatio) || baseState.targetSpeedRatio,
       targetAccel: Number(snapshot.targetAccel) || 0,
       targetAngle: Number(snapshot.targetAngle) || 0,
+      launcherFractureEnabled: Boolean(snapshot.launcherFractureEnabled),
+      targetFractureEnabled: Boolean(snapshot.targetFractureEnabled ?? snapshot.fractureEnabled),
       fractureEnabled: Boolean(snapshot.fractureEnabled),
       launcherVisibleMs: Number(snapshot.launcherVisibleMs) || baseState.launcherVisibleMs,
       targetVisibleMs: Number(snapshot.targetVisibleMs) || baseState.targetVisibleMs,
@@ -4622,18 +4779,31 @@
         isObjectVisibleAt(t, eventState.launcherVisibleMs) &&
         (!eventState.occluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds))
       ) {
-        drawObject(drawCtx, state, singleEvent.singleX, singleEvent.singleY, radius, singlePalette.fill, singlePalette.outline);
+        drawRenderedObject(
+          drawCtx,
+          state,
+          {
+            x: singleEvent.singleX,
+            y: singleEvent.singleY,
+            fill: singlePalette.fill,
+            outline: singlePalette.outline,
+            cracked: shouldDrawFracture(state, singleEvent, `${trajectoryScope === "context" ? "context1" : trajectoryScope}Launcher`)
+          },
+          radius
+        );
       }
       return;
     }
 
     const contextEvent = getDirectedEventState(eventState, t, laneY, directionSign, scope, trajectoryScope);
+    const pairKey = trajectoryScope === "context" ? "context1" : trajectoryScope;
     const launcher = {
       x: contextEvent.launcherX,
       y: contextEvent.launcherY,
       fill: colors.launcher.fill,
       outline: colors.launcher.outline,
-      visible: isObjectVisibleAt(t, eventState.launcherVisibleMs)
+      visible: isObjectVisibleAt(t, eventState.launcherVisibleMs),
+      cracked: shouldDrawFracture(state, contextEvent, `${pairKey}Launcher`)
     };
     const target = {
       x: contextEvent.targetX,
@@ -4641,7 +4811,7 @@
       fill: colors.target.fill,
       outline: colors.target.outline,
       visible: isObjectVisibleAt(t, eventState.targetVisibleMs),
-      cracked: shouldDrawFracture(eventState, contextEvent)
+      cracked: shouldDrawFracture(state, contextEvent, `${pairKey}Target`)
     };
     const contextOccluderBounds = drawTunnelOccluder(
       drawCtx,
@@ -4853,7 +5023,8 @@
       y: eventState.launcherY,
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
-      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs)
+      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs),
+      cracked: shouldDrawFracture(state, eventState, "originalLauncher")
     };
     const target = {
       x: eventState.targetX,
@@ -4861,7 +5032,7 @@
       fill: palette.target.fill,
       outline: palette.target.outline,
       visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs),
-      cracked: shouldDrawFracture(state, eventState)
+      cracked: shouldDrawFracture(state, eventState, "originalTarget")
     };
     drawObjectPair(drawCtx, state, eventState, launcher, target, radius, state.contactOcclusionMode);
   }
@@ -4874,7 +5045,8 @@
       y: eventState.launcherY,
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
-      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs)
+      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs),
+      cracked: shouldDrawFracture(state, eventState, "originalLauncher")
     };
     const target = {
       x: eventState.targetX,
@@ -4882,7 +5054,7 @@
       fill: palette.target.fill,
       outline: palette.target.outline,
       visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs),
-      cracked: shouldDrawFracture(state, eventState)
+      cracked: shouldDrawFracture(state, eventState, "originalTarget")
     };
     drawOccludedObjectPair(drawCtx, state, launcher, target, radius, occluderBounds);
   }
@@ -5433,6 +5605,30 @@
       };
       container.addEventListener("input", handleEdit);
       container.addEventListener("change", handleEdit);
+    });
+  }
+
+  function bindFractureTargetEditors() {
+    if (!fractureTargetList) {
+      return;
+    }
+
+    fractureTargetList.addEventListener("change", (event) => {
+      const control = event.target.closest("[data-fracture-target]");
+      if (!control || !fractureTargetList.contains(control)) {
+        return;
+      }
+
+      const state = cloneState();
+      const targets = getEffectiveFractureTargets(state);
+      targets[control.dataset.fractureTarget] = control.checked;
+      controls.fractureTargets.value = serializeFractureTargets(targets);
+      syncFractureTargetsToLegacyControls(targets);
+      activePresetKey = null;
+      updateOutputs();
+      refreshText();
+      statusText.textContent = "Fracture targets updated.";
+      drawIdlePreview();
     });
   }
 
@@ -6126,6 +6322,7 @@
       trajectoryOverrides: state.trajectoryOverrides,
       fractureEnabled: state.fractureEnabled,
       contextFractureEnabled: state.contextFractureEnabled,
+      fractureTargets: state.fractureTargets,
       parameters: state,
       metadataEmbeddingNote:
         "Browser MediaRecorder exports do not reliably support embedded custom MP4/WebM metadata. Keep this JSON sidecar with the movie file.",
@@ -6223,6 +6420,7 @@
       crosshairBlinkMs: state.crosshairBlinkMs,
       fractureEnabled: state.fractureEnabled,
       contextFractureEnabled: state.contextFractureEnabled,
+      fractureTargets: JSON.stringify(state.fractureTargets),
       trajectoryEditEnabled: state.trajectoryEditEnabled,
       selectedTrajectoryBall: state.selectedTrajectoryBall,
       selectedTrajectoryAngle: state.selectedTrajectoryAngle,
@@ -6450,6 +6648,7 @@
       contactGuideMode: readConditionParameter(parameters, "contactGuideMode", baseState.contactGuideMode),
       fractureEnabled: readConditionParameter(parameters, "fractureEnabled", baseState.fractureEnabled),
       contextFractureEnabled: readConditionParameter(parameters, "contextFractureEnabled", baseState.contextFractureEnabled),
+      fractureTargets: parseFractureTargets(readConditionParameter(parameters, "fractureTargets", baseState.fractureTargets)),
       crosshairEnabled: readConditionParameter(parameters, "crosshairEnabled", baseState.crosshairEnabled),
       crosshairX: readConditionParameter(parameters, "crosshairX", baseState.crosshairX),
       crosshairY: readConditionParameter(parameters, "crosshairY", baseState.crosshairY),
@@ -6657,6 +6856,7 @@
       crosshairBlinkMs: condition.parameters.crosshairBlinkMs,
       fractureEnabled: condition.parameters.fractureEnabled,
       contextFractureEnabled: condition.parameters.contextFractureEnabled,
+      fractureTargets: JSON.stringify(condition.parameters.fractureTargets || {}),
       trajectoryEditEnabled: condition.parameters.trajectoryEditEnabled,
       selectedTrajectoryBall: condition.parameters.selectedTrajectoryBall,
       selectedTrajectoryAngle: condition.parameters.selectedTrajectoryAngle,
@@ -6830,6 +7030,7 @@
         contactGuideMode: condition.contactGuideMode,
         fractureEnabled: condition.fractureEnabled,
         contextFractureEnabled: condition.contextFractureEnabled,
+        fractureTargets: condition.fractureTargets || {},
         crosshairEnabled: condition.crosshairEnabled,
         crosshairX: condition.crosshairX,
         crosshairY: condition.crosshairY,
@@ -7668,6 +7869,7 @@
           syncContextControlVisibility();
           syncContextPairSnapshots();
           renderContextPairEditors();
+          renderFractureTargetEditors();
           lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
           syncTrajectoryControlVisibility();
           enforceCustomStartConstraints();
@@ -7686,6 +7888,7 @@
           applyAutoContextPairRadii(lastContextPairCount, nextPairCount);
           syncContextPairSnapshots();
           renderContextPairEditors();
+          renderFractureTargetEditors();
           lastContextPairCount = nextPairCount;
           syncTrajectoryControlVisibility();
           updateOutputs();
@@ -7828,6 +8031,7 @@
         id.endsWith("StartX") ||
         id.endsWith("StartY") ||
         id === "contextPairSnapshots" ||
+        id === "fractureTargets" ||
         id === "selectedTrajectoryBall" ||
         id === "trajectoryOverrides" ||
         ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)
@@ -7886,6 +8090,9 @@
         activePresetKey = null;
         if (id === "occluderEnabled" || id === "contextOccluderEnabled") {
           syncOccluderWidthVisibility();
+        }
+        if (id === "fractureEnabled") {
+          renderFractureTargetEditors();
         }
         updateOutputs();
         refreshText();
@@ -7960,6 +8167,7 @@
   bindControls();
   bindFeedbackForm();
   bindContextPairEditors();
+  bindFractureTargetEditors();
   bindStartDragging();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
 })();
