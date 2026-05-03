@@ -70,12 +70,14 @@
   const previewButton = document.getElementById("previewButton");
   const exportButton = document.getElementById("exportButton");
   const psychopyButton = document.getElementById("psychopyButton");
+  const positionCsvButton = document.getElementById("positionCsvButton");
   const physicsModeButton = document.getElementById("physicsModeButton");
   const conditionSetSelect = document.getElementById("conditionSetSelect");
   const conditionJsonButton = document.getElementById("conditionJsonButton");
   const conditionCsvButton = document.getElementById("conditionCsvButton");
   const downloadLink = document.getElementById("downloadLink");
   const psychopyLink = document.getElementById("psychopyLink");
+  const positionCsvLink = document.getElementById("positionCsvLink");
   const metadataJsonLink = document.getElementById("metadataJsonLink");
   const conditionJsonLink = document.getElementById("conditionJsonLink");
   const conditionCsvLink = document.getElementById("conditionCsvLink");
@@ -1065,6 +1067,7 @@
   let selectedPresetKey = "canonical";
   let currentObjectUrl = null;
   let currentPsychopyUrl = null;
+  let currentPositionCsvUrl = null;
   let currentMetadataJsonUrl = null;
   let currentConditionJsonUrl = null;
   let currentConditionCsvUrl = null;
@@ -3874,6 +3877,10 @@
     const warnings = [];
     const impactMovieTimeMs = getImpactMovieTimeMs(state);
     const targetMovieOnsetMs = getTargetMovieOnsetMs(state);
+    const geometry = getGeometry(state, getMainLaneY(state));
+    const contactDistance = state.ballRadius * 2 + state.gapPx;
+    const targetMotionEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetTravelMs) || 0);
+    const targetVisibleEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetVisibleMs) || 0);
     if (state.renderMode === "lab") {
       warnings.push("Lab preview exports labels. Use Clean stimulus or Fixation for participant movies.");
     }
@@ -3895,6 +3902,20 @@
         warnings.push("Sound is enabled, but contact occurs outside the video or volume is zero. Export will be silent.");
       }
     }
+    if (!state.physicsEngineEnabled && state.targetSpeedRatio > 1) {
+      warnings.push("O2 speed ratio is above 1. Treat this as a triggering cue, not a physically conservative collision.");
+    }
+    if (contactDistance <= 0) {
+      warnings.push("Overlap is at least one full diameter. O1 and O2 centers coincide at contact.");
+    } else if (state.gapPx < -state.ballRadius) {
+      warnings.push("Large overlap: O1 penetrates more than one radius before O2 moves.");
+    }
+    if (!state.physicsEngineEnabled && state.launcherAccel < 0 && geometry.launcherImpactSpeed <= 21) {
+      warnings.push("Strong negative O1 acceleration reaches the slow-motion floor before contact.");
+    }
+    if (!state.physicsEngineEnabled && state.targetTravelMs <= 0 && state.targetVisibleMs > 250) {
+      warnings.push("Travel after collision is 0 ms, so O2 remains at the contact point while visible.");
+    }
     if (getPreBallBlinkMs(state) >= state.durationMs) {
       warnings.push("Blink time is at least as long as the video. Increase Video duration if the balls should appear.");
     }
@@ -3902,6 +3923,23 @@
       warnings.push("Contact occurs after the video ends. Increase Video duration if the launch should be visible.");
     } else if (targetMovieOnsetMs >= state.durationMs) {
       warnings.push("O2 starts after the video ends. Increase Video duration if the launched motion should be visible.");
+    }
+    if (targetVisibleEndMs < targetMotionEndMs - 0.5) {
+      warnings.push("O2 on-screen time ends before travel after collision finishes; O2 disappears while still moving.");
+    }
+    if (state.contextMode !== "none") {
+      const contextTimes = getContextPairDescriptors(state, geometry).map(
+        (descriptor) => getPreBallBlinkMs(state) + state.contextOffsetMs + descriptor.geometry.stopTime
+      );
+      const outsideCount = contextTimes.filter((timeMs) => timeMs < 0 || timeMs > state.durationMs).length;
+      if (outsideCount > 0) {
+        warnings.push(`${outsideCount} context contact event${outsideCount === 1 ? "" : "s"} fall outside the exported clip.`);
+      }
+      const minContextTime = Math.min(...contextTimes);
+      const maxContextTime = Math.max(...contextTimes);
+      if (Number.isFinite(minContextTime) && Number.isFinite(maxContextTime) && maxContextTime - minContextTime > 250) {
+        warnings.push("Context contacts are spread over more than 250 ms. Check whether that timing is intended.");
+      }
     }
     return warnings;
   }
@@ -3911,7 +3949,17 @@
       return;
     }
     validationList.replaceChildren();
-    validationList.classList.add("hidden");
+    const warnings = getExperimentWarnings(state);
+    if (warnings.length === 0) {
+      validationList.classList.add("hidden");
+      return;
+    }
+    warnings.forEach((warning) => {
+      const item = document.createElement("li");
+      item.textContent = warning;
+      validationList.appendChild(item);
+    });
+    validationList.classList.remove("hidden");
   }
 
   function refreshSummary(state, copy, standards) {
@@ -7751,8 +7799,79 @@
     return filename.replace(/\.(webm|mp4)$/i, "-psychopy.csv");
   }
 
+  function getPositionCsvName(filename) {
+    return filename.replace(/\.(webm|mp4)$/i, "-frame-log.csv");
+  }
+
   function getMetadataJsonName(filename) {
     return filename.replace(/\.(webm|mp4)$/i, "-metadata.json");
+  }
+
+  function roundForAudit(value, digits = 3) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Number(number.toFixed(digits)) : "";
+  }
+
+  function getFrameDurationMs(state) {
+    return 1000 / Math.max(1, Number(state.fps) || 60);
+  }
+
+  function getFrameAuditForTime(state, timeMs) {
+    const frameDurationMs = getFrameDurationMs(state);
+    const safeTimeMs = Math.max(0, Number(timeMs) || 0);
+    const firstFrameAtOrAfter = Math.max(0, Math.ceil((safeTimeMs - 0.0001) / frameDurationMs));
+    const nearestFrame = Math.max(0, Math.round(safeTimeMs / frameDurationMs));
+    const frameCount = getExportFrameCount(state);
+    return {
+      timeMs: roundForAudit(safeTimeMs),
+      firstFrameAtOrAfter,
+      firstFrameAtOrAfterTimeMs: roundForAudit(firstFrameAtOrAfter * frameDurationMs),
+      nearestFrame,
+      nearestFrameTimeMs: roundForAudit(nearestFrame * frameDurationMs),
+      nearestFrameOffsetMs: roundForAudit(safeTimeMs - nearestFrame * frameDurationMs),
+      withinExportFrames: firstFrameAtOrAfter < frameCount
+    };
+  }
+
+  function makeEventFrameRecord(state, label, timeMs) {
+    return {
+      label,
+      ...getFrameAuditForTime(state, timeMs)
+    };
+  }
+
+  function getEventFrameAudit(state) {
+    const blinkMs = getPreBallBlinkMs(state);
+    const mainLaneY = getMainLaneY(state);
+    const mainGeometry = getGeometry(state, mainLaneY, { scope: "original", directionSign: 1 });
+    const events = [
+      makeEventFrameRecord(state, "original contact", blinkMs + mainGeometry.stopTime),
+      makeEventFrameRecord(state, "original O2 starts", blinkMs + mainGeometry.targetStartTime)
+    ];
+
+    if (state.contextMode !== "none") {
+      getContextPairDescriptors(state, mainGeometry).forEach((descriptor) => {
+        const contactTimeMs = blinkMs + state.contextOffsetMs + descriptor.geometry.stopTime;
+        events.push(makeEventFrameRecord(state, `${descriptor.label} contact`, contactTimeMs));
+        if (state.contextMode === "launch") {
+          events.push(
+            makeEventFrameRecord(
+              state,
+              `${descriptor.label} O2 starts`,
+              blinkMs + state.contextOffsetMs + descriptor.geometry.targetStartTime
+            )
+          );
+        }
+      });
+    }
+
+    return {
+      frameDurationMs: roundForAudit(getFrameDurationMs(state)),
+      frameCount: getExportFrameCount(state),
+      encodedDurationSec: getExportDurationSec(state),
+      intendedDurationSec: getIntendedDurationSec(state),
+      events
+    };
   }
 
   /*
@@ -7768,6 +7887,7 @@
     const durationSec = getExportDurationSec(state);
     const movieFile = getPsychopyMoviePath(filename);
     const soundCueEvents = getImpactSoundEvents(state);
+    const frameAudit = getEventFrameAudit(state);
 
     return {
       movieFile,
@@ -7799,11 +7919,13 @@
       },
       timing: {
         nativeMovieFps: state.fps,
-        frameCount: getExportFrameCount(state),
+        frameCount: frameAudit.frameCount,
+        frameDurationMs: frameAudit.frameDurationMs,
         encodedDurationSec: durationSec,
         intendedDurationSec: getIntendedDurationSec(state),
         impactSec: Number((standards.impactMs / 1000).toFixed(3)),
         targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3)),
+        eventFrames: frameAudit.events,
         soundCueTimesSec: soundCueEvents.map((event) => event.timeSec),
         targetTravelAfterCollisionSec: Number((state.targetTravelMs / 1000).toFixed(3)),
         contextTargetTravelAfterCollisionSec: Number((state.contextTargetTravelMs / 1000).toFixed(3)),
@@ -7859,13 +7981,26 @@
     const standards = getStandards(state);
     const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(state));
     const soundCueEvents = getImpactSoundEvents(state);
+    const frameAudit = getEventFrameAudit(state);
+    const impactFrame = frameAudit.events.find((event) => event.label === "original contact") || {};
+    const targetOnsetFrame = frameAudit.events.find((event) => event.label === "original O2 starts") || {};
     const row = {
       movieFile: getPsychopyMoviePath(filename),
       conditionName: getConditionName(),
       movieDurationSec: getExportDurationSec(state),
       intendedDurationSec: getIntendedDurationSec(state),
       movieFPS: state.fps,
-      frameCount: getExportFrameCount(state),
+      frameCount: frameAudit.frameCount,
+      frameDurationMs: frameAudit.frameDurationMs,
+      impactFrame: impactFrame.firstFrameAtOrAfter,
+      impactFrameTimeMs: impactFrame.firstFrameAtOrAfterTimeMs,
+      impactNearestFrame: impactFrame.nearestFrame,
+      impactNearestFrameOffsetMs: impactFrame.nearestFrameOffsetMs,
+      targetOnsetFrame: targetOnsetFrame.firstFrameAtOrAfter,
+      targetOnsetFrameTimeMs: targetOnsetFrame.firstFrameAtOrAfterTimeMs,
+      targetOnsetNearestFrame: targetOnsetFrame.nearestFrame,
+      targetOnsetNearestFrameOffsetMs: targetOnsetFrame.nearestFrameOffsetMs,
+      eventFrames: JSON.stringify(frameAudit.events),
       widthPx: encoded.width,
       heightPx: encoded.height,
       resolutionPx: `${encoded.width}x${encoded.height}`,
@@ -8003,6 +8138,157 @@
     return `${columns.join(",")}\n${columns.map((column) => csvCell(row[column])).join(",")}\n`;
   }
 
+  function isObjectInStage(x, y, radius) {
+    return (
+      Number.isFinite(x) &&
+      Number.isFinite(y) &&
+      x + radius >= 0 &&
+      x - radius <= STAGE_WIDTH &&
+      y + radius >= 0 &&
+      y - radius <= STAGE_HEIGHT
+    );
+  }
+
+  function makeFrameLogRow(base, object) {
+    const radius = Number(object.radius) || 0;
+    return {
+      ...base,
+      event: object.event,
+      role: object.role,
+      xPx: roundForAudit(object.x),
+      yPx: roundForAudit(object.y),
+      radiusPx: roundForAudit(radius),
+      visible: String(Boolean(object.visible)),
+      contextWindowVisible: String(object.contextWindowVisible !== false),
+      inStageBounds: String(isObjectInStage(object.x, object.y, radius))
+    };
+  }
+
+  function getFrameLogObjects(state, stimulusTimeMs, hiddenByPrelaunchBlink = false) {
+    const objects = [];
+    const mainLaneY = getMainLaneY(state);
+    const mainEvent = getMainEventState(state, stimulusTimeMs, mainLaneY);
+    const mainGeometry = mainEvent.geometry;
+    objects.push(
+      {
+        event: "original pair",
+        role: "O1",
+        x: mainEvent.launcherX,
+        y: mainEvent.launcherY,
+        radius: mainGeometry.radius,
+        visible: !hiddenByPrelaunchBlink && isLauncherVisibleAt(stimulusTimeMs, mainGeometry, state.launcherVisibleMs)
+      },
+      {
+        event: "original pair",
+        role: "O2",
+        x: mainEvent.targetX,
+        y: mainEvent.targetY,
+        radius: mainGeometry.radius,
+        visible: !hiddenByPrelaunchBlink && isTargetVisibleAt(stimulusTimeMs, mainGeometry, state.targetVisibleMs)
+      }
+    );
+
+    if (state.contextMode === "none") {
+      return objects;
+    }
+
+    const adjustedTime = stimulusTimeMs - state.contextOffsetMs;
+    const directionSign = mainGeometry.contextDirectionSign;
+    getContextPairDescriptors(state, mainGeometry).forEach((descriptor) => {
+      const contextWindowVisible = isContextPairEventVisible(state, stimulusTimeMs, descriptor);
+      if (state.contextMode === "single") {
+        const singleEvent = getDirectedSingleEventState(
+          descriptor.eventState,
+          adjustedTime,
+          descriptor.laneY,
+          directionSign,
+          descriptor.scope,
+          descriptor.trajectoryScope
+        );
+        objects.push({
+          event: descriptor.label,
+          role: "single",
+          x: singleEvent.singleX,
+          y: singleEvent.singleY,
+          radius: singleEvent.geometry.radius,
+          visible:
+            !hiddenByPrelaunchBlink &&
+            contextWindowVisible &&
+            isLauncherVisibleAt(adjustedTime, singleEvent.geometry, descriptor.eventState.launcherVisibleMs),
+          contextWindowVisible
+        });
+        return;
+      }
+
+      const contextEvent = getDirectedEventState(
+        descriptor.eventState,
+        adjustedTime,
+        descriptor.laneY,
+        directionSign,
+        descriptor.scope,
+        descriptor.trajectoryScope
+      );
+      objects.push(
+        {
+          event: descriptor.label,
+          role: "O1",
+          x: contextEvent.launcherX,
+          y: contextEvent.launcherY,
+          radius: contextEvent.geometry.radius,
+          visible:
+            !hiddenByPrelaunchBlink &&
+            contextWindowVisible &&
+            isLauncherVisibleAt(adjustedTime, contextEvent.geometry, descriptor.eventState.launcherVisibleMs),
+          contextWindowVisible
+        },
+        {
+          event: descriptor.label,
+          role: "O2",
+          x: contextEvent.targetX,
+          y: contextEvent.targetY,
+          radius: contextEvent.geometry.radius,
+          visible:
+            !hiddenByPrelaunchBlink &&
+            contextWindowVisible &&
+            isTargetVisibleAt(adjustedTime, contextEvent.geometry, descriptor.eventState.targetVisibleMs),
+          contextWindowVisible
+        }
+      );
+    });
+
+    return objects;
+  }
+
+  function buildFrameLogCsv(state, filename) {
+    const frameCount = getExportFrameCount(state);
+    const frameDurationMs = getFrameDurationMs(state);
+    const blinkMs = getPreBallBlinkMs(state);
+    const eventFrameAudit = getEventFrameAudit(state);
+    const rows = [];
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const movieTimeMs = Math.min(frame * frameDurationMs, state.durationMs);
+      const hiddenByPrelaunchBlink = isCrosshairBlinkWindow(state, movieTimeMs);
+      const stimulusTimeMs = Math.max(0, movieTimeMs - blinkMs);
+      const base = {
+        movieFile: getPsychopyMoviePath(filename),
+        frame,
+        movieTimeMs: roundForAudit(movieTimeMs),
+        stimulusTimeMs: roundForAudit(stimulusTimeMs),
+        fps: state.fps,
+        frameDurationMs: eventFrameAudit.frameDurationMs,
+        frameCount,
+        prelaunchBlinkMs: roundForAudit(blinkMs)
+      };
+      getFrameLogObjects(state, stimulusTimeMs, hiddenByPrelaunchBlink).forEach((object) => {
+        rows.push(makeFrameLogRow(base, object));
+      });
+    }
+    const columns = Object.keys(rows[0] || { frame: "", movieTimeMs: "", event: "", role: "", xPx: "", yPx: "" });
+    return `${columns.join(",")}\n${rows
+      .map((row) => columns.map((column) => csvCell(row[column])).join(","))
+      .join("\n")}\n`;
+  }
+
   function setPsychopyDownload(csv, preferredName) {
     const blob = new Blob([csv], { type: "text/csv" });
     if (currentPsychopyUrl) {
@@ -8013,6 +8299,18 @@
     psychopyLink.download = preferredName;
     psychopyLink.textContent = `Download ${preferredName}`;
     psychopyLink.classList.remove("hidden");
+  }
+
+  function setPositionCsvDownload(csv, preferredName) {
+    const blob = new Blob([csv], { type: "text/csv" });
+    if (currentPositionCsvUrl) {
+      URL.revokeObjectURL(currentPositionCsvUrl);
+    }
+    currentPositionCsvUrl = URL.createObjectURL(blob);
+    positionCsvLink.href = currentPositionCsvUrl;
+    positionCsvLink.download = preferredName;
+    positionCsvLink.textContent = `Download ${preferredName}`;
+    positionCsvLink.classList.remove("hidden");
   }
 
   function setMetadataDownload(metadata, preferredName) {
@@ -8076,6 +8374,10 @@
       URL.revokeObjectURL(currentPsychopyUrl);
       currentPsychopyUrl = null;
     }
+    if (currentPositionCsvUrl) {
+      URL.revokeObjectURL(currentPositionCsvUrl);
+      currentPositionCsvUrl = null;
+    }
     if (currentMetadataJsonUrl) {
       URL.revokeObjectURL(currentMetadataJsonUrl);
       currentMetadataJsonUrl = null;
@@ -8083,6 +8385,7 @@
 
     clearGeneratedLink(downloadLink);
     clearGeneratedLink(psychopyLink);
+    clearGeneratedLink(positionCsvLink);
     clearGeneratedLink(metadataJsonLink);
     if (exportedVideo) {
       exportedVideo.removeAttribute("src");
@@ -8520,6 +8823,9 @@
     if (exportFormat.usedFallback) {
       notes.push("format changed");
     }
+    if (warnings.length > 0) {
+      notes.push(`${warnings.length} check${warnings.length === 1 ? "" : "s"}`);
+    }
     return notes.length === 0 ? "no notes" : notes.join("; ");
   }
 
@@ -8557,6 +8863,14 @@
     updateArtifactChecklist(state, filename, exportDetails);
     rememberGeneratedMovie(state, filename, exportDetails);
     statusText.textContent = "PsychoPy CSV and metadata ready.";
+  }
+
+  function exportPositionCsv() {
+    const state = cloneState();
+    const exportFormat = chooseExportFormat(state);
+    const filename = getReusableMovieFilename(state, exportFormat.extension);
+    setPositionCsvDownload(buildFrameLogCsv(state, filename), getPositionCsvName(filename));
+    statusText.textContent = "Frame log CSV ready.";
   }
 
   function withCondition(baseState, overrides) {
@@ -9811,6 +10125,7 @@
       event.stopPropagation();
     });
     psychopyButton.addEventListener("click", exportPsychopyCsv);
+    positionCsvButton?.addEventListener("click", exportPositionCsv);
     conditionJsonButton?.addEventListener("click", exportConditionSetJson);
     conditionCsvButton?.addEventListener("click", exportConditionSetCsv);
 

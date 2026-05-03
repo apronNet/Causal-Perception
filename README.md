@@ -13,8 +13,11 @@ The default case is the canonical Michotte launch: O1 contacts O2 with no gap, O
 3. Use **Play preview** for editing only.
 4. Use **Export video** for the stimulus file shown to participants.
 5. Use **Export PsychoPy CSV** or **Condition set** if the video will be used in PsychoPy.
+6. Use **Export frame log CSV** when you need frame-by-frame object coordinates for checking a stimulus.
 
 The exported video is the timing reference. The browser preview is useful for editing, but final FPS, sound, aspect ratio, and resolution should be checked from the exported file.
+
+The app shows stimulus checks only when a parameter combination is likely to need review, for example large overlaps, contact outside the clip, or O2 disappearing while it is still supposed to travel.
 
 ## Browser Compatibility
 
@@ -113,7 +116,9 @@ Important points:
 
 The app cannot reliably embed all custom parameter metadata inside MP4/WebM files because browser encoders do not expose stable metadata-writing controls. Use the exported CSV and JSON sidecar as the durable parameter record.
 
-If you publish stimuli, keep the movie, PsychoPy CSV, and metadata JSON together.
+The PsychoPy CSV and metadata JSON include event-frame records for contact and O2 onset. **Export frame log CSV** adds one row per rendered frame and object, with movie time, stimulus time, object role, x/y position, radius, visibility, and whether the object is inside the stage bounds.
+
+If you publish stimuli, keep the movie, PsychoPy CSV, metadata JSON, and any frame log CSV together.
 
 ## Export Checks
 

@@ -708,8 +708,12 @@
                 <output data-for="fixationDva"></output>
               </label>
             </div>
-            <button id="psychopyButton" class="secondary-button full-button" type="button">Export PsychoPy CSV</button>
+            <div class="button-row export-tools-row">
+              <button id="psychopyButton" class="secondary-button" type="button">Export PsychoPy CSV</button>
+              <button id="positionCsvButton" class="secondary-button" type="button">Export frame log CSV</button>
+            </div>
             <a id="psychopyLink" class="download-link hidden" download>Download PsychoPy CSV</a>
+            <a id="positionCsvLink" class="download-link hidden" download>Download frame log CSV</a>
             <div class="condition-set-box">
               <label class="field">
                 <span>Condition set</span>

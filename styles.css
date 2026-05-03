@@ -21,12 +21,12 @@
   --grid-unit: 12px;
   --content-max: 1280px;
   --layout-max: 1364px;
-  --type-label: 0.62rem;
-  --type-label-small: 0.52rem;
-  --type-button: 0.64rem;
-  --type-input: 0.7rem;
-  --control-height: 1.75rem;
-  --choice-height: 1.8rem;
+  --type-label: 0.68rem;
+  --type-label-small: 0.58rem;
+  --type-button: 0.7rem;
+  --type-input: 0.78rem;
+  --control-height: 2.1rem;
+  --choice-height: 2.15rem;
 }
 
 * {
@@ -185,7 +185,7 @@ h3 {
 
 .app-grid {
   display: grid;
-  grid-template-columns: minmax(460px, 560px) minmax(460px, 790px);
+  grid-template-columns: minmax(0, 560px) minmax(0, 790px);
   gap: 14px;
   max-width: var(--layout-max);
   margin: 0 auto;
@@ -237,6 +237,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-height: 2.4rem;
   padding: 7px;
   cursor: pointer;
   list-style: none;
@@ -264,7 +265,7 @@ h3 {
 
 .psychopy-panel > summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(54px, 0.5fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.55fr) auto auto auto;
   align-items: center;
   gap: 8px;
 }
@@ -274,7 +275,7 @@ h3 {
 }
 
 .psychopy-panel > summary h2 {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .panel-content {
@@ -371,7 +372,7 @@ h3 {
 
 .control-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(6.6rem, 1fr));
   gap: 4px;
 }
 
@@ -489,16 +490,16 @@ h3 {
   text-align: center;
   text-transform: none;
   white-space: normal;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
   word-break: normal;
   text-wrap: balance;
 }
 
 .compact-choice-row .choice-button,
 .wide-choice-field .choice-button {
-  min-height: 1.7rem;
+  min-height: 2.15rem;
   padding: 4px 5px;
-  font-size: 0.6rem;
+  font-size: 0.66rem;
 }
 
 .behavior-choice-row .choice-button {
@@ -556,7 +557,7 @@ h3 {
 
 .control-subgrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(6.6rem, 1fr));
   gap: 4px;
 }
 
@@ -570,7 +571,7 @@ h3 {
   color: var(--ink);
   font-size: var(--type-label);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.22;
   text-transform: uppercase;
   letter-spacing: 0;
 }
@@ -580,7 +581,7 @@ h3 {
   font-size: var(--type-label-small);
   font-weight: 800;
   letter-spacing: 0;
-  line-height: 1.1;
+  line-height: 1.18;
   text-transform: none;
 }
 
@@ -649,7 +650,7 @@ button:focus-visible,
 
 .range-pair {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.75rem;
+  grid-template-columns: minmax(0, 1fr) 5.35rem;
   gap: 4px;
   align-items: center;
 }
@@ -663,7 +664,7 @@ input[type="range"] {
   height: auto;
   min-height: var(--control-height);
   padding: 3px 4px;
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -691,14 +692,15 @@ input[type="color"] {
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 4px;
+  min-height: 2.1rem;
   padding: 4px 5px;
   border: 1px solid var(--line);
   background: var(--paper-soft);
 }
 
 .checkbox-field input {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--accent);
 }
 
@@ -754,7 +756,7 @@ input[type="color"] {
   grid-template-columns: minmax(4.75rem, 1fr) auto;
   gap: 4px;
   align-items: center;
-  min-height: 26px;
+  min-height: 2rem;
   padding: 3px 4px;
   border: 1px solid var(--line);
   background: var(--paper);
@@ -806,7 +808,7 @@ button,
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  min-height: 2rem;
+  min-height: 2.25rem;
   border-radius: 0;
   padding: 6px 10px;
   font: inherit;
@@ -851,30 +853,31 @@ button:disabled {
 }
 
 .summary-export-button {
-  min-height: 28px;
+  min-height: 2.15rem;
   min-width: 84px;
   padding: 5px 7px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .export-summary-status {
   min-height: 0;
   margin: 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--accent-dark);
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.18;
   text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .summary-download-link {
-  min-height: 28px;
+  min-height: 2.15rem;
   margin-top: 0;
   padding: 5px 6px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .stage-panel {
@@ -925,7 +928,7 @@ button:disabled {
 
 .utility-strip b {
   color: var(--muted);
-  font-size: 0.44rem;
+  font-size: 0.5rem;
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1;
@@ -935,7 +938,7 @@ button:disabled {
 .utility-strip em {
   overflow: visible;
   color: var(--ink);
-  font-size: 0.56rem;
+  font-size: 0.62rem;
   font-style: normal;
   font-weight: 840;
   line-height: 1.1;
@@ -955,7 +958,7 @@ button:disabled {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  min-height: 31px;
+  min-height: 2.25rem;
   padding: 5px 7px;
   cursor: pointer;
   list-style: none;
@@ -982,7 +985,7 @@ button:disabled {
 
 .summary-details summary span {
   color: var(--ink);
-  font-size: 0.6rem;
+  font-size: 0.66rem;
   font-weight: 900;
   letter-spacing: 0;
 }
@@ -1009,7 +1012,7 @@ button:disabled {
 
 .summary-strip b {
   color: var(--muted);
-  font-size: 0.42rem;
+  font-size: 0.48rem;
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -1018,7 +1021,7 @@ button:disabled {
 .summary-strip em {
   overflow: visible;
   color: var(--ink);
-  font-size: 0.52rem;
+  font-size: 0.58rem;
   font-style: normal;
   font-weight: 800;
   line-height: 1.08;
@@ -1253,9 +1256,13 @@ canvas.trajectory-edit-enabled:active {
   gap: 6px;
 }
 
+.export-tools-row {
+  margin-top: 8px;
+}
+
 .page-footer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, auto);
   gap: 16px;
   align-items: start;
   margin-top: 18px;
@@ -1274,6 +1281,7 @@ canvas.trajectory-edit-enabled:active {
   font-size: 0.68rem;
   line-height: 1.25;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .page-footer code {
@@ -1357,11 +1365,13 @@ canvas.trajectory-edit-enabled:active {
 
   .summary-export-button {
     min-width: 0;
+    min-height: 44px;
   }
 
   .summary-download-link {
     grid-column: 2 / -1;
     width: 100%;
+    min-height: 44px;
   }
 
   .utility-strip {
@@ -1401,6 +1411,8 @@ canvas.trajectory-edit-enabled:active {
 
   .stage-panel {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .page-shell {
@@ -1409,6 +1421,27 @@ canvas.trajectory-edit-enabled:active {
 }
 
 @media (max-width: 1080px) and (min-width: 721px) {
+  :root {
+    --choice-height: 2.5rem;
+    --control-height: 2.5rem;
+  }
+
+  button,
+  .download-link {
+    min-height: 2.5rem;
+  }
+
+  .checkbox-field {
+    min-height: 2.5rem;
+  }
+
+  .compact-choice-row .choice-button,
+  .wide-choice-field .choice-button,
+  .behavior-choice-row .choice-button,
+  .position-header-controls .checkbox-field {
+    min-height: 2.5rem;
+  }
+
   .control-grid,
   .control-subgrid,
   .preset-compact-grid,
@@ -1449,6 +1482,11 @@ canvas.trajectory-edit-enabled:active {
   .export-summary-status {
     white-space: normal;
     text-overflow: clip;
+  }
+
+  .summary-export-button,
+  .summary-download-link {
+    min-height: 2.5rem;
   }
 }
 
@@ -1563,6 +1601,11 @@ canvas.trajectory-edit-enabled:active {
 
   .preview-button {
     width: 100%;
+    min-height: 44px;
+  }
+
+  .position-header-controls .checkbox-field {
+    min-height: 44px;
   }
 
   .stage-overlay {

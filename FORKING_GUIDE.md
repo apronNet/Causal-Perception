@@ -14,12 +14,12 @@ flowchart LR
   Geometry --> Draw["drawFrame()"]
   Draw --> Preview["browser preview"]
   Draw --> Export["exportVideo() movie frames"]
-  State --> Records["PsychoPy CSV + metadata JSON"]
-  Export --> Artifacts["movie + CSV + JSON sidecar"]
+  State --> Records["PsychoPy CSV + metadata JSON + frame log CSV"]
+  Export --> Artifacts["movie + CSV + JSON + frame log sidecars"]
   Records --> Artifacts
 ```
 
-The exported video is the timing reference. The preview is an editing aid. Any fork that changes participant-visible motion, timing, color, sound, or cues must keep the exported video, CSV, and JSON sidecar consistent.
+The exported video is the timing reference. The preview is an editing aid. Any fork that changes participant-visible motion, timing, color, sound, or cues must keep the exported video, PsychoPy CSV, metadata JSON, and frame log CSV consistent.
 
 ## Repository Map
 
@@ -52,7 +52,7 @@ Start in `app.js` only after checking whether the change also needs a control in
 - `cloneState()` is the canonical state read by preview, export, CSV, JSON, and condition sets.
 - `getGeometry()`, `getMainEventState()`, `getDirectedEventState()`, and Billiard helpers turn parameters into positions and collision timing.
 - `drawFrame()` is the rendering entry point for both preview and export.
-- `exportVideo()`, `buildPsychopyCsv()`, and `buildPsychopyMetadata()` produce the lab artifacts.
+- `exportVideo()`, `buildPsychopyCsv()`, `buildPsychopyMetadata()`, and `buildFrameLogCsv()` produce the lab artifacts.
 - `buildConditionSet()` and related CSV helpers create experiment plans. They do not render every planned movie.
 - `tools/export-pixel-probe.mjs` is the repeatable check for contact, visibility, Billiard, sound scheduling, and exported-frame behavior.
 
@@ -111,7 +111,7 @@ sequenceDiagram
   participant State as cloneState()
   participant Draw as drawFrame()
   participant Export as exportVideo()
-  participant Files as Movie/CSV/JSON
+  participant Files as Movie/CSV/JSON/frame log
 
   User->>Controls: change parameter
   Controls->>State: read current controls
@@ -120,7 +120,7 @@ sequenceDiagram
   User->>Export: click Export video
   Export->>State: freeze current state
   Export->>Draw: render every movie frame
-  Export->>Files: create movie, PsychoPy CSV, metadata JSON
+  Export->>Files: create movie, PsychoPy CSV, metadata JSON, frame log CSV
 ```
 
 If preview and export disagree, the exported movie wins for experiments, but the disagreement should still be fixed or documented.
@@ -166,7 +166,7 @@ Use this path when a lab wants a grid such as delay by overlap, capture context 
 | Add a new visual cue | `index.html`, `app.js`, `README.md` | Cue appears in preview but not export, or export metadata omits it. |
 | Add a new motion parameter | `app.js`, `tools/export-pixel-probe.mjs` | Timing changes without a pixel-level export check. |
 | Change context behavior | `app.js` context snapshot helpers | Context 1 works, Context 2+ uses stale snapshot logic. |
-| Change export behavior | `app.js`, `README.md` | Movie, CSV, and JSON disagree. |
+| Change export behavior | `app.js`, `README.md` | Movie, CSV, JSON, and frame log disagree. |
 | Add a condition family | `index.html`, `app.js`, `README.md` | Condition rows imply movies that have not been rendered. |
 | Add shared presets | `shared-presets.json`, `README.md` | Presets omit a new parameter or depend on local browser storage. |
 | Change layout density | `styles.css`, `index.html` | Controls fit desktop but break on narrow screens. |
@@ -189,4 +189,4 @@ Then test in the browser:
 3. Add at least two context pairs.
 4. Play the preview.
 5. Export a video.
-6. Confirm the movie, PsychoPy CSV, and metadata JSON all reflect the same settings.
+6. Confirm the movie, PsychoPy CSV, metadata JSON, and frame log CSV all reflect the same settings.

@@ -17,6 +17,7 @@ This is a browser-only, single-page stimulus generator. There is no build step.
 4. `getGeometry()` turns that state into contact time, object positions, and launch direction.
 5. `drawFrame()` renders both preview and exported frames.
 6. `exportVideo()` writes the movie and prepares PsychoPy CSV plus metadata JSON sidecars.
+7. `buildFrameLogCsv()` exports per-frame object coordinates for measurement checks.
 
 For a diagrammed version of this pipeline, including context-pair state and condition-set export, see `FORKING_GUIDE.md`.
 
@@ -67,6 +68,8 @@ For one stimulus, export the movie and the PsychoPy CSV. Put the movie file in a
 Condition sets are batch plans, not rendered movies. `buildConditionSet()` creates rows and expected filenames; the lab still needs matching movie files for those rows.
 
 Browser MediaRecorder cannot reliably embed custom MP4/WebM metadata. The app therefore exports a metadata JSON sidecar. Treat the CSV and JSON as the durable parameter record.
+
+The one-row PsychoPy CSV and metadata JSON include event-frame records for contact and O2 onset. The frame-log CSV is separate: it records one row per exported frame and object with x/y position, visibility, and stage-bound status.
 
 For timing, visibility, contact-geometry, or Billiard changes, run `node tools/export-pixel-probe.mjs`. It exports real videos in Chrome and measures decoded pixels without `ffmpeg`.
 
