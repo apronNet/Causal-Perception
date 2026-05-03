@@ -699,7 +699,7 @@ button:focus-visible,
 
 .range-pair {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 5.35rem;
+  grid-template-columns: minmax(0, 1fr) clamp(3.8rem, 30%, 4.55rem);
   gap: 4px;
   align-items: center;
 }
@@ -710,6 +710,8 @@ input[type="range"] {
 }
 
 .fine-input {
+  width: 100%;
+  min-width: 0;
   height: auto;
   min-height: var(--control-height);
   padding: 3px 4px;
@@ -1521,7 +1523,7 @@ canvas.trajectory-edit-enabled:active {
   }
 
   .range-pair {
-    grid-template-columns: minmax(0, 1fr) 5.1rem;
+    grid-template-columns: minmax(0, 1fr) clamp(3.8rem, 30%, 4.55rem);
   }
 
   .summary-strip {
@@ -1675,7 +1677,7 @@ canvas.trajectory-edit-enabled:active {
   }
 
   .range-pair {
-    grid-template-columns: minmax(0, 1fr) 5.4rem;
+    grid-template-columns: minmax(0, 1fr) clamp(4.2rem, 32%, 4.9rem);
     min-height: 44px;
   }
 
