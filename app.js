@@ -29,6 +29,8 @@
     stopThreshold: 0.075
   };
   const TUNNEL_BASE_RADIUS = 28;
+  const TUNNEL_HEIGHT_RATIO = 3.8;
+  const TUNNEL_ROW_CLEARANCE = 8;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
   const READY_STATUS = "Ready to export current preview.";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
@@ -254,7 +256,7 @@
     contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth:
-      "Changes: tunnel width. The rendered tunnel scales with ball size, so auto-shrunk balls get a smaller occluder.",
+      "Changes: tunnel width. The rendered tunnel scales with ball size and shrinks further when rows are close, preventing tunnel overlap.",
     contactOcclusionMode: "Changes: which object is painted on top during overlap. O2 puts O2 on top; O1 puts O1 on top.",
     contextMode:
       "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
@@ -273,7 +275,7 @@
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. O2 puts the second context object on top; O1 puts the first context object on top.",
     contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original pair event.",
     contextOccluderWidth:
-      "Changes: context tunnel width. The rendered tunnel scales with that row's ball size, so dense context displays stay proportional.",
+      "Changes: context tunnel width. The rendered tunnel scales with that row's ball size and row spacing, so dense context displays stay proportional.",
     contextTargetSpeedRatio: "Changes: context O2 speed as a multiple of context O1 impact speed. Use for: matching the original pair launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
@@ -4592,7 +4594,18 @@
     drawCtx.restore();
   }
 
-  function drawContextPair(drawCtx, state, eventState, t, laneY, directionSign, colors, scope = "context", trajectoryScope = scope) {
+  function drawContextPair(
+    drawCtx,
+    state,
+    eventState,
+    t,
+    laneY,
+    directionSign,
+    colors,
+    scope = "context",
+    trajectoryScope = scope,
+    tunnelLaneYs = []
+  ) {
     if (state.contextMode === "single") {
       const singleEvent = getDirectedSingleEventState(eventState, t, laneY, directionSign, scope, trajectoryScope);
       const singlePalette = t < singleEvent.geometry.stopTime ? colors.launcher : colors.target;
@@ -4602,7 +4615,8 @@
         laneY,
         radius,
         eventState.occluderEnabled,
-        eventState.occluderWidth
+        eventState.occluderWidth,
+        tunnelLaneYs
       );
       if (
         isObjectVisibleAt(t, eventState.launcherVisibleMs) &&
@@ -4634,7 +4648,8 @@
       laneY,
       contextEvent.geometry.radius,
       eventState.occluderEnabled,
-      eventState.occluderWidth
+      eventState.occluderWidth,
+      tunnelLaneYs
     );
     const radius = contextEvent.geometry.radius;
 
@@ -4646,7 +4661,41 @@
     drawObjectPair(drawCtx, state, contextEvent, launcher, target, radius, eventState.contactOcclusionMode);
   }
 
-  function drawContextEvent(drawCtx, state, t, mainEvent) {
+  function getVisibleContextLaneYs(state, mainEvent, t) {
+    if (!isContextEventVisible(state, t, mainEvent.geometry)) {
+      return [];
+    }
+
+    const pairCount = getContextPairCount(state);
+    const snapshots = state.contextPairSnapshots || [];
+    const laneYs = [];
+
+    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+      const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
+      const laneY = getContextLaneY(state, mainEvent.geometry.laneY, pairIndex, snapshot);
+      laneYs.push(laneY);
+    }
+
+    return laneYs;
+  }
+
+  function getVisibleEventLaneYs(state, mainEvent, t) {
+    return [mainEvent.geometry.laneY, ...getVisibleContextLaneYs(state, mainEvent, t)];
+  }
+
+  function getTunnelMaxHeightForLane(laneY, laneYs) {
+    const distances = (Array.isArray(laneYs) ? laneYs : [])
+      .map((otherLaneY) => Math.abs(Number(otherLaneY) - laneY))
+      .filter((distance) => Number.isFinite(distance) && distance > 0.5);
+
+    if (distances.length === 0) {
+      return Infinity;
+    }
+
+    return Math.max(4, Math.min(...distances) - TUNNEL_ROW_CLEARANCE);
+  }
+
+  function drawContextEvent(drawCtx, state, t, mainEvent, tunnelLaneYs = getVisibleEventLaneYs(state, mainEvent, t)) {
     if (!isContextEventVisible(state, t, mainEvent.geometry)) {
       return;
     }
@@ -4674,7 +4723,8 @@
             target: palette.contextTarget
           },
           "context",
-          "context"
+          "context",
+          tunnelLaneYs
         );
         continue;
       }
@@ -4692,20 +4742,27 @@
           target: getObjectPalette(snapshot.targetColor || state.targetColor, state.targetColor)
         },
         "original",
-        `context${pairIndex + 1}`
+        `context${pairIndex + 1}`,
+        tunnelLaneYs
       );
     }
   }
 
-  function getScaledTunnelWidth(width, radius) {
+  function getTunnelDimensions(width, radius, maxHeight = Infinity) {
     const safeRadius = Math.max(2, Number(radius) || TUNNEL_BASE_RADIUS);
     const numericWidth = Number(width);
     const requestedWidth = Number.isFinite(numericWidth) ? Math.max(0, numericWidth) : stimulusDefaults.contextOccluderWidth;
-    const scaledWidth = requestedWidth * (safeRadius / TUNNEL_BASE_RADIUS);
-    return clamp(scaledWidth, safeRadius * 2.4, STAGE_WIDTH - 40);
+    const desiredHeight = safeRadius * TUNNEL_HEIGHT_RATIO;
+    const heightCap = Number.isFinite(maxHeight) ? Math.max(4, maxHeight) : desiredHeight;
+    const height = Math.min(desiredHeight, heightCap);
+    const rowScale = height / desiredHeight;
+    const desiredWidth = requestedWidth * (safeRadius / TUNNEL_BASE_RADIUS);
+    const widthMin = Math.min(safeRadius * 2.1, STAGE_WIDTH - 40);
+    const scaledWidth = clamp(desiredWidth * rowScale, widthMin, STAGE_WIDTH - 40);
+    return { width: scaledWidth, height, safeRadius };
   }
 
-  function drawTunnelOccluder(drawCtx, laneY, radius, enabled, width) {
+  function drawTunnelOccluder(drawCtx, laneY, radius, enabled, width, laneYs = []) {
     if (!enabled) {
       return {
         left: 0,
@@ -4713,11 +4770,10 @@
       };
     }
 
-    const safeRadius = Math.max(2, Number(radius) || TUNNEL_BASE_RADIUS);
-    const scaledWidth = getScaledTunnelWidth(width, safeRadius);
+    const maxHeight = getTunnelMaxHeightForLane(laneY, laneYs);
+    const { width: scaledWidth, height, safeRadius } = getTunnelDimensions(width, radius, maxHeight);
     const left = STAGE_WIDTH / 2 - scaledWidth / 2;
-    const top = laneY - safeRadius * 1.9;
-    const height = safeRadius * 3.8;
+    const top = laneY - height / 2;
     const right = left + scaledWidth;
     const cornerRadius = clamp(safeRadius * 0.65, 5, 18);
     const insetX = Math.min(scaledWidth * 0.12, safeRadius * 0.65);
@@ -4737,12 +4793,19 @@
     return { left, right };
   }
 
-  function drawOccluder(drawCtx, state, laneY) {
-    return drawTunnelOccluder(drawCtx, laneY, state.ballRadius, state.occluderEnabled, state.occluderWidth);
+  function drawOccluder(drawCtx, state, laneY, laneYs = []) {
+    return drawTunnelOccluder(drawCtx, laneY, state.ballRadius, state.occluderEnabled, state.occluderWidth, laneYs);
   }
 
-  function drawContextOccluder(drawCtx, state, laneY) {
-    return drawTunnelOccluder(drawCtx, laneY, state.contextBallRadius, state.contextOccluderEnabled, state.contextOccluderWidth);
+  function drawContextOccluder(drawCtx, state, laneY, laneYs = []) {
+    return drawTunnelOccluder(
+      drawCtx,
+      laneY,
+      state.contextBallRadius,
+      state.contextOccluderEnabled,
+      state.contextOccluderWidth,
+      laneYs
+    );
   }
 
   function isObjectOutsideOccluder(x, radius, occluderBounds) {
@@ -4934,11 +4997,12 @@
     const laneY = getMainLaneY(state);
 
     const eventState = getMainEventState(state, stimulusT, laneY);
+    const tunnelLaneYs = getVisibleEventLaneYs(state, eventState, stimulusT);
     drawGroupingBoxes(drawCtx, state, eventState);
     drawContactGuides(drawCtx, state, eventState);
-    drawContextEvent(drawCtx, state, stimulusT, eventState);
+    drawContextEvent(drawCtx, state, stimulusT, eventState, tunnelLaneYs);
     drawSpatialMarker(drawCtx, state, eventState);
-    const occluderBounds = drawOccluder(drawCtx, state, laneY);
+    const occluderBounds = drawOccluder(drawCtx, state, laneY, tunnelLaneYs);
 
     if (state.occluderEnabled) {
       drawOccludedEvent(drawCtx, state, eventState, occluderBounds);
