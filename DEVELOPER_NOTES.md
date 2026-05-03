@@ -6,6 +6,7 @@ This is a browser-only, single-page stimulus generator. There is no build step.
 - `styles.css` controls layout and the Swiss-style interface.
 - `app.js` holds presets, parameter defaults, state, rendering, preview playback, PsychoPy export, and condition-set export.
 - `shared-presets.json` is the committed source for presets that should load for everyone.
+- `UTILITY_BENCHMARKS.md` records the current utility-site benchmarks used for interface decisions.
 
 ## Main Code Path
 
@@ -72,3 +73,9 @@ The GitHub page is part of the tool. Keep it current whenever the app gains a ne
 - Add practical PsychoPy consequences when a feature changes export or CSV behavior.
 - Add a guide image in `docs/screenshots/` when a feature is easier to understand visually.
 - Keep images simple enough that they stay useful even if the interface layout changes.
+
+## Utility Interface Benchmarks
+
+Use `UTILITY_BENCHMARKS.md` before making layout changes. The current benchmark set is McMaster-Carr, Digi-Key, Mouser, Grainger, MISUMI, Octopart, and Thomasnet.
+
+Current app-level rule: the preview panel must expose the working stimulus facts without forcing users to open a details drawer. Keep relation, category, context, timing, output, and filename visible near the canvas. These facts are the equivalent of catalog specifications, availability, and CAD/download state in industrial tools.

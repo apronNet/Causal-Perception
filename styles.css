@@ -834,6 +834,47 @@ button:disabled {
   font-size: 0.78rem;
 }
 
+.utility-strip {
+  display: grid;
+  grid-template-columns: 1fr 0.9fr 1fr 1.45fr 1.25fr 1.25fr;
+  margin-bottom: 7px;
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+}
+
+.utility-strip span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 6px;
+  border-right: 1px solid var(--line);
+}
+
+.utility-strip span:last-child {
+  border-right: 0;
+}
+
+.utility-strip b {
+  color: var(--muted);
+  font-size: 0.44rem;
+  font-weight: 900;
+  letter-spacing: 0.075em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.utility-strip em {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 840;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .summary-details {
   margin-bottom: 7px;
   border: 1px solid var(--line);
@@ -1251,6 +1292,18 @@ canvas.trajectory-edit-enabled:active {
   .summary-export-button {
     min-width: 0;
   }
+
+  .utility-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .utility-strip span:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .utility-strip span:nth-child(n + 4) {
+    border-top: 1px solid var(--line);
+  }
 }
 
 @media (max-width: 1020px) {
@@ -1318,18 +1371,25 @@ canvas.trajectory-edit-enabled:active {
   .preview-bar,
   .control-grid,
   .control-subgrid,
+  .utility-strip,
   .summary-strip,
   .artifact-card,
   .button-row {
     grid-template-columns: 1fr;
   }
 
+  .utility-strip span,
   .summary-strip span,
   .artifact-card span {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
+  .utility-strip span:nth-child(n + 4) {
+    border-top: 0;
+  }
+
+  .utility-strip span:last-child,
   .summary-strip span:last-child,
   .artifact-card span:last-child {
     border-bottom: 0;

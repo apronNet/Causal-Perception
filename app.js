@@ -123,6 +123,8 @@
   const categoryMetric = document.getElementById("categoryMetric");
   const captureMetric = document.getElementById("captureMetric");
   const timingMetric = document.getElementById("timingMetric");
+  const outputMetric = document.getElementById("outputMetric");
+  const fileMetric = document.getElementById("fileMetric");
   const contextMovementPairList = document.getElementById("contextMovementPairList");
   const contextPositionPairList = document.getElementById("contextPositionPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
@@ -3531,8 +3533,22 @@
 
     relationMetric.textContent = standards.relation;
     categoryMetric.textContent = standards.category;
-    captureMetric.textContent = standards.capture;
+    captureMetric.textContent = describeUtilityContext(state);
     timingMetric.textContent = standards.timing;
+  }
+
+  function describeUtilityContext(state) {
+    if (state.contextMode === "none") {
+      return "no context";
+    }
+    const contextType = state.contextMode === "single" ? "single object" : "nearby launch";
+    const timing =
+      state.contextOffsetMs === 0
+        ? "sync"
+        : `${Math.abs(Math.round(state.contextOffsetMs))} ms ${state.contextOffsetMs < 0 ? "early" : "late"}`;
+    const pairCount = getContextPairCount(state);
+    const countText = pairCount > 1 ? ` x${pairCount}` : "";
+    return `${contextType}${countText}, ${timing}`;
   }
 
   function describeContext(state) {
@@ -3681,6 +3697,7 @@
     const contextText = describeContext(state);
     const contextPairCount = getContextPairCount(state);
     const contextIsOff = state.contextMode === "none";
+    const exportSize = getExportCanvasSize(state);
     if (summaryCompact) {
       summaryCompact.textContent = `${copy.label}, ${relationText}, ${Math.round(state.durationMs)} ms`;
     }
@@ -3781,11 +3798,16 @@
       summaryAspect.textContent = state.aspectRatio;
     }
     if (summaryResolution) {
-      const exportSize = getExportCanvasSize(state);
       summaryResolution.textContent = `${exportSize.width} x ${exportSize.height}`;
     }
     if (summaryBitrate) {
       summaryBitrate.textContent = `${Number(state.videoBitrate).toFixed(1)} Mbps`;
+    }
+    if (outputMetric) {
+      outputMetric.textContent = `${Math.round(state.fps)} fps / ${exportSize.width} x ${exportSize.height}`;
+    }
+    if (fileMetric) {
+      fileMetric.textContent = state.fileLabel || "causal-launching";
     }
   }
 
