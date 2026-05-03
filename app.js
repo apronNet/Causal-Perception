@@ -1008,6 +1008,7 @@
   const crosshairDependentControls = Array.from(document.querySelectorAll(".crosshair-dependent-control"));
   const trajectoryDependentControls = Array.from(document.querySelectorAll(".trajectory-dependent-control"));
   const textBoxDependentControls = Array.from(document.querySelectorAll(".text-box-dependent-control"));
+  const originalPairContextLabels = Array.from(document.querySelectorAll(".original-pair-context-label"));
   const groupingDependentControls = Array.from(document.querySelectorAll(".grouping-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
@@ -2031,6 +2032,9 @@
     syncAllChoiceControlButtons();
     contextDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", contextIsOff);
+    });
+    originalPairContextLabels.forEach((label) => {
+      label.classList.toggle("is-retracted", contextIsOff);
     });
     syncOccluderWidthVisibility();
 
