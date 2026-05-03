@@ -33,6 +33,8 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 **Context** adds extra object pairs. New context pairs copy the original pair when they are added; later changes to the original pair do not automatically change those copied pairs.
 
+**Add clip** starts a sequence. The first click stores the current settings as Clip 1 and opens Clip 2 as a copy. The clip strip below the preview lets you return to any earlier clip and keep editing it. **Current clip** previews only the selected clip; **Sequence** previews the full composition. When a sequence has two or more clips, **Export video** exports the full sequence as one movie.
+
 **Color** controls the ball colors and sudden color-change cue.
 
 **Background** controls the stimulus field. Dark background with red/green discs is the safest default for the classic displays.
@@ -106,8 +108,9 @@ Use it when you want many planned trials, such as **Delay x overlap grid** or **
 
 Important points:
 
-- **Export video** exports only the one video currently shown in the preview.
+- Without added clips, **Export video** exports only the one video currently shown in the preview.
 - **Export PsychoPy CSV** exports a one-row PsychoPy table for the current single video.
+- If you have added clips, **Export video** exports the full clip sequence. The PsychoPy CSV stays one row because the sequence is one movie; the metadata JSON records each clip's parameters and timing.
 - **Condition set + Build CSV** exports a multi-row experiment plan.
 - **Build JSON** exports the same condition set with fuller parameter records.
 - Condition sets do not automatically render every video in the set. They create expected filenames and parameter rows; you still need matching movie files for those rows.

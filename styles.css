@@ -265,7 +265,7 @@ h3 {
 
 .psychopy-panel > summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.55fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.55fr) auto auto auto auto;
   align-items: center;
   gap: 8px;
 }
@@ -515,6 +515,11 @@ h3 {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--paper);
+}
+
+.choice-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .control-subgroup {
@@ -903,6 +908,13 @@ button:disabled {
   white-space: normal;
 }
 
+.summary-compose-button {
+  min-height: 2.15rem;
+  min-width: 78px;
+  padding: 5px 7px;
+  white-space: normal;
+}
+
 .export-summary-status {
   min-height: 0;
   margin: 0;
@@ -938,6 +950,23 @@ button:disabled {
   margin-bottom: 8px;
   padding-bottom: 8px;
   border-bottom: 2px solid var(--line);
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.preview-scope-row {
+  min-width: 214px;
+}
+
+.preview-scope-row .choice-button {
+  min-height: 40px;
+  padding: 7px 9px;
+  font-size: 0.7rem;
 }
 
 .preview-button {
@@ -1094,6 +1123,42 @@ button:disabled {
   font-size: 0.62rem;
   font-weight: 700;
   line-height: 1.25;
+}
+
+.sequence-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 7px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+}
+
+.sequence-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sequence-clip-button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.sequence-clip-button.is-active {
+  border-color: var(--accent);
+  background: var(--ink-soft);
+  color: white;
 }
 
 .stage-frame {
@@ -1360,7 +1425,7 @@ canvas.trajectory-edit-enabled:active {
   }
 
   .psychopy-panel > summary {
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
     gap: 6px;
   }
 
@@ -1368,6 +1433,7 @@ canvas.trajectory-edit-enabled:active {
     display: none;
   }
 
+  .summary-compose-button,
   .summary-export-button {
     min-width: 0;
     min-height: 44px;
@@ -1542,6 +1608,8 @@ canvas.trajectory-edit-enabled:active {
   .preset-compact-grid,
   .preset-save-row,
   .preview-bar,
+  .preview-actions,
+  .sequence-panel,
   .billiard-header-row,
   .control-grid,
   .control-subgrid,

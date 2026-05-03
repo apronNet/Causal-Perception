@@ -71,6 +71,8 @@ Browser MediaRecorder cannot reliably embed custom MP4/WebM metadata. The app th
 
 The one-row PsychoPy CSV and metadata JSON include event-frame records for contact and O2 onset. The frame-log CSV is separate: it records one row per exported frame and object with x/y position, visibility, and stage-bound status.
 
+Clip sequences are one movie made from several saved clip states. `sequenceClips` stores full `cloneState()` snapshots in memory. Current-clip preview draws only the active state; sequence preview/export uses playback-plan helpers so timing, sound cues, metadata JSON, PsychoPy CSV, and frame-log CSV all use the same clip order and total duration. Keep export settings sequence-level: one FPS, aspect ratio, resolution, bitrate, format, and filename for the whole movie.
+
 For timing, visibility, contact-geometry, or Billiard changes, run `node tools/export-pixel-probe.mjs`. It exports real videos in Chrome and measures decoded pixels without `ffmpeg`.
 
 ## README / GitHub Page

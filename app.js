@@ -59,6 +59,14 @@
     midgray: "#80786d",
     light: "#f6efe1"
   };
+  const SEQUENCE_OUTPUT_FIELDS = [
+    "outputFormat",
+    "aspectRatio",
+    "exportHeightPx",
+    "fps",
+    "videoBitrate",
+    "fileLabel"
+  ];
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
@@ -67,6 +75,7 @@
   const deletePresetButton = document.getElementById("deletePresetButton");
   const exportPresetButton = document.getElementById("exportPresetButton");
   const previewButton = document.getElementById("previewButton");
+  const sequenceAddClipButton = document.getElementById("sequenceAddClipButton");
   const exportButton = document.getElementById("exportButton");
   const psychopyButton = document.getElementById("psychopyButton");
   const positionCsvButton = document.getElementById("positionCsvButton");
@@ -87,6 +96,9 @@
   const scenarioBadge = document.getElementById("scenarioBadge");
   const timingBadge = document.getElementById("timingBadge");
   const previewTimerBadge = document.getElementById("previewTimerBadge");
+  const sequencePanel = document.getElementById("sequencePanel");
+  const sequenceClipList = document.getElementById("sequenceClipList");
+  const sequenceTotalLabel = document.getElementById("sequenceTotalLabel");
   const summaryPreset = document.getElementById("summaryPreset");
   const summaryCategory = document.getElementById("summaryCategory");
   const summaryDuration = document.getElementById("summaryDuration");
@@ -1060,6 +1072,7 @@
   const groupingDependentControls = Array.from(document.querySelectorAll(".grouping-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
+  const previewScopeButtons = Array.from(document.querySelectorAll("[data-preview-scope]"));
   const choiceControlButtons = Array.from(document.querySelectorAll("[data-choice-for]"));
   let activePresetKey = "canonical";
   let selectedPresetKey = "canonical";
@@ -1077,6 +1090,11 @@
   let sharedAudioContext = null;
   let parameterTooltip = null;
   let previewStart = 0;
+  let previewPlaybackPlan = null;
+  let sequenceClips = [];
+  let activeSequenceIndex = 0;
+  let previewScopeMode = "clip";
+  let isApplyingSequenceClip = false;
   let isExporting = false;
   let startDragTarget = null;
   let specialDragTarget = null;
@@ -1466,6 +1484,128 @@
     return state.physicsEngineEnabled ? normalizePhysicsEngineState(state) : state;
   }
 
+  function cloneSequenceState(state) {
+    return JSON.parse(JSON.stringify(state));
+  }
+
+  function getSequenceClipLabel(index) {
+    return `Clip ${index + 1}`;
+  }
+
+  function getTotalSequenceDurationMs(clips = sequenceClips) {
+    return clips.reduce((total, clip) => total + Math.max(0, Number(clip.state?.durationMs) || 0), 0);
+  }
+
+  function syncPreviewScopeButtons() {
+    if (sequenceClips.length < 2 && previewScopeMode === "sequence") {
+      previewScopeMode = "clip";
+    }
+    previewScopeButtons.forEach((button) => {
+      const scope = button.dataset.previewScope;
+      button.classList.toggle("is-active", scope === previewScopeMode);
+      button.setAttribute("aria-pressed", String(scope === previewScopeMode));
+      button.disabled = scope === "sequence" && sequenceClips.length < 2;
+    });
+  }
+
+  function updateSequenceUi() {
+    syncPreviewScopeButtons();
+    if (!sequencePanel || !sequenceClipList) {
+      return;
+    }
+    const hasSequence = sequenceClips.length > 1;
+    sequencePanel.classList.toggle("hidden", !hasSequence);
+    if (!hasSequence) {
+      sequenceClipList.replaceChildren();
+      if (sequenceTotalLabel) {
+        sequenceTotalLabel.textContent = "1 clip";
+      }
+      return;
+    }
+
+    sequenceClipList.replaceChildren();
+    sequenceClips.forEach((clip, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sequence-clip-button";
+      button.dataset.sequenceIndex = String(index);
+      button.textContent = getSequenceClipLabel(index);
+      button.title = `${getSequenceClipLabel(index)} - ${Math.round(Number(clip.state?.durationMs) || 0)} ms`;
+      button.classList.toggle("is-active", index === activeSequenceIndex);
+      button.setAttribute("aria-pressed", String(index === activeSequenceIndex));
+      sequenceClipList.appendChild(button);
+    });
+    if (sequenceTotalLabel) {
+      sequenceTotalLabel.textContent = `${sequenceClips.length} clips, ${Math.round(getTotalSequenceDurationMs())} ms total`;
+    }
+  }
+
+  function syncActiveSequenceClipFromControls() {
+    if (isApplyingSequenceClip || sequenceClips.length === 0) {
+      return;
+    }
+    const index = clamp(activeSequenceIndex, 0, sequenceClips.length - 1);
+    activeSequenceIndex = index;
+    sequenceClips[index] = {
+      ...sequenceClips[index],
+      state: cloneSequenceState(cloneState())
+    };
+    updateSequenceUi();
+  }
+
+  function ensureSequenceFromCurrentClip() {
+    if (sequenceClips.length > 0) {
+      return;
+    }
+    sequenceClips = [
+      {
+        id: `clip-${Date.now()}-1`,
+        state: cloneSequenceState(cloneState())
+      }
+    ];
+    activeSequenceIndex = 0;
+  }
+
+  function applySequenceClip(index) {
+    const nextIndex = clamp(Math.round(Number(index) || 0), 0, sequenceClips.length - 1);
+    const clip = sequenceClips[nextIndex];
+    if (!clip) {
+      return;
+    }
+    const outputState = cloneState();
+    isApplyingSequenceClip = true;
+    activeSequenceIndex = nextIndex;
+    setControls(copySequenceOutputFields(outputState, cloneSequenceState(clip.state)));
+    isApplyingSequenceClip = false;
+    updateSequenceUi();
+  }
+
+  function addSequenceClip() {
+    stopPreview();
+    syncActiveSequenceClipFromControls();
+    ensureSequenceFromCurrentClip();
+    const previousIndex = activeSequenceIndex;
+    const baseClip = sequenceClips[activeSequenceIndex] || sequenceClips[sequenceClips.length - 1];
+    const nextClip = {
+      id: `clip-${Date.now()}-${sequenceClips.length + 1}`,
+      state: cloneSequenceState(baseClip.state)
+    };
+    sequenceClips = [...sequenceClips, nextClip];
+    previewScopeMode = "sequence";
+    applySequenceClip(sequenceClips.length - 1);
+    statusText.textContent = `${getSequenceClipLabel(activeSequenceIndex)} started from ${getSequenceClipLabel(previousIndex)}.`;
+  }
+
+  function activateSequenceClip(index) {
+    if (sequenceClips.length < 2) {
+      return;
+    }
+    stopPreview();
+    syncActiveSequenceClipFromControls();
+    applySequenceClip(index);
+    statusText.textContent = `${getSequenceClipLabel(activeSequenceIndex)} selected.`;
+  }
+
   function formatValue(format, value, inputId = "", input = null) {
     const number = Number(value);
     switch (format) {
@@ -1590,8 +1730,10 @@
       }
     });
 
+    syncActiveSequenceClipFromControls();
+
     if ((currentObjectUrl || currentPsychopyUrl) && lastExportSignature) {
-      const currentSignature = getExportSignature(cloneState());
+      const currentSignature = getCurrentExportSignature(cloneState());
       if (currentSignature !== lastExportSignature) {
         invalidateGeneratedExports();
       }
@@ -3902,7 +4044,7 @@
     const targetMotionEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetTravelMs) || 0);
     const targetVisibleEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetVisibleMs) || 0);
     if (state.renderMode === "lab") {
-      warnings.push("Lab preview exports labels. Use Clean stimulus or Fixation for participant movies.");
+      warnings.push("Exported video will include labels. Use Clean stimulus or Fixation for participant movies.");
     }
     if (state.contactGuideMode !== "none") {
       warnings.push("Contact guide is visible in export. Turn off unless it is a condition.");
@@ -6425,7 +6567,7 @@
   function drawIdlePreview(state = cloneState()) {
     const idleTime = getIdlePreviewTime(state);
     drawFrame(state, idleTime, ctx);
-    updatePreviewTimer(idleTime, state);
+    updatePreviewTimer(idleTime, getPreviewTimerPlayback(state));
   }
 
   function getStagePoint(event) {
@@ -7125,17 +7267,18 @@
       previewFallbackTimer = null;
     }
     previewStart = 0;
-    updatePreviewTimer(0, cloneState());
+    previewPlaybackPlan = null;
+    updatePreviewTimer(0, getPreviewTimerPlayback(cloneState()));
     clearImpactSoundTimers();
   }
 
-  function getPreviewFrameTime(elapsed, state) {
-    const fps = Math.max(1, Math.round(Number(state.fps) || 60));
+  function getPreviewFrameTime(elapsed, playback) {
+    const fps = Math.max(1, Math.round(Number(playback.fps) || 60));
     const frameDuration = 1000 / fps;
-    if (elapsed >= state.durationMs) {
-      return state.durationMs;
+    if (elapsed >= playback.durationMs) {
+      return playback.durationMs;
     }
-    return Math.min(Math.floor(elapsed / frameDuration) * frameDuration, state.durationMs);
+    return Math.min(Math.floor(elapsed / frameDuration) * frameDuration, playback.durationMs);
   }
 
   function formatPreviewTime(ms) {
@@ -7150,17 +7293,23 @@
     previewTimerBadge.textContent = `${formatPreviewTime(clampedElapsed)} / ${formatPreviewTime(state.durationMs)}`;
   }
 
+  function getPreviewTimerPlayback(state = cloneState()) {
+    const durationMs =
+      previewScopeMode === "sequence" && sequenceClips.length > 1 ? getTotalSequenceDurationMs() : state.durationMs;
+    return { durationMs: Math.max(1, Number(durationMs) || 1) };
+  }
+
   function tickPreview(now) {
-    const state = cloneState();
+    const plan = previewPlaybackPlan || makePlaybackPlan({ includeSequence: previewScopeMode === "sequence" });
     if (previewStart === 0) {
       previewStart = now;
     }
     const elapsed = now - previewStart;
-    const frameTime = getPreviewFrameTime(elapsed, state);
-    drawFrame(state, frameTime, ctx);
-    updatePreviewTimer(frameTime, state);
+    const frameTime = getPreviewFrameTime(elapsed, plan);
+    drawPlaybackPlanFrame(plan, frameTime, ctx);
+    updatePreviewTimer(frameTime, plan);
 
-    if (elapsed < state.durationMs) {
+    if (elapsed < plan.durationMs) {
       previewHandle = requestAnimationFrame(tickPreview);
       if (previewFallbackTimer !== null) {
         window.clearTimeout(previewFallbackTimer);
@@ -7173,7 +7322,7 @@
         window.clearTimeout(previewFallbackTimer);
         previewFallbackTimer = null;
       }
-      updatePreviewTimer(state.durationMs, state);
+      updatePreviewTimer(plan.durationMs, plan);
     }
   }
 
@@ -7181,27 +7330,29 @@
     if (previewHandle === null || previewStart === 0) {
       return;
     }
-    const state = cloneState();
+    const plan = previewPlaybackPlan || makePlaybackPlan({ includeSequence: previewScopeMode === "sequence" });
     const elapsed = performance.now() - previewStart;
-    const frameTime = getPreviewFrameTime(elapsed, state);
-    drawFrame(state, frameTime, ctx);
-    updatePreviewTimer(frameTime, state);
-    if (elapsed < state.durationMs) {
-      previewFallbackTimer = window.setTimeout(tickPreviewFallback, Math.max(16, 1000 / Math.max(1, state.fps || 60)));
+    const frameTime = getPreviewFrameTime(elapsed, plan);
+    drawPlaybackPlanFrame(plan, frameTime, ctx);
+    updatePreviewTimer(frameTime, plan);
+    if (elapsed < plan.durationMs) {
+      previewFallbackTimer = window.setTimeout(tickPreviewFallback, Math.max(16, 1000 / Math.max(1, plan.fps || 60)));
     }
   }
 
   function playPreview() {
     stopPreview();
-    const state = cloneState();
-    if (state.soundEnabled) {
+    const plan = makePlaybackPlan({ includeSequence: previewScopeMode === "sequence" });
+    previewPlaybackPlan = plan;
+    const soundEvents = getPlanImpactSoundEvents(plan);
+    if (soundEvents.length > 0) {
       const audioContext = getPreviewAudioContext();
       if (audioContext && audioContext.state === "suspended") {
         audioContext.resume().catch(() => {});
       }
-      getImpactSoundEvents(state).forEach((soundEvent) => {
+      soundEvents.forEach((soundEvent) => {
         const timer = window.setTimeout(() => {
-          playImpactSound(state);
+          playImpactSound(soundEvent.state);
           impactSoundTimers = impactSoundTimers.filter((candidate) => candidate !== timer);
         }, Math.max(0, soundEvent.timeMs));
         impactSoundTimers.push(timer);
@@ -7377,12 +7528,29 @@
     lastGeneratedExportDetails = copyExportDetails(exportDetails);
   }
 
+  function rememberGeneratedPlan(plan, filename, exportDetails) {
+    lastExportSignature = getPlaybackPlanSignature(plan);
+    lastGeneratedMovieFilename = filename;
+    lastGeneratedExportDetails = copyExportDetails(exportDetails);
+  }
+
   function getReusableMovieFilename(state, extension) {
     const signature = getExportSignature(state);
     if (lastExportSignature === signature && lastGeneratedMovieFilename?.toLowerCase().endsWith(`.${extension}`)) {
       return lastGeneratedMovieFilename;
     }
     return getExportMovieFilename(state, extension);
+  }
+
+  function getReusablePlanMovieFilename(plan, extension) {
+    if (plan.type !== "sequence") {
+      return getReusableMovieFilename(plan.metadataState, extension);
+    }
+    const signature = getPlaybackPlanSignature(plan);
+    if (lastExportSignature === signature && lastGeneratedMovieFilename?.toLowerCase().endsWith(`.${extension}`)) {
+      return lastGeneratedMovieFilename;
+    }
+    return getExportMovieFilename(plan.metadataState, extension);
   }
 
   function getMimeCandidates(state) {
@@ -7608,6 +7776,135 @@
     const x = (exportCanvas.width - drawWidth) / 2;
     const y = (exportCanvas.height - drawHeight) / 2;
     exportCtx.drawImage(stageCanvas, x, y, drawWidth, drawHeight);
+  }
+
+  function copySequenceOutputFields(sourceState, targetState) {
+    const nextState = { ...targetState };
+    SEQUENCE_OUTPUT_FIELDS.forEach((field) => {
+      nextState[field] = sourceState[field];
+    });
+    return nextState;
+  }
+
+  function getSequenceClipStates() {
+    syncActiveSequenceClipFromControls();
+    return sequenceClips.length > 1
+      ? sequenceClips.map((clip) => cloneSequenceState(clip.state))
+      : [cloneSequenceState(cloneState())];
+  }
+
+  function makePlaybackPlan({ includeSequence = false } = {}) {
+    const outputState = cloneState();
+    const useSequence = Boolean(includeSequence && sequenceClips.length > 1);
+    const sourceClips = useSequence ? getSequenceClipStates() : [cloneSequenceState(outputState)];
+    const clips = sourceClips.map((clipState, index) => ({
+      index,
+      label: getSequenceClipLabel(index),
+      state: copySequenceOutputFields(outputState, clipState),
+      durationMs: Math.max(1, Number(clipState.durationMs) || 1)
+    }));
+    const durationMs = clips.reduce((total, clip) => total + clip.durationMs, 0);
+    const hasSound = clips.some((clip) => clip.state.soundEnabled && clip.state.soundVolume > 0);
+    const metadataState = {
+      ...copySequenceOutputFields(outputState, clips[0]?.state || outputState),
+      durationMs,
+      soundEnabled: hasSound,
+      fileLabel: useSequence ? `${outputState.fileLabel || "causal-launching"}-sequence` : outputState.fileLabel
+    };
+    return {
+      type: useSequence ? "sequence" : "clip",
+      clips,
+      outputState: { ...outputState, durationMs, soundEnabled: hasSound },
+      metadataState,
+      durationMs,
+      fps: Math.max(1, Math.round(Number(outputState.fps) || 60)),
+      hasSound
+    };
+  }
+
+  function getPlanFrameCount(plan) {
+    return Math.max(1, Math.ceil(plan.durationMs / (1000 / plan.fps)));
+  }
+
+  function getPlanDurationSec(plan) {
+    return Number((getPlanFrameCount(plan) / plan.fps).toFixed(3));
+  }
+
+  function getPlanClipAtTime(plan, timeMs) {
+    let cursor = 0;
+    for (let index = 0; index < plan.clips.length; index += 1) {
+      const clip = plan.clips[index];
+      const nextCursor = cursor + clip.durationMs;
+      if (timeMs < nextCursor || index === plan.clips.length - 1) {
+        return {
+          clip,
+          clipStartMs: cursor,
+          localTimeMs: clamp(timeMs - cursor, 0, clip.durationMs)
+        };
+      }
+      cursor = nextCursor;
+    }
+    const fallbackClip = plan.clips[0];
+    return { clip: fallbackClip, clipStartMs: 0, localTimeMs: 0 };
+  }
+
+  function drawPlaybackPlanFrame(plan, timeMs, drawCtx, exportCanvas = null, scratchCanvas = null) {
+    const { clip, localTimeMs } = getPlanClipAtTime(plan, timeMs);
+    if (exportCanvas) {
+      drawExportFrame(clip.state, localTimeMs, drawCtx, exportCanvas, scratchCanvas);
+      return;
+    }
+    drawFrame(clip.state, localTimeMs, drawCtx);
+  }
+
+  function getPlanImpactSoundEvents(plan) {
+    const events = [];
+    let cursor = 0;
+    plan.clips.forEach((clip) => {
+      getImpactSoundEvents(clip.state).forEach((event) => {
+        events.push({
+          ...event,
+          state: clip.state,
+          label: plan.type === "sequence" ? `${clip.label}: ${event.label}` : event.label,
+          timeMs: cursor + event.timeMs,
+          timeSec: Number(((cursor + event.timeMs) / 1000).toFixed(3))
+        });
+      });
+      cursor += clip.durationMs;
+    });
+    return events
+      .filter((event) => event.timeMs >= 0 && event.timeMs < plan.durationMs)
+      .sort((a, b) => a.timeMs - b.timeMs || a.label.localeCompare(b.label));
+  }
+
+  function shouldCacheExportPlanFrames(plan, exportCanvas) {
+    const frameCount = getPlanFrameCount(plan);
+    return (
+      frameCount <= MAX_CACHED_EXPORT_FRAMES &&
+      frameCount * exportCanvas.width * exportCanvas.height <= MAX_CACHED_EXPORT_PIXELS
+    );
+  }
+
+  async function buildExportPlanFrameCache(plan, exportCanvas, aspectScratchCanvas, statusCallback = null) {
+    if (!shouldCacheExportPlanFrames(plan, exportCanvas)) {
+      return null;
+    }
+
+    const frameDuration = 1000 / plan.fps;
+    const totalFrames = getPlanFrameCount(plan);
+    const frames = [];
+    for (let frame = 0; frame < totalFrames; frame += 1) {
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = exportCanvas.width;
+      frameCanvas.height = exportCanvas.height;
+      const frameCtx = frameCanvas.getContext("2d");
+      drawPlaybackPlanFrame(plan, Math.min(frame * frameDuration, plan.durationMs), frameCtx, exportCanvas, aspectScratchCanvas);
+      frames.push(typeof createImageBitmap === "function" ? await createImageBitmap(frameCanvas) : frameCanvas);
+      if (statusCallback) {
+        statusCallback(frame + 1, totalFrames);
+      }
+    }
+    return frames;
   }
 
   function getExportFrameCount(state) {
@@ -8223,6 +8520,98 @@
     return `${columns.join(",")}\n${columns.map((column) => csvCell(row[column])).join(",")}\n`;
   }
 
+  function getCompositionClipRecords(plan) {
+    let cursor = 0;
+    return plan.clips.map((clip) => {
+      const standards = getStandards(clip.state);
+      const frameAudit = getEventFrameAudit(clip.state);
+      const record = {
+        clipIndex: clip.index + 1,
+        label: clip.label,
+        startMs: Math.round(cursor),
+        durationMs: Math.round(clip.durationMs),
+        impactMs: standards.impactMs,
+        targetOnsetMs: standards.targetOnsetMs,
+        eventFrames: frameAudit.events,
+        parameters: clip.state
+      };
+      cursor += clip.durationMs;
+      return record;
+    });
+  }
+
+  function buildPlanMetadata(plan, filename, exportDetails = {}) {
+    if (plan.type !== "sequence") {
+      return buildPsychopyMetadata(plan.metadataState, filename, exportDetails);
+    }
+    const metadata = buildPsychopyMetadata(plan.metadataState, filename, exportDetails);
+    const soundCueEvents = getPlanImpactSoundEvents(plan).map(({ state, ...event }) => event);
+    metadata.builder.durationSec = getPlanDurationSec(plan);
+    metadata.builder.intendedDurationSec = Number((plan.durationMs / 1000).toFixed(3));
+    metadata.builder.noAudio = !plan.hasSound;
+    metadata.coder.noAudio = !plan.hasSound;
+    metadata.timing.frameCount = getPlanFrameCount(plan);
+    metadata.timing.encodedDurationSec = getPlanDurationSec(plan);
+    metadata.timing.intendedDurationSec = Number((plan.durationMs / 1000).toFixed(3));
+    metadata.timing.soundCueTimesSec = soundCueEvents.map((event) => event.timeSec);
+    metadata.sound.enabled = plan.hasSound;
+    metadata.sound.cueEvents = soundCueEvents;
+    metadata.parameters = plan.metadataState;
+    metadata.composition = {
+      enabled: true,
+      clipCount: plan.clips.length,
+      totalDurationMs: Math.round(plan.durationMs),
+      outputSettings: SEQUENCE_OUTPUT_FIELDS.reduce((fields, field) => {
+        fields[field] = plan.outputState[field];
+        return fields;
+      }, {}),
+      clips: getCompositionClipRecords(plan)
+    };
+    return metadata;
+  }
+
+  function buildSequencePsychopyCsv(plan, filename, exportDetails = {}) {
+    const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(plan.metadataState));
+    const soundCueEvents = getPlanImpactSoundEvents(plan);
+    const clipRecords = getCompositionClipRecords(plan);
+    const row = {
+      movieFile: getPsychopyMoviePath(filename),
+      conditionName: "Composed sequence",
+      movieDurationSec: getPlanDurationSec(plan),
+      intendedDurationSec: Number((plan.durationMs / 1000).toFixed(3)),
+      movieFPS: plan.fps,
+      frameCount: getPlanFrameCount(plan),
+      frameDurationMs: roundForAudit(1000 / plan.fps),
+      widthPx: encoded.width,
+      heightPx: encoded.height,
+      resolutionPx: `${encoded.width}x${encoded.height}`,
+      aspectRatio: plan.outputState.aspectRatio,
+      exportHeightPx: getExportHeightPx(plan.outputState),
+      units: "pix",
+      forceEndRoutine: "true",
+      loopPlayback: "false",
+      noAudio: String(!plan.hasSound),
+      compositionClipCount: plan.clips.length,
+      compositionClipLabels: clipRecords.map((clip) => clip.label).join("|"),
+      compositionClipStartsMs: clipRecords.map((clip) => clip.startMs).join("|"),
+      compositionClipDurationsMs: clipRecords.map((clip) => clip.durationMs).join("|"),
+      soundCueTimesMs: soundCueEvents.map((event) => Math.round(event.timeMs)).join("|"),
+      soundCueEvents: soundCueEvents.map((event) => `${event.label}:${Math.round(event.timeMs)}ms`).join("|"),
+      compositionParametersJson: JSON.stringify(clipRecords.map((clip) => clip.parameters)),
+      validationWarnings: plan.clips
+        .flatMap((clip) => getExperimentWarnings(clip.state).map((warning) => `${clip.label}: ${warning}`))
+        .join(" | ")
+    };
+    const columns = Object.keys(row);
+    return `${columns.join(",")}\n${columns.map((column) => csvCell(row[column])).join(",")}\n`;
+  }
+
+  function buildPlanPsychopyCsv(plan, filename, exportDetails = {}) {
+    return plan.type === "sequence"
+      ? buildSequencePsychopyCsv(plan, filename, exportDetails)
+      : buildPsychopyCsv(plan.metadataState, filename, exportDetails);
+  }
+
   function isObjectInStage(x, y, radius) {
     return (
       Number.isFinite(x) &&
@@ -8374,6 +8763,46 @@
       .join("\n")}\n`;
   }
 
+  function buildSequenceFrameLogCsv(plan, filename) {
+    const frameCount = getPlanFrameCount(plan);
+    const frameDurationMs = 1000 / plan.fps;
+    const rows = [];
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const movieTimeMs = Math.min(frame * frameDurationMs, plan.durationMs);
+      const { clip, clipStartMs, localTimeMs } = getPlanClipAtTime(plan, movieTimeMs);
+      const blinkMs = getPreBallBlinkMs(clip.state);
+      const hiddenByPrelaunchBlink = isCrosshairBlinkWindow(clip.state, localTimeMs);
+      const stimulusTimeMs = Math.max(0, localTimeMs - blinkMs);
+      const base = {
+        movieFile: getPsychopyMoviePath(filename),
+        frame,
+        movieTimeMs: roundForAudit(movieTimeMs),
+        clipIndex: clip.index + 1,
+        clipLabel: clip.label,
+        clipStartMs: roundForAudit(clipStartMs),
+        clipMovieTimeMs: roundForAudit(localTimeMs),
+        stimulusTimeMs: roundForAudit(stimulusTimeMs),
+        fps: plan.fps,
+        frameDurationMs: roundForAudit(frameDurationMs),
+        frameCount,
+        prelaunchBlinkMs: roundForAudit(blinkMs)
+      };
+      getFrameLogObjects(clip.state, stimulusTimeMs, hiddenByPrelaunchBlink).forEach((object) => {
+        rows.push(makeFrameLogRow(base, object));
+      });
+    }
+    const columns = Object.keys(
+      rows[0] || { frame: "", movieTimeMs: "", clipIndex: "", event: "", role: "", xPx: "", yPx: "" }
+    );
+    return `${columns.join(",")}\n${rows
+      .map((row) => columns.map((column) => csvCell(row[column])).join(","))
+      .join("\n")}\n`;
+  }
+
+  function buildPlanFrameLogCsv(plan, filename) {
+    return plan.type === "sequence" ? buildSequenceFrameLogCsv(plan, filename) : buildFrameLogCsv(plan.metadataState, filename);
+  }
+
   function setPsychopyDownload(csv, preferredName) {
     const blob = new Blob([csv], { type: "text/csv" });
     if (currentPsychopyUrl) {
@@ -8439,6 +8868,27 @@
 
   function getExportSignature(state) {
     return JSON.stringify(state);
+  }
+
+  function getPlaybackPlanSignature(plan) {
+    if (plan.type !== "sequence") {
+      return getExportSignature(plan.metadataState);
+    }
+    return JSON.stringify({
+      type: plan.type,
+      output: SEQUENCE_OUTPUT_FIELDS.reduce((fields, field) => {
+        fields[field] = plan.outputState[field];
+        return fields;
+      }, {}),
+      clips: plan.clips.map((clip) => clip.state)
+    });
+  }
+
+  function getCurrentExportSignature(state = cloneState()) {
+    if (sequenceClips.length > 1) {
+      return getPlaybackPlanSignature(makePlaybackPlan({ includeSequence: true }));
+    }
+    return getExportSignature(state);
   }
 
   function clearGeneratedLink(link) {
@@ -8938,29 +9388,29 @@
   }
 
   function exportPsychopyCsv() {
-    const state = cloneState();
-    const exportSize = getExportCanvasSize(state);
-    const exportFormat = chooseExportFormat(state);
+    const plan = makePlaybackPlan({ includeSequence: sequenceClips.length > 1 });
+    const exportSize = getExportCanvasSize(plan.metadataState);
+    const exportFormat = chooseExportFormat(plan.outputState);
     exportFormat.width = exportSize.width;
     exportFormat.height = exportSize.height;
-    const filename = getReusableMovieFilename(state, exportFormat.extension);
-    const signature = getExportSignature(state);
+    const filename = getReusablePlanMovieFilename(plan, exportFormat.extension);
+    const signature = getPlaybackPlanSignature(plan);
     const exportDetails =
       lastExportSignature === signature && lastGeneratedMovieFilename === filename && lastGeneratedExportDetails
         ? lastGeneratedExportDetails
         : exportFormat;
-    setPsychopyDownload(buildPsychopyCsv(state, filename, exportDetails), getPsychopyCsvName(filename));
-    setMetadataDownload(buildPsychopyMetadata(state, filename, exportDetails), getMetadataJsonName(filename));
-    updateArtifactChecklist(state, filename, exportDetails);
-    rememberGeneratedMovie(state, filename, exportDetails);
+    setPsychopyDownload(buildPlanPsychopyCsv(plan, filename, exportDetails), getPsychopyCsvName(filename));
+    setMetadataDownload(buildPlanMetadata(plan, filename, exportDetails), getMetadataJsonName(filename));
+    updateArtifactChecklist(plan.metadataState, filename, exportDetails);
+    rememberGeneratedPlan(plan, filename, exportDetails);
     statusText.textContent = "PsychoPy CSV and metadata ready.";
   }
 
   function exportPositionCsv() {
-    const state = cloneState();
-    const exportFormat = chooseExportFormat(state);
-    const filename = getReusableMovieFilename(state, exportFormat.extension);
-    setPositionCsvDownload(buildFrameLogCsv(state, filename), getPositionCsvName(filename));
+    const plan = makePlaybackPlan({ includeSequence: sequenceClips.length > 1 });
+    const exportFormat = chooseExportFormat(plan.outputState);
+    const filename = getReusablePlanMovieFilename(plan, exportFormat.extension);
+    setPositionCsvDownload(buildPlanFrameLogCsv(plan, filename), getPositionCsvName(filename));
     statusText.textContent = "Frame log CSV ready.";
   }
 
@@ -9645,25 +10095,25 @@
     exportButton.disabled = true;
     statusText.textContent = "Preparing export…";
 
-    const state = cloneState();
-    const exportSize = getExportCanvasSize(state);
+    const plan = makePlaybackPlan({ includeSequence: sequenceClips.length > 1 });
+    const exportSize = getExportCanvasSize(plan.metadataState);
     const exportCanvas = document.createElement("canvas");
     exportCanvas.width = exportSize.width;
     exportCanvas.height = exportSize.height;
     const exportCtx = exportCanvas.getContext("2d");
-    const aspectScratchCanvas = state.aspectRatio === "16:9" ? null : document.createElement("canvas");
-    const frameDuration = 1000 / state.fps;
-    const totalFrames = getExportFrameCount(state);
-    const cachedFrames = await buildExportFrameCache(state, exportCanvas, aspectScratchCanvas, (frame, count) => {
+    const aspectScratchCanvas = plan.metadataState.aspectRatio === "16:9" ? null : document.createElement("canvas");
+    const frameDuration = 1000 / plan.fps;
+    const totalFrames = getPlanFrameCount(plan);
+    const cachedFrames = await buildExportPlanFrameCache(plan, exportCanvas, aspectScratchCanvas, (frame, count) => {
       const percent = Math.max(1, Math.round((frame / Math.max(1, count)) * 100));
       statusText.textContent = `Preparing video ${percent}%…`;
     });
-    const stream = exportCanvas.captureStream(state.fps);
+    const stream = exportCanvas.captureStream(plan.fps);
     let exportAudioContext = null;
     let exportAudioDestination = null;
     let pendingImpactSoundEvents = [];
 
-    if (state.soundEnabled) {
+    if (plan.hasSound) {
       const AudioContextClass = getAudioContextClass();
       if (AudioContextClass && typeof AudioContextClass.prototype.createMediaStreamDestination === "function") {
         exportAudioContext = new AudioContextClass();
@@ -9674,20 +10124,20 @@
         exportAudioDestination.stream.getAudioTracks().forEach((track) => {
           stream.addTrack(track);
         });
-        pendingImpactSoundEvents = getImpactSoundEvents(state);
+        pendingImpactSoundEvents = getPlanImpactSoundEvents(plan);
       } else {
         statusText.textContent = "Audio export is unavailable here; exporting a silent video.";
       }
     }
 
-    const exportFormat = chooseExportFormat(state);
+    const exportFormat = chooseExportFormat(plan.outputState);
     exportFormat.width = exportCanvas.width;
     exportFormat.height = exportCanvas.height;
     if (exportFormat.usedFallback) {
       statusText.textContent = "Requested format unavailable here; using an available browser format.";
     }
 
-    const recorderResult = createMediaRecorderWithFallback(stream, state, exportFormat);
+    const recorderResult = createMediaRecorderWithFallback(stream, plan.outputState, exportFormat);
     if (!recorderResult) {
       disposeExportFrameCache(cachedFrames);
       if (exportAudioContext) {
@@ -9696,7 +10146,7 @@
       statusText.textContent = "Video encoding is unavailable in this browser.";
       exportButton.disabled = false;
       isExporting = false;
-      updateCompatibilityNotice(state);
+      updateCompatibilityNotice(plan.outputState);
       return;
     }
     const recorder = recorderResult.recorder;
@@ -9721,7 +10171,7 @@
       pendingImpactSoundEvents.forEach((soundEvent) => {
         scheduleImpactSound(
           exportAudioContext,
-          state,
+          soundEvent.state,
           exportAudioDestination,
           exportAudioContext.currentTime + soundEvent.timeMs / 1000
         );
@@ -9730,18 +10180,18 @@
 
     const exportStartTime = performance.now();
     for (let frame = 0; frame < totalFrames; frame += 1) {
-      const time = Math.min(frame * frameDuration, state.durationMs);
+      const time = Math.min(frame * frameDuration, plan.durationMs);
       if (cachedFrames) {
         drawCachedExportFrame(exportCtx, exportCanvas, cachedFrames[frame]);
       } else {
-        drawExportFrame(state, time, exportCtx, exportCanvas, aspectScratchCanvas);
+        drawPlaybackPlanFrame(plan, time, exportCtx, exportCanvas, aspectScratchCanvas);
       }
       statusText.textContent = `Writing video ${Math.round(((frame + 1) / totalFrames) * 100)}%…`;
       const nextFrameTime = exportStartTime + (frame + 1) * frameDuration;
       await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, nextFrameTime - performance.now())));
     }
 
-    const finalFrameHoldUntil = exportStartTime + state.durationMs + frameDuration;
+    const finalFrameHoldUntil = exportStartTime + plan.durationMs + frameDuration;
     await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, finalFrameHoldUntil - performance.now())));
     disposeExportFrameCache(cachedFrames);
     recorder.stop();
@@ -9755,7 +10205,7 @@
       statusText.textContent = "Export produced an empty file in this browser. Try a different format or browser.";
       exportButton.disabled = false;
       isExporting = false;
-      updateCompatibilityNotice(state);
+      updateCompatibilityNotice(plan.outputState);
       return;
     }
     if (currentObjectUrl) {
@@ -9763,23 +10213,25 @@
     }
     currentObjectUrl = URL.createObjectURL(blob);
 
-    const filename = getReusableMovieFilename(state, exportFormat.extension);
+    const filename = getReusablePlanMovieFilename(plan, exportFormat.extension);
     const psychopyFilename = getPsychopyCsvName(filename);
     downloadLink.href = currentObjectUrl;
     downloadLink.download = filename;
     downloadLink.textContent = "Download video";
     downloadLink.title = filename;
     downloadLink.classList.remove("hidden");
-    setPsychopyDownload(buildPsychopyCsv(state, filename, exportFormat), psychopyFilename);
-    setMetadataDownload(buildPsychopyMetadata(state, filename, exportFormat), getMetadataJsonName(filename));
-    updateArtifactChecklist(state, filename, exportFormat);
-    rememberGeneratedMovie(state, filename, exportFormat);
+    setPsychopyDownload(buildPlanPsychopyCsv(plan, filename, exportFormat), psychopyFilename);
+    setMetadataDownload(buildPlanMetadata(plan, filename, exportFormat), getMetadataJsonName(filename));
+    updateArtifactChecklist(plan.metadataState, filename, exportFormat);
+    rememberGeneratedPlan(plan, filename, exportFormat);
 
     exportedVideo.src = currentObjectUrl;
     videoPanel.classList.remove("hidden");
-    exportMeta.textContent = `${Math.round(getExportDurationSec(state) * 1000)} ms - ${state.fps} fps - ${
+    exportMeta.textContent = `${Math.round(getPlanDurationSec(plan) * 1000)} ms - ${plan.fps} fps - ${
       exportFormat.width
-    }x${exportFormat.height} - ${exportFormat.extension.toUpperCase()}`;
+    }x${exportFormat.height} - ${exportFormat.extension.toUpperCase()}${
+      plan.type === "sequence" ? ` - ${plan.clips.length} clips` : ""
+    }`;
     statusText.textContent = "Export ready.";
 
     const autoDownload = document.createElement("a");
@@ -9795,7 +10247,7 @@
 
     exportButton.disabled = false;
     isExporting = false;
-    updateCompatibilityNotice(state);
+    updateCompatibilityNotice(plan.outputState);
   }
 
   function getFeedbackMailto() {
@@ -9876,6 +10328,30 @@
     });
     contextDirectionButtons.forEach((button) => {
       button.addEventListener("click", () => applyContextChoice(controls.contextDirection, button.dataset.contextDirection));
+    });
+    previewScopeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        if (button.dataset.previewScope === "sequence" && sequenceClips.length < 2) {
+          return;
+        }
+        previewScopeMode = button.dataset.previewScope || "clip";
+        syncPreviewScopeButtons();
+        statusText.textContent =
+          previewScopeMode === "sequence" ? "Preview will play the full sequence." : "Preview will play the current clip.";
+        drawIdlePreview();
+      });
+    });
+    sequenceAddClipButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      addSequenceClip();
+    });
+    sequenceClipList?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-sequence-index]");
+      if (!button || !sequenceClipList.contains(button)) {
+        return;
+      }
+      activateSequenceClip(Number(button.dataset.sequenceIndex));
     });
 
     Object.entries(controls).forEach(([id, control]) => {
@@ -10256,5 +10732,6 @@
   bindFractureTargetEditors();
   bindStartDragging();
   applyPreset(getVisiblePrimaryPresetKeys()[0] || customPresetKeys[0] || "canonical");
+  updateSequenceUi();
   window.launchingVideoMakerReady = true;
 })();

@@ -93,6 +93,7 @@ This order prevents the most common fork failure: changing what a control does o
 | Canonical state | `cloneState()` | The one object used by preview, export, records, and condition sets. | Type mismatches here spread everywhere. |
 | Context snapshots | `contextPairSnapshots` | Stored JSON for Context 2+ after a pair is created. | Context 1 can work while Context 2+ stays stale. |
 | Trajectory overrides | `trajectoryOverrides` | Stored JSON mapping selected object ids to angle offsets. | Individual trajectory edits can appear in preview but be absent from export records if not wired through state. |
+| Clip sequence | `sequenceClips` in `app.js` | In-memory list of full clip states for composed exports. | Export can accidentally render only the selected clip if plan helpers are bypassed. |
 | Sidecar records | CSV, JSON, frame log | The durable evidence for generated stimuli. | A movie without sidecars is hard to audit or reproduce. |
 
 ## Control Ownership
@@ -105,7 +106,7 @@ Keep controls near the conceptual feature they change.
 | Position | Radius, overlap/gap, tunnels, move-start editing. | Hidden whole-stimulus x/y offsets; keep those internal unless a specific experiment needs them exposed. |
 | Context | Number of added pairs, context timing, context direction, and copied context-pair state. | Global export behavior. |
 | Special features | Participant-visible cues such as grouping, marker, contact guide, fracture, Billiard, crosshair, blink, rail, text, and sound. | Ordinary motion parameters that define the base launch. |
-| PsychoPy / Export | File format, FPS, aspect ratio, bitrate, CSV, JSON, frame log, and condition sets. | Participant-visible stimulus design. |
+| PsychoPy / Export | File format, FPS, aspect ratio, bitrate, Add clip, CSV, JSON, frame log, and condition sets. | Participant-visible stimulus design. |
 
 If a control feels awkward in the UI, move it to the section that owns its experimental meaning before adding styling around it.
 
@@ -136,6 +137,7 @@ Do not treat a visible parameter as finished until a saved movie and its sidecar
 - If a feature changes a maintenance checklist, update `DEVELOPER_NOTES.md`.
 - If a feature changes exported timing, visibility, contact geometry, Billiard behavior, sound scheduling, or frame logging, update or rerun `tools/export-pixel-probe.mjs`.
 - If a feature changes context behavior, test Context 1 and Context 2+ separately.
+- If a feature changes clip sequencing, test current-clip preview, sequence preview, returning to Clip 1, full-sequence export, metadata JSON, and frame-log CSV.
 
 ## Timing Vocabulary
 
