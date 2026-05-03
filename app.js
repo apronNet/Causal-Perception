@@ -148,7 +148,7 @@
   const feedbackPanel = document.getElementById("feedbackPanel");
   const feedbackMessage = document.getElementById("feedbackMessage");
   const feedbackMailLink = document.getElementById("feedbackMailLink");
-  const contextMovementPairList = document.getElementById("contextMovementPairList");
+  const contextPairList = document.getElementById("contextPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
   const fractureTargetList = document.getElementById("fractureTargetList");
   const groupingEnabledControl = document.getElementById("groupingEnabled");
@@ -2821,7 +2821,7 @@
   }
 
   function renderContextPairEditors() {
-    const containers = [contextMovementPairList, contextColorPairList];
+    const containers = [contextPairList, contextColorPairList];
     if (containers.some((container) => !container)) {
       return;
     }
@@ -2836,12 +2836,12 @@
     }
 
     const snapshots = state.contextPairSnapshots || [];
-    const movementCards = [];
+    const pairCards = [];
     const colorCards = [];
 
     for (let pairNumber = 2; pairNumber <= pairCount; pairNumber += 1) {
       const snapshot = normalizeContextPairSnapshot(snapshots[pairNumber - 2], state, pairNumber - 1);
-      movementCards.push(`
+      pairCards.push(`
         <details class="control-subgroup collapsible-subgroup context-pair-editor">
           <summary><h3 class="subgroup-title">Context ${pairNumber}</h3></summary>
           <div class="control-subgrid">
@@ -2882,7 +2882,7 @@
         </div>`);
     }
 
-    contextMovementPairList.innerHTML = movementCards.join("");
+    contextPairList.innerHTML = pairCards.join("");
     contextColorPairList.innerHTML = colorCards.join("");
     enhanceRangePrecision();
     syncAllChoiceControlButtons();
@@ -7152,7 +7152,7 @@
   }
 
   function bindContextPairEditors() {
-    [contextMovementPairList, contextColorPairList].forEach((container) => {
+    [contextPairList, contextColorPairList].forEach((container) => {
       if (!container) {
         return;
       }
