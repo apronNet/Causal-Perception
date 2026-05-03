@@ -268,6 +268,7 @@ const browserProbe = String.raw`
     setControl("soundEnabled", false);
     setControl("crosshairEnabled", false);
     setControl("physicsEngineEnabled", false);
+    setControl("billiardRealismEnabled", true);
     setChoice("renderMode", "stimulus");
     setChoice("stageTheme", "dark");
     setChoice("objectStyle", "flat");
@@ -357,6 +358,7 @@ const browserProbe = String.raw`
   setControl("durationMs", 1800);
   setControl("launcherSpeed", 500);
   setControl("physicsEngineEnabled", true);
+  setControl("billiardRealismEnabled", false);
   setControl("billiardFriction", 900);
   setControl("billiardWallRestitution", 0.8);
   setControl("fileLabel", "probe-billiard");
@@ -364,6 +366,45 @@ const browserProbe = String.raw`
   const billiardFrame = await sampleVideo(billiardExport.video, 1.75);
   const billiardTarget = componentBox(billiardFrame, hexToRgb(billiardExport.metadata.parameters.targetColor));
   const rightRailCenterX = billiardFrame.width - billiardTarget.radius;
+
+  commonControls();
+  setControl("durationMs", 5000);
+  setControl("launcherSpeed", 720);
+  setControl("physicsEngineEnabled", true);
+  setControl("soundEnabled", true);
+  setControl("fileLabel", "probe-billiard-realism");
+  const realismChecked = document.getElementById("billiardRealismEnabled").checked;
+  const realismManualDisabled = [
+    "billiardFriction",
+    "billiardFrictionFine",
+    "billiardRestitution",
+    "billiardRestitutionFine",
+    "billiardWallRestitution",
+    "billiardWallRestitutionFine",
+    "billiardStopSpeed",
+    "billiardStopSpeedFine"
+  ].every((id) => document.getElementById(id).disabled);
+  const realismExport = await exportAndRead();
+  const realismOnsetSec = realismExport.metadata.timing.targetOnsetSec;
+  const realismRgb = hexToRgb(realismExport.metadata.parameters.targetColor);
+  const realismBoxes = [];
+  for (const offsetSec of [0.18, 0.58, 1.02]) {
+    const frame = await sampleVideo(realismExport.video, realismOnsetSec + offsetSec);
+    const box = componentBox(frame, realismRgb);
+    realismBoxes.push({
+      timeSec: Number((realismOnsetSec + offsetSec).toFixed(3)),
+      offsetFromO2StartSec: offsetSec,
+      centerX: box.centerX === null ? null : Number(box.centerX.toFixed(2)),
+      centerY: box.centerY === null ? null : Number(box.centerY.toFixed(2)),
+      greenPixelCount: box.count
+    });
+  }
+  const realismYDrift =
+    realismBoxes[0].centerY === null || realismBoxes[2].centerY === null
+      ? null
+      : Math.abs(realismBoxes[2].centerY - realismBoxes[0].centerY);
+  const realismSoundEvents = realismExport.metadata.sound?.cueEvents || [];
+  const realismSoundLabels = realismSoundEvents.map((event) => event.label);
 
   commonControls();
   setControl("durationMs", 1200);
@@ -389,8 +430,6 @@ const browserProbe = String.raw`
   commonControls();
   setControl("durationMs", 2400);
   setControl("physicsEngineEnabled", true);
-  setControl("billiardFriction", 0);
-  setControl("billiardWallRestitution", 0.8);
   setControl("soundEnabled", true);
   setControl("fileLabel", "probe-billiard-sound");
   const billiardSoundExport = await exportAndRead();
@@ -425,9 +464,22 @@ const browserProbe = String.raw`
     billiard: {
       sampledSec: 1.75,
       frictionPxPerSec2: billiardExport.metadata.parameters.billiardFriction,
+      realismEnabled: billiardExport.metadata.parameters.billiardRealismEnabled,
       targetCenterX: billiardTarget.centerX === null ? null : Number(billiardTarget.centerX.toFixed(2)),
       rightRailCenterX: Number(rightRailCenterX.toFixed(2)),
       stoppedBeforeRightRail: billiardTarget.centerX !== null && billiardTarget.centerX < rightRailCenterX - 8
+    },
+    billiardRealism: {
+      defaultChecked: realismChecked,
+      manualControlsDisabled: realismManualDisabled,
+      metadataRealism: realismExport.metadata.billiard?.realism,
+      effectiveFrictionPxPerSec2: realismExport.metadata.billiard?.frictionPxPerSec2,
+      samples: realismBoxes,
+      targetYDriftPx: realismYDrift === null ? null : Number(realismYDrift.toFixed(2)),
+      nonStraightTargetPath: realismYDrift !== null && realismYDrift > 6,
+      soundLabels: realismSoundLabels,
+      hasRailCollision: realismSoundLabels.some((label) => label.includes("rail collision")),
+      hasRecollision: realismSoundLabels.some((label) => label.includes("recollision"))
     },
     trajectoryOverlay: {
       billiardOffAfterTrajectoryToggle,
@@ -451,7 +503,8 @@ const browserProbe = String.raw`
         timesMs: billiardSoundEvents.map((event) => Math.round(event.timeMs)),
         labels: billiardSoundLabels,
         hasOriginalCollision: billiardSoundLabels.includes("Original pair collision"),
-        hasRailCollision: billiardSoundLabels.some((label) => label.includes("rail collision"))
+        hasRailCollision: billiardSoundLabels.some((label) => label.includes("rail collision")),
+        hasRecollision: billiardSoundLabels.some((label) => label.includes("recollision"))
       }
     }
   };

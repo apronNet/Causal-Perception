@@ -513,6 +513,14 @@ h3 {
   min-height: 28px;
 }
 
+.billiard-manual-control.is-disabled {
+  opacity: 0.48;
+}
+
+.billiard-manual-control.is-disabled input {
+  cursor: not-allowed;
+}
+
 .context-pair-list {
   grid-column: 1 / -1;
   display: grid;
