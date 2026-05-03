@@ -444,6 +444,9 @@ const browserProbe = String.raw`
   const singleBilliardComponents = colorComponents(singleBilliardFrame, singleBilliardRgb, 95, 90);
   const singleBilliardSoundEvents = singleBilliardExport.metadata.sound?.cueEvents || [];
   const singleBilliardSoundLabels = singleBilliardSoundEvents.map((event) => event.label);
+  const singleContextRailTimesMs = singleBilliardSoundEvents
+    .filter((event) => event.label.startsWith("Context") && event.label.includes("rail collision"))
+    .map((event) => Math.round(event.timeMs));
 
   commonControls();
   setControl("durationMs", 5000);
@@ -510,6 +513,41 @@ const browserProbe = String.raw`
   const contextSoundLabels = contextSoundEvents.map((event) => event.label);
 
   commonControls();
+  setControl("durationMs", 2200);
+  setControl("contextMode", "launch");
+  setControl("contextPairCount", 2);
+  setControl("contextDurationMs", 60);
+  setControl("soundEnabled", true);
+  const snapshotInput = document.getElementById("contextPairSnapshots");
+  const snapshotWindowSnapshots = JSON.parse(snapshotInput.value || "[]");
+  snapshotWindowSnapshots[0] = {
+    ...snapshotWindowSnapshots[0],
+    leadInMs: Number(document.getElementById("contextLeadInMs").value) + 340,
+    launcherColor: "#ffa726",
+    targetColor: "#42a5ff"
+  };
+  setControl("contextPairSnapshots", JSON.stringify(snapshotWindowSnapshots));
+  setControl("fileLabel", "probe-context-snapshot-window");
+  const snapshotWindowExport = await exportAndRead();
+  const snapshotWindowEvents = snapshotWindowExport.metadata.sound?.cueEvents || [];
+  const snapshotWindowLabels = snapshotWindowEvents.map((event) => event.label);
+  const snapshotWindowContext2Event = snapshotWindowEvents.find((event) => event.label === "Context 2 collision");
+  const snapshotWindowContext2TargetSamples = [];
+  if (snapshotWindowContext2Event) {
+    for (const offsetSec of [-0.04, -0.02, 0, 0.02, 0.04]) {
+      const frame = await sampleVideo(snapshotWindowExport.video, snapshotWindowContext2Event.timeMs / 1000 + offsetSec);
+      snapshotWindowContext2TargetSamples.push({
+        offsetSec,
+        pixels: countColorPixels(frame, hexToRgb("#42a5ff"), 80)
+      });
+    }
+  }
+  const snapshotWindowContext2TargetPixels = Math.max(
+    0,
+    ...snapshotWindowContext2TargetSamples.map((sample) => sample.pixels)
+  );
+
+  commonControls();
   setControl("durationMs", 2400);
   setControl("physicsEngineEnabled", true);
   setControl("soundEnabled", true);
@@ -517,6 +555,35 @@ const browserProbe = String.raw`
   const billiardSoundExport = await exportAndRead();
   const billiardSoundEvents = billiardSoundExport.metadata.sound?.cueEvents || [];
   const billiardSoundLabels = billiardSoundEvents.map((event) => event.label);
+
+  commonControls();
+  setControl("durationMs", 18000);
+  setControl("launcherVisibleMs", 18000);
+  setControl("targetVisibleMs", 18000);
+  setControl("targetTravelMs", 18000);
+  setControl("launcherSpeed", 5000);
+  setControl("physicsEngineEnabled", true);
+  setControl("soundEnabled", true);
+  setControl("fileLabel", "probe-long-realism");
+  const longRealismExport = await exportAndRead();
+  const longRealismEvents = longRealismExport.metadata.sound?.cueEvents || [];
+  const longRealismLateEvents = longRealismEvents.filter((event) => event.timeMs > 15200);
+  const longRealismRgb = hexToRgb(longRealismExport.metadata.parameters.targetColor);
+  const longRealismOnsetSec = longRealismExport.metadata.timing.targetOnsetSec;
+  const longRealismFrameA = await sampleVideo(longRealismExport.video, longRealismOnsetSec + 14.4);
+  const longRealismFrameB = await sampleVideo(longRealismExport.video, longRealismOnsetSec + 16.2);
+  const longRealismBoxA = componentBox(longRealismFrameA, longRealismRgb);
+  const longRealismBoxB = componentBox(longRealismFrameB, longRealismRgb);
+  const longRealismMovementAfter15s =
+    longRealismBoxA.centerX === null || longRealismBoxB.centerX === null
+      ? null
+      : Math.hypot(longRealismBoxB.centerX - longRealismBoxA.centerX, longRealismBoxB.centerY - longRealismBoxA.centerY);
+  const longRealismTargetInBoundsAt16s =
+    longRealismBoxB.centerX !== null &&
+    longRealismBoxB.centerX >= longRealismBoxB.radius &&
+    longRealismBoxB.centerX <= longRealismFrameB.width - longRealismBoxB.radius &&
+    longRealismBoxB.centerY >= longRealismBoxB.radius &&
+    longRealismBoxB.centerY <= longRealismFrameB.height - longRealismBoxB.radius;
 
   return {
     contact: {
@@ -562,6 +629,7 @@ const browserProbe = String.raw`
     singleContextBilliard: {
       sampledSec: 3.25,
       contextPairCount: singleBilliardExport.metadata.parameters.contextPairCount,
+      realismVelocityScale: singleBilliardExport.metadata.billiard?.realismVelocityScale,
       componentCount: singleBilliardComponents.length,
       components: singleBilliardComponents.map((component) => ({
         count: component.count,
@@ -572,6 +640,8 @@ const browserProbe = String.raw`
       })),
       keepsManySingleContextBallsInBounds: singleBilliardComponents.length >= 6,
       soundLabels: singleBilliardSoundLabels,
+      contextRailTimesMs: singleContextRailTimesMs,
+      earlyContextRailSound: singleContextRailTimesMs.length > 0 ? Math.min(...singleContextRailTimesMs) : null,
       hasSingleRailCollisionSound: singleBilliardSoundLabels.some((label) => label.includes("rail collision"))
     },
     billiardRealism: {
@@ -605,6 +675,16 @@ const browserProbe = String.raw`
         hasContext2Collision: contextSoundLabels.includes("Context 2 collision"),
         hasContext3Collision: contextSoundLabels.includes("Context 3 collision")
       },
+      contextSnapshotWindow: {
+        eventCount: snapshotWindowEvents.length,
+        timesMs: snapshotWindowEvents.map((event) => Math.round(event.timeMs)),
+        labels: snapshotWindowLabels,
+        hasContext2Collision: snapshotWindowLabels.includes("Context 2 collision"),
+        context2TargetSamples: snapshotWindowContext2TargetSamples,
+        context2TargetPixelsAtCollision: snapshotWindowContext2TargetPixels,
+        drawsContext2AtOwnCollision:
+          snapshotWindowLabels.includes("Context 2 collision") && snapshotWindowContext2TargetPixels > 120
+      },
       billiard: {
         eventCount: billiardSoundEvents.length,
         timesMs: billiardSoundEvents.map((event) => Math.round(event.timeMs)),
@@ -613,6 +693,17 @@ const browserProbe = String.raw`
         hasRailCollision: billiardSoundLabels.some((label) => label.includes("rail collision")),
         hasRecollision: billiardSoundLabels.some((label) => label.includes("recollision"))
       }
+    },
+    longBilliardRealism: {
+      durationMs: longRealismExport.metadata.parameters.durationMs,
+      targetOnsetSec: longRealismOnsetSec,
+      sampledOffsetsSec: [14.4, 16.2],
+      targetMovementAfter15sPx:
+        longRealismMovementAfter15s === null ? null : Number(longRealismMovementAfter15s.toFixed(2)),
+      lateEventTimesMs: longRealismLateEvents.map((event) => Math.round(event.timeMs)),
+      hasLateSoundEvents: longRealismLateEvents.length > 0,
+      targetInBoundsAt16s: longRealismTargetInBoundsAt16s,
+      longExportCompleted: longRealismExport.video.readyState >= 1
     }
   };
 })()
@@ -658,7 +749,7 @@ async function main() {
       awaitPromise: true,
       returnByValue: true,
       userGesture: true,
-      timeout: 120000
+      timeout: 180000
     });
     if (result.exceptionDetails) {
       throw new Error(result.exceptionDetails.text || "Browser probe failed");

@@ -412,6 +412,7 @@ h3 {
 
 /* app.js toggles these when context, canvas editing, rail, crosshair, trajectory, or tunnel controls are inactive. */
 .context-dependent-control.is-retracted,
+.context-pair-only-control.is-retracted,
 .original-pair-context-label.is-retracted,
 .custom-start-dependent-control.is-retracted,
 .rail-dependent-control.is-retracted,
@@ -1416,6 +1417,14 @@ canvas.trajectory-edit-enabled:active {
   .summary-strip,
   .artifact-card,
   .button-row {
+    grid-template-columns: 1fr;
+  }
+
+  .wide-copy {
+    grid-column: 1 / -1;
+  }
+
+  .billiard-subgroup .control-subgrid {
     grid-template-columns: 1fr;
   }
 

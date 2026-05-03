@@ -197,7 +197,7 @@
                     <input id="contextLauncherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="contextLauncherAccel"></output>
                   </label>
-                  <label class="field behavior-choice-field">
+                  <label class="field behavior-choice-field context-pair-only-control">
                     <span>After contact</span>
                     <input id="contextLauncherBehavior" type="hidden" value="stop" />
                     <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="Context after contact">
@@ -206,7 +206,7 @@
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Together</button>
                     </span>
                   </label>
-                  <label class="field wide-choice-field">
+                  <label class="field wide-choice-field context-pair-only-control">
                     <span>Front object</span>
                     <input id="contextContactOcclusionMode" type="hidden" value="target-front" />
                     <span class="choice-row two-choice-row" role="group" aria-label="Context front object">
@@ -214,27 +214,27 @@
                       <button class="choice-button" data-choice-for="contextContactOcclusionMode" data-choice-value="launcher-front" type="button">O1</button>
                     </span>
                   </label>
-                  <label class="field">
+                  <label class="field context-pair-only-control">
                     <span>Delay</span>
                     <input id="contextDelayMs" data-format="ms" min="0" max="500" step="5" type="range" />
                     <output data-for="contextDelayMs"></output>
                   </label>
-                  <label class="field">
+                  <label class="field context-pair-only-control">
                     <span>O2 speed ratio</span>
                     <input id="contextTargetSpeedRatio" data-format="float3" min="0.2" max="2.5" step="0.001" type="range" />
                     <output data-for="contextTargetSpeedRatio"></output>
                   </label>
-                  <label class="field">
+                  <label class="field context-pair-only-control">
                     <span>O2 accel.</span>
                     <input id="contextTargetAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="contextTargetAccel"></output>
                   </label>
-                  <label class="field">
+                  <label class="field context-pair-only-control">
                     <span>O2 angle</span>
                     <input id="contextTargetAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
                     <output data-for="contextTargetAngle"></output>
                   </label>
-                  <label class="field">
+                  <label class="field context-pair-only-control">
                     <span>Travel after collision</span>
                     <input id="contextTargetTravelMode" type="hidden" value="continue" />
                     <input id="contextTargetTravelMs" data-format="ms" min="0" max="60000" step="50" type="range" />
@@ -245,7 +245,7 @@
                     <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
                     <output data-for="contextLauncherVisibleMs"></output>
                   </label>
-                  <label class="field">
+                  <label class="field context-pair-only-control">
                     <span>O2 on-screen</span>
                     <input id="contextTargetVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
                     <output data-for="contextTargetVisibleMs"></output>

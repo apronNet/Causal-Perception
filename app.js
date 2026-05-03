@@ -1878,6 +1878,10 @@
       : clamp(Number(state?.billiardStopSpeed) || presentationDefaults.billiardStopSpeed, 0, 120);
   }
 
+  function getBilliardVelocityScale(state) {
+    return state?.billiardRealismEnabled ? BILLIARD_REALISM.velocityScale : 1;
+  }
+
   function getPhysicsCollisionValues(launcherRadius, targetRadius = launcherRadius, restitutionValue = PHYSICS_ENGINE.restitution) {
     const launcherMass = getEqualDensityDiscMass(launcherRadius);
     const targetMass = getEqualDensityDiscMass(targetRadius);
@@ -1985,10 +1989,11 @@
   function applyPhysicsMode() {
     const state = cloneState();
     const durationMs = Math.max(state.durationMs, state.billiardRealismEnabled ? 3200 : 1800);
+    const physicsState = { ...state, durationMs };
     const visibleMs = Math.max(state.launcherVisibleMs, state.targetVisibleMs, durationMs);
     const contextVisibleMs = Math.max(state.contextLauncherVisibleMs, state.contextTargetVisibleMs, durationMs);
-    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius, state);
-    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius, state);
+    const originalPhysics = getPhysicsControlValuesForRadius(state.ballRadius, physicsState);
+    const contextPhysics = getPhysicsControlValuesForRadius(state.contextBallRadius || state.ballRadius, physicsState);
     const physicsValues = {
       ...state,
       physicsEngineEnabled: true,
@@ -2028,7 +2033,7 @@
       colorChangeMode: "none",
       contactGuideMode: "none",
       contextPairSnapshots: state.contextPairSnapshots.map((snapshot) =>
-        applyPhysicsToContextSnapshot(snapshot, state, durationMs, contextVisibleMs)
+        applyPhysicsToContextSnapshot(snapshot, physicsState, durationMs, contextVisibleMs)
       )
     };
 
@@ -2129,6 +2134,13 @@
     }
   }
 
+  function syncContextPairOnlyControlVisibility() {
+    const contextIsSingle = controls.contextMode.value === "single";
+    document.querySelectorAll(".context-pair-only-control").forEach((field) => {
+      field.classList.toggle("is-retracted", contextIsSingle);
+    });
+  }
+
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
     if (contextIsOff) {
@@ -2142,6 +2154,7 @@
     originalPairContextLabels.forEach((label) => {
       label.classList.toggle("is-retracted", contextIsOff);
     });
+    syncContextPairOnlyControlVisibility();
     syncOccluderWidthVisibility();
 
     if (contextIsOff) {
@@ -2492,10 +2505,30 @@
     return `context${pairNumber}${group}${field.charAt(0).toUpperCase()}${field.slice(1)}`;
   }
 
+  function isContextSingleHiddenField(group, field) {
+    return (
+      group === "Movement" &&
+      [
+        "launcherBehavior",
+        "contactOcclusionMode",
+        "delayMs",
+        "targetSpeedRatio",
+        "targetAccel",
+        "targetAngle",
+        "targetTravelMs",
+        "targetVisibleMs"
+      ].includes(field)
+    );
+  }
+
+  function getContextPairFieldClass(group, field, baseClass = "field") {
+    return `${baseClass}${isContextSingleHiddenField(group, field) ? " context-pair-only-control" : ""}`;
+  }
+
   function renderContextRange(pairNumber, group, field, label, snapshot, format, min, max, step, extra = "") {
     const id = contextPairFieldId(pairNumber, group, field);
     const value = snapshot[field];
-    return `<label class="field"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" data-format="${format}" ${extra} min="${min}" max="${max}" step="${step}" type="range" value="${value}" /><output data-for="${id}"></output></label>`;
+    return `<label class="${getContextPairFieldClass(group, field)}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" data-format="${format}" ${extra} min="${min}" max="${max}" step="${step}" type="range" value="${value}" /><output data-for="${id}"></output></label>`;
   }
 
   function renderContextSelect(pairNumber, group, field, label, snapshot, options) {
@@ -2509,14 +2542,14 @@
         .join("");
       const fieldClass =
         field === "contactOcclusionMode"
-          ? " field wide-choice-field"
+          ? "field wide-choice-field"
           : field === "launcherBehavior"
-            ? " field behavior-choice-field"
-            : " field";
+            ? "field behavior-choice-field"
+            : "field";
       const rowClass = `${options.length === 2 ? "two-choice-row" : "three-choice-row"}${
         field === "launcherBehavior" ? " behavior-choice-row" : ""
       }`;
-      return `<label class="${fieldClass.trim()}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row ${rowClass}" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
+      return `<label class="${getContextPairFieldClass(group, field, fieldClass)}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row ${rowClass}" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
     }
 
     const renderedOptions = options
@@ -2525,18 +2558,18 @@
           `<option value="${value}"${snapshot[field] === value ? " selected" : ""}>${text}</option>`
       )
       .join("");
-    return `<label class="field"><span>${label}</span><select id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}">${renderedOptions}</select></label>`;
+    return `<label class="${getContextPairFieldClass(group, field)}"><span>${label}</span><select id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}">${renderedOptions}</select></label>`;
   }
 
   function renderContextCheckbox(pairNumber, group, field, label, snapshot) {
     const id = contextPairFieldId(pairNumber, group, field);
-    const fieldClass = field === "occluderEnabled" ? " checkbox-field tunnel-checkbox-field" : " checkbox-field";
-    return `<label class="field${fieldClass}"><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="checkbox"${snapshot[field] ? " checked" : ""} /><span>${label}</span></label>`;
+    const fieldClass = field === "occluderEnabled" ? "field checkbox-field tunnel-checkbox-field" : "field checkbox-field";
+    return `<label class="${getContextPairFieldClass(group, field, fieldClass)}"><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="checkbox"${snapshot[field] ? " checked" : ""} /><span>${label}</span></label>`;
   }
 
   function renderContextColor(pairNumber, group, field, label, snapshot) {
     const id = contextPairFieldId(pairNumber, group, field);
-    return `<label class="field color-field"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="color" value="${snapshot[field]}" /></label>`;
+    return `<label class="${getContextPairFieldClass(group, field, "field color-field")}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="color" value="${snapshot[field]}" /></label>`;
   }
 
   function renderContextPairEditors() {
@@ -2614,6 +2647,7 @@
     contextColorPairList.innerHTML = colorCards.join("");
     enhanceRangePrecision();
     syncAllChoiceControlButtons();
+    syncContextPairOnlyControlVisibility();
     syncOccluderWidthVisibility();
     updateOutputs();
   }
@@ -4222,12 +4256,13 @@
   }
 
   function advanceSingleBilliardBody(geometry, elapsedMs, state) {
+    const initialSpeed = geometry.launcherImpactSpeed * getBilliardVelocityScale(state);
     return advanceBilliardBody(
       {
         x: geometry.launcherStopX,
         y: geometry.launcherStopY,
-        vx: geometry.targetUnitX * geometry.launcherImpactSpeed,
-        vy: geometry.targetUnitY * geometry.launcherImpactSpeed,
+        vx: geometry.targetUnitX * initialSpeed,
+        vy: geometry.targetUnitY * initialSpeed,
         radius: geometry.radius
       },
       elapsedMs,
@@ -4261,7 +4296,7 @@
     const cutRadians = Math.sign(cutUnit || 1) * (cutMagnitudeDeg * Math.PI) / 180;
     const normal = rotateVector(geometry.approachUnitX, geometry.approachUnitY, cutRadians);
     const tangent = { x: -normal.y, y: normal.x };
-    const realismImpactSpeed = geometry.launcherImpactSpeed * BILLIARD_REALISM.velocityScale;
+    const realismImpactSpeed = geometry.launcherImpactSpeed * getBilliardVelocityScale(state);
     const incomingVx = geometry.approachUnitX * realismImpactSpeed;
     const incomingVy = geometry.approachUnitY * realismImpactSpeed;
     const normalSpeed = Math.max(0, incomingVx * normal.x + incomingVy * normal.y);
@@ -4474,7 +4509,9 @@
     let lastPairCollisionElapsedMs = -Infinity;
     let stepCount = 0;
 
-    while (elapsedSec * 1000 < maxElapsedMs - 0.001 && stepCount < BILLIARD_REALISM.maxSteps) {
+    const requestedStepCount = Math.ceil((maxElapsedMs / 1000) / BILLIARD_REALISM.stepSec) + 1;
+    const maxStepCount = Math.max(BILLIARD_REALISM.maxSteps, requestedStepCount);
+    while (elapsedSec * 1000 < maxElapsedMs - 0.001 && stepCount < maxStepCount) {
       const remainingSec = maxElapsedMs / 1000 - elapsedSec;
       const stepSec = Math.min(BILLIARD_REALISM.stepSec, remainingSec);
       elapsedSec += stepSec;
@@ -4749,18 +4786,66 @@
     drawCtx.restore();
   }
 
-  function isContextEventVisible(state, time, mainGeometry) {
+  function isContextGeometryVisible(state, time, contextGeometry) {
     if (state.contextMode === "none") {
       return false;
     }
 
     const adjustedTime = time - state.contextOffsetMs;
     const contextWindowMs = Number(state.contextDurationMs) || 750;
-    const contextGeometry = getGeometry(getContextMotionState(state), getContextLaneY(state, mainGeometry.laneY, 0), {
-      scope: "context",
-      directionSign: mainGeometry.contextDirectionSign
-    });
     return contextWindowMs >= 740 || Math.abs(adjustedTime - contextGeometry.stopTime) <= contextWindowMs / 2;
+  }
+
+  function getContextPairDescriptors(state, mainGeometry) {
+    if (state.contextMode === "none") {
+      return [];
+    }
+
+    const pairCount = getContextPairCount(state);
+    const directionSign = mainGeometry.contextDirectionSign;
+    const contextState = getContextMotionState(state);
+    const snapshots = state.contextPairSnapshots || [];
+    const descriptors = [];
+
+    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+      const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
+      const laneY = getContextLaneY(state, mainGeometry.laneY, pairIndex, snapshot);
+      const eventState = pairIndex === 0 ? contextState : getContextPairSnapshotState(snapshot, state, laneY, directionSign);
+      const trajectoryScope = pairIndex === 0 ? "context" : `context${pairIndex + 1}`;
+      const scope = pairIndex === 0 ? "context" : "original";
+      const geometry = getGeometry(eventState, laneY, {
+        scope,
+        directionSign,
+        trajectoryScope
+      });
+      descriptors.push({
+        pairIndex,
+        label: `Context ${pairIndex + 1}`,
+        snapshot,
+        laneY,
+        eventState,
+        geometry,
+        scope,
+        trajectoryScope
+      });
+    }
+
+    return descriptors;
+  }
+
+  function isContextPairEventVisible(state, time, descriptor) {
+    return Boolean(descriptor?.geometry) && isContextGeometryVisible(state, time, descriptor.geometry);
+  }
+
+  function getVisibleContextPairDescriptors(state, mainGeometry, time) {
+    return getContextPairDescriptors(state, mainGeometry).filter((descriptor) =>
+      isContextPairEventVisible(state, time, descriptor)
+    );
+  }
+
+  function isContextEventVisible(state, time, mainGeometry) {
+    const [firstContext] = getContextPairDescriptors(state, mainGeometry);
+    return isContextPairEventVisible(state, time, firstContext);
   }
 
   function drawManualGroupingRects(drawCtx, state, showHandles = false) {
@@ -4805,35 +4890,8 @@
       return;
     }
 
-    const contextVisible = isContextEventVisible(state, eventState.time, eventState.geometry);
-    const contextGeometries = [];
-    if (contextVisible) {
-      const pairCount = getContextPairCount(state);
-      const contextState = getContextMotionState(state);
-      const snapshots = state.contextPairSnapshots || [];
-      for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
-        const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
-        const laneY = getContextLaneY(state, eventState.geometry.laneY, pairIndex, snapshot);
-        if (pairIndex === 0) {
-          contextGeometries.push(
-            getGeometry(contextState, laneY, {
-              scope: "context",
-              directionSign: eventState.geometry.contextDirectionSign,
-              trajectoryScope: "context"
-            })
-          );
-        } else {
-          const snapshotState = getContextPairSnapshotState(snapshot, state, laneY, eventState.geometry.contextDirectionSign);
-          contextGeometries.push(
-            getGeometry(snapshotState, laneY, {
-              scope: "original",
-              directionSign: eventState.geometry.contextDirectionSign,
-              trajectoryScope: `context${pairIndex + 1}`
-            })
-          );
-        }
-      }
-    }
+    const contextDescriptors = getVisibleContextPairDescriptors(state, eventState.geometry, eventState.time);
+    const contextGeometries = contextDescriptors.map((descriptor) => descriptor.geometry);
 
     const getGeometryRowBounds = (geometry) => {
       const radius = Math.max(2, Number(geometry.radius) || state.ballRadius || stimulusDefaults.ballRadius);
@@ -4906,21 +4964,24 @@
       drawBox("Original pair", eventState.geometry, state.groupingOriginalColor, "#e0b24a");
     }
 
-    if (!contextVisible || contextGeometries.length === 0) {
+    if (contextGeometries.length === 0) {
       drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
       return;
     }
 
     if (state.groupingMode === "each") {
-      contextGeometries.forEach((geometry, index) => {
-        drawBox(`Context ${index + 1}`, geometry, state.groupingContextColor, "#80a7a1");
+      contextDescriptors.forEach((descriptor) => {
+        drawBox(descriptor.label, descriptor.geometry, state.groupingContextColor, "#80a7a1");
       });
       drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
       return;
     }
 
     if (["context", "both", "original-contexts"].includes(state.groupingMode)) {
-      const grouped = state.groupingMode === "both" ? contextGeometries.slice(0, 1) : contextGeometries;
+      const grouped =
+        state.groupingMode === "both"
+          ? contextDescriptors.filter((descriptor) => descriptor.pairIndex === 0).map((descriptor) => descriptor.geometry)
+          : contextGeometries;
       drawBox("Context set", grouped, state.groupingContextColor, "#80a7a1");
     }
     drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
@@ -4931,7 +4992,6 @@
       return;
     }
 
-    const contextVisible = isContextEventVisible(state, eventState.time, eventState.geometry);
     const lanes = [];
     if (state.contactGuideMode === "original" || state.contactGuideMode === "both") {
       lanes.push({
@@ -4942,18 +5002,15 @@
         fallback: "#c45f45"
       });
     }
-    if (contextVisible && (state.contactGuideMode === "context" || state.contactGuideMode === "both")) {
-      const contextState = getContextMotionState(state);
-      const contextGeometry = getGeometry(contextState, getContextLaneY(state, eventState.geometry.laneY, 0), {
-        scope: "context",
-        directionSign: eventState.geometry.contextDirectionSign
-      });
-      lanes.push({
-        laneY: contextGeometry.targetBaseY,
-        x: contextGeometry.targetBaseX,
-        radius: contextGeometry.radius,
-        color: state.groupingContextColor,
-        fallback: "#3f746f"
+    if (state.contactGuideMode === "context" || state.contactGuideMode === "both") {
+      getVisibleContextPairDescriptors(state, eventState.geometry, eventState.time).forEach((descriptor) => {
+        lanes.push({
+          laneY: descriptor.geometry.targetBaseY,
+          x: descriptor.geometry.targetBaseX,
+          radius: descriptor.geometry.radius,
+          color: state.groupingContextColor,
+          fallback: "#3f746f"
+        });
       });
     }
 
@@ -5717,21 +5774,7 @@
   }
 
   function getVisibleContextLaneYs(state, mainEvent, t) {
-    if (!isContextEventVisible(state, t, mainEvent.geometry)) {
-      return [];
-    }
-
-    const pairCount = getContextPairCount(state);
-    const snapshots = state.contextPairSnapshots || [];
-    const laneYs = [];
-
-    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
-      const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
-      const laneY = getContextLaneY(state, mainEvent.geometry.laneY, pairIndex, snapshot);
-      laneYs.push(laneY);
-    }
-
-    return laneYs;
+    return getVisibleContextPairDescriptors(state, mainEvent.geometry, t).map((descriptor) => descriptor.laneY);
   }
 
   function getVisibleEventLaneYs(state, mainEvent, t) {
@@ -5751,27 +5794,22 @@
   }
 
   function drawContextEvent(drawCtx, state, t, mainEvent, tunnelLaneYs = getVisibleEventLaneYs(state, mainEvent, t)) {
-    if (!isContextEventVisible(state, t, mainEvent.geometry)) {
-      return;
-    }
-
     const palette = getPalette(state);
-    const pairCount = getContextPairCount(state);
     const directionSign = mainEvent.geometry.contextDirectionSign;
     const adjustedTime = t - state.contextOffsetMs;
-    const contextState = getContextMotionState(state);
-    const snapshots = state.contextPairSnapshots || [];
 
-    for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
-      const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
-      const laneY = getContextLaneY(state, mainEvent.geometry.laneY, pairIndex, snapshot);
-      if (pairIndex === 0) {
+    getContextPairDescriptors(state, mainEvent.geometry).forEach((descriptor) => {
+      if (!isContextPairEventVisible(state, t, descriptor)) {
+        return;
+      }
+
+      if (descriptor.pairIndex === 0) {
         drawContextPair(
           drawCtx,
           state,
-          contextState,
+          descriptor.eventState,
           adjustedTime,
-          laneY,
+          descriptor.laneY,
           directionSign,
           {
             launcher: palette.context,
@@ -5781,26 +5819,25 @@
           "context",
           tunnelLaneYs
         );
-        continue;
+        return;
       }
 
-      const snapshotState = getContextPairSnapshotState(snapshot, state, laneY, directionSign);
       drawContextPair(
         drawCtx,
         state,
-        snapshotState,
+        descriptor.eventState,
         adjustedTime,
-        laneY,
+        descriptor.laneY,
         directionSign,
         {
-          launcher: getObjectPalette(snapshot.launcherColor || state.launcherColor, state.launcherColor),
-          target: getObjectPalette(snapshot.targetColor || state.targetColor, state.targetColor)
+          launcher: getObjectPalette(descriptor.snapshot.launcherColor || state.launcherColor, state.launcherColor),
+          target: getObjectPalette(descriptor.snapshot.targetColor || state.targetColor, state.targetColor)
         },
         "original",
-        `context${pairIndex + 1}`,
+        descriptor.trajectoryScope,
         tunnelLaneYs
       );
-    }
+    });
   }
 
   function getTunnelDimensions(width, radius, maxHeight = Infinity) {
@@ -7396,12 +7433,13 @@
     }
     const movieRemainingMs = Math.max(0, state.durationMs - baseMovieTimeMs);
     const elapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.launcherVisibleMs)));
+    const initialSpeed = geometry.launcherImpactSpeed * getBilliardVelocityScale(eventState);
     return getBilliardWallSoundEventsForBody(
       {
         x: geometry.launcherStopX,
         y: geometry.launcherStopY,
-        vx: geometry.targetUnitX * geometry.launcherImpactSpeed,
-        vy: geometry.targetUnitY * geometry.launcherImpactSpeed,
+        vx: geometry.targetUnitX * initialSpeed,
+        vy: geometry.targetUnitY * initialSpeed,
         radius: geometry.radius
       },
       eventState,
@@ -7501,55 +7539,38 @@
     events.push(...getBilliardWallSoundEvents(state, mainGeometry, state, originalCollisionTimeMs, "Original pair", "original"));
 
     if (state.contextMode === "launch" || state.contextMode === "single") {
-      const pairCount = getContextPairCount(state);
-      const directionSign = mainGeometry.contextDirectionSign;
-      const contextState = getContextMotionState(state);
-      const snapshots = state.contextPairSnapshots || [];
-
-      for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
-        const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
-        const laneY = getContextLaneY(state, mainGeometry.laneY, pairIndex, snapshot);
-        const eventState =
-          pairIndex === 0
-            ? contextState
-            : getContextPairSnapshotState(snapshot, state, laneY, directionSign);
-        const trajectoryScope = pairIndex === 0 ? "context" : `context${pairIndex + 1}`;
-        const contextGeometry = getGeometry(eventState, laneY, {
-          scope: pairIndex === 0 ? "context" : "original",
-          directionSign,
-          trajectoryScope
-        });
-        const stimulusTime = state.contextOffsetMs + contextGeometry.stopTime;
-        if (isContextEventVisible(state, stimulusTime, mainGeometry)) {
+      getContextPairDescriptors(state, mainGeometry).forEach((descriptor) => {
+        const stimulusTime = state.contextOffsetMs + descriptor.geometry.stopTime;
+        if (isContextPairEventVisible(state, stimulusTime, descriptor)) {
           const contextCollisionTimeMs = blinkMs + stimulusTime;
           if (state.contextMode === "launch") {
             events.push(
-              makeSoundCueEvent(`Context ${pairIndex + 1} collision`, contextCollisionTimeMs, trajectoryScope)
+              makeSoundCueEvent(`${descriptor.label} collision`, contextCollisionTimeMs, descriptor.trajectoryScope)
             );
             events.push(
               ...getBilliardWallSoundEvents(
-                eventState,
-                contextGeometry,
+                descriptor.eventState,
+                descriptor.geometry,
                 state,
                 contextCollisionTimeMs,
-                `Context ${pairIndex + 1}`,
-                trajectoryScope
+                descriptor.label,
+                descriptor.trajectoryScope
               )
             );
           } else {
             events.push(
               ...getSingleBilliardWallSoundEvents(
-                eventState,
-                contextGeometry,
+                descriptor.eventState,
+                descriptor.geometry,
                 state,
                 contextCollisionTimeMs,
-                `Context ${pairIndex + 1}`,
-                trajectoryScope
+                descriptor.label,
+                descriptor.trajectoryScope
               )
             );
           }
         }
-      }
+      });
     }
 
     return events
@@ -7705,7 +7726,7 @@
         enabled: state.physicsEngineEnabled,
         realism: state.physicsEngineEnabled ? state.billiardRealismEnabled : "",
         realismVelocityScale:
-          state.physicsEngineEnabled && state.billiardRealismEnabled ? BILLIARD_REALISM.velocityScale : "",
+          state.physicsEngineEnabled && state.billiardRealismEnabled ? getBilliardVelocityScale(state) : "",
         frictionPxPerSec2: state.physicsEngineEnabled ? state.billiardFriction : "",
         ballRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
         wallRestitution: state.physicsEngineEnabled ? state.billiardWallRestitution : "",
@@ -7765,7 +7786,7 @@
       billiardEnabled: state.physicsEngineEnabled,
       billiardRealismEnabled: state.physicsEngineEnabled ? state.billiardRealismEnabled : "",
       billiardRealismVelocityScale:
-        state.physicsEngineEnabled && state.billiardRealismEnabled ? BILLIARD_REALISM.velocityScale : "",
+        state.physicsEngineEnabled && state.billiardRealismEnabled ? getBilliardVelocityScale(state) : "",
       billiardFrictionPxPerSec2: state.physicsEngineEnabled ? state.billiardFriction : "",
       billiardBallRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
       billiardWallRestitution: state.physicsEngineEnabled ? state.billiardWallRestitution : "",
@@ -8258,6 +8279,7 @@
       physicsEngineEnabled: condition.parameters.physicsEngineEnabled,
       billiardEnabled: condition.parameters.billiardEnabled,
       billiardRealismEnabled: condition.parameters.billiardRealismEnabled,
+      billiardRealismVelocityScale: condition.parameters.billiardRealismVelocityScale,
       billiardFrictionPxPerSec2: condition.parameters.billiardFrictionPxPerSec2,
       billiardBallRestitution: condition.parameters.billiardBallRestitution,
       billiardWallRestitution: condition.parameters.billiardWallRestitution,
@@ -8457,6 +8479,8 @@
         physicsEngineEnabled: condition.physicsEngineEnabled,
         billiardEnabled: condition.physicsEngineEnabled,
         billiardRealismEnabled: condition.physicsEngineEnabled ? condition.billiardRealismEnabled : "",
+        billiardRealismVelocityScale:
+          condition.physicsEngineEnabled && condition.billiardRealismEnabled ? getBilliardVelocityScale(condition) : "",
         billiardFrictionPxPerSec2: condition.physicsEngineEnabled ? condition.billiardFriction : "",
         billiardBallRestitution: condition.physicsEngineEnabled ? condition.billiardRestitution : "",
         billiardWallRestitution: condition.physicsEngineEnabled ? condition.billiardWallRestitution : "",
