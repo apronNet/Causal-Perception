@@ -33,11 +33,9 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 **Context** adds extra object pairs. New context pairs copy the original pair when they are added; later changes to the original pair do not automatically change those copied pairs.
 
-**Add clip** starts a sequence. The first click stores the current settings as Clip 1 and opens Clip 2 as a copy. The clip strip below the preview lets you return to any earlier clip and keep editing it. **Current clip** previews only the selected clip; **Sequence** previews the full composition. When a sequence has two or more clips, **Export video** exports the full sequence as one movie.
+**Compose clips** starts a sequence. The first click stores the current settings as Clip 1 and opens Clip 2 as a copy. The clip strip below the preview lets you return to any earlier clip and keep editing it. **Current clip** previews only the selected clip; **Sequence** previews the full composition. When a sequence has two or more clips, **Export video** exports the full sequence as one movie.
 
-**Color** controls the ball colors and sudden color-change cue.
-
-**Background** controls the stimulus field. Dark background with red/green discs is the safest default for the classic displays.
+**Color and Background** controls the stimulus field, object colors, disc style, and sudden color-change cue. Dark background with red/green discs is the safest default for the classic displays.
 
 ## Special Features
 

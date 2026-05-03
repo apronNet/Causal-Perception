@@ -539,8 +539,8 @@
             </div>
           </details>
 
-          <details class="panel-block collapsible-panel background-panel" data-default-collapsed>
-            <summary><h2>05 Background</h2></summary>
+          <details class="panel-block collapsible-panel color-background-panel" data-default-collapsed>
+            <summary><h2>05 Color and Background</h2></summary>
             <div class="panel-content">
               <div class="control-grid">
                 <label class="field wide-choice-field">
@@ -564,70 +564,62 @@
                   <span>Background color</span>
                   <input id="stageColor" type="color" />
                 </label>
-              </div>
-            </div>
-          </details>
-
-          <details class="panel-block collapsible-panel color-panel">
-            <summary><h2>06 Color</h2></summary>
-            <div class="panel-content">
-            <div class="control-grid">
-              <label class="field">
-                <span>Style</span>
-                <select id="objectStyle">
-                  <option value="flat">Simple filled discs</option>
-                  <option value="outline">Outline discs</option>
-                  <option value="ring">Ring discs</option>
-                  <option value="shaded">3D shaded</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Sudden color change</span>
-                <select id="colorChangeMode">
-                  <option value="none">None</option>
-                  <option value="target">O2 at contact</option>
-                  <option value="launcher">O1 at contact</option>
-                  <option value="both">Both at contact</option>
-                </select>
-              </label>
-              <label class="field color-field">
-                <span>Change to</span>
-                <input id="colorChangeColor" type="color" />
-              </label>
-              <div class="control-subgroup">
-                <h3 class="subgroup-title original-pair-context-label">Original pair color</h3>
-                <div class="control-subgrid">
-                  <label class="field color-field">
-                    <span>O1</span>
-                    <input id="launcherColor" type="color" />
-                  </label>
-                  <label class="field color-field">
-                    <span>O2</span>
-                    <input id="targetColor" type="color" />
-                  </label>
+                <label class="field">
+                  <span>Style</span>
+                  <select id="objectStyle">
+                    <option value="flat">Simple filled discs</option>
+                    <option value="outline">Outline discs</option>
+                    <option value="ring">Ring discs</option>
+                    <option value="shaded">3D shaded</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Sudden color change</span>
+                  <select id="colorChangeMode">
+                    <option value="none">None</option>
+                    <option value="target">O2 at contact</option>
+                    <option value="launcher">O1 at contact</option>
+                    <option value="both">Both at contact</option>
+                  </select>
+                </label>
+                <label class="field color-field">
+                  <span>Change to</span>
+                  <input id="colorChangeColor" type="color" />
+                </label>
+                <div class="control-subgroup">
+                  <h3 class="subgroup-title original-pair-context-label">Original pair color</h3>
+                  <div class="control-subgrid">
+                    <label class="field color-field">
+                      <span>O1</span>
+                      <input id="launcherColor" type="color" />
+                    </label>
+                    <label class="field color-field">
+                      <span>O2</span>
+                      <input id="targetColor" type="color" />
+                    </label>
+                  </div>
                 </div>
-              </div>
-              <div class="control-subgroup context-dependent-control">
-                <h3 class="subgroup-title">Context 1 color</h3>
-                <div class="control-subgrid">
-                  <label class="field color-field">
-                    <span>O1</span>
-                    <input id="contextColor" type="color" />
-                  </label>
-                  <label class="field color-field">
-                    <span>O2</span>
-                    <input id="contextTargetColor" type="color" />
-                  </label>
+                <div class="control-subgroup context-dependent-control">
+                  <h3 class="subgroup-title">Context 1 color</h3>
+                  <div class="control-subgrid">
+                    <label class="field color-field">
+                      <span>O1</span>
+                      <input id="contextColor" type="color" />
+                    </label>
+                    <label class="field color-field">
+                      <span>O2</span>
+                      <input id="contextTargetColor" type="color" />
+                    </label>
+                  </div>
                 </div>
+                <div id="contextColorPairList" class="context-pair-list context-dependent-control"></div>
               </div>
-              <div id="contextColorPairList" class="context-pair-list context-dependent-control"></div>
-            </div>
             </div>
           </details>
 
           <details class="panel-block collapsible-panel psychopy-panel">
             <summary>
-              <h2>07 PsychoPy / Export</h2>
+              <h2>06 PsychoPy / Export</h2>
               <span id="statusText" class="status-text export-summary-status" aria-live="polite">Ready.</span>
               <button
                 id="sequenceAddClipButton"
