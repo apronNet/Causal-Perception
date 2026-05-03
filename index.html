@@ -245,8 +245,24 @@
           </section>
 
           <section class="panel-block">
-            <div class="section-heading">
+            <div class="section-heading position-heading">
               <h2>04 Position</h2>
+              <div class="position-header-controls">
+                <label class="field checkbox-field">
+                  <input id="customStartEnabled" type="checkbox" />
+                  <span>Drag start positions</span>
+                </label>
+                <label class="field compact-offset-field">
+                  <span>X offset</span>
+                  <input id="stimulusXOffset" data-format="signedPx" min="-140" max="220" step="5" type="range" />
+                  <output data-for="stimulusXOffset"></output>
+                </label>
+                <label class="field compact-offset-field">
+                  <span>Y offset</span>
+                  <input id="stimulusYOffset" data-format="signedPx" min="-180" max="180" step="5" type="range" />
+                  <output data-for="stimulusYOffset"></output>
+                </label>
+              </div>
             </div>
             <div class="control-grid">
               <div class="control-subgroup">
@@ -303,10 +319,6 @@
                 </div>
               </div>
               <div id="contextPositionPairList" class="context-pair-list context-dependent-control"></div>
-              <label class="field checkbox-field">
-                <input id="customStartEnabled" type="checkbox" />
-                <span>Drag start positions</span>
-              </label>
               <label class="field checkbox-field custom-start-dependent-control is-retracted">
                 <input id="customStartKeepRowsHorizontal" type="checkbox" />
                 <span>Keep each set horizontal</span>
@@ -314,16 +326,6 @@
               <label class="field checkbox-field custom-start-dependent-control is-retracted">
                 <input id="customStartAlignStartsVertical" type="checkbox" />
                 <span>Align starting balls vertically</span>
-              </label>
-              <label class="field">
-                <span>X offset</span>
-                <input id="stimulusXOffset" data-format="signedPx" min="-140" max="220" step="5" type="range" />
-                <output data-for="stimulusXOffset"></output>
-              </label>
-              <label class="field">
-                <span>Y offset</span>
-                <input id="stimulusYOffset" data-format="signedPx" min="-180" max="180" step="5" type="range" />
-                <output data-for="stimulusYOffset"></output>
               </label>
               <input id="originalLauncherStartX" type="hidden" />
               <input id="originalLauncherStartY" type="hidden" />
@@ -761,6 +763,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260502-fracture-targets"></script>
+    <script src="app.js?v=20260502-position-header"></script>
   </body>
 </html>
