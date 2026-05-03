@@ -345,17 +345,21 @@
                 <div class="control-subgroup">
                   <h3 class="subgroup-title">Visible cues</h3>
                   <div class="control-subgrid">
-                    <label class="field">
+                    <label class="field checkbox-field">
+                      <input id="groupingEnabled" type="checkbox" />
                       <span>Perceptual grouping</span>
-                      <select id="groupingMode">
-                        <option value="none">None</option>
-                        <option value="original">Original pair</option>
-                        <option value="context">Context set only</option>
-                        <option value="both">Original + first context</option>
-                        <option value="each">Each pair separately</option>
-                        <option value="original-contexts">Original + contexts together</option>
-                      </select>
                     </label>
+                    <input id="groupingMode" type="hidden" value="none" />
+                    <input id="manualGroupingRects" type="hidden" value="[]" />
+                    <button id="addGroupingRectButton" class="secondary-button grouping-dependent-control is-retracted" type="button">
+                      Add rectangle
+                    </button>
+                    <button id="clearGroupingRectsButton" class="secondary-button grouping-dependent-control is-retracted" type="button">
+                      Clear rectangles
+                    </button>
+                    <p class="microcopy wide-copy grouping-dependent-control is-retracted">
+                      On = auto-box original pair and Context 1. Add rectangle = draw an extra box; drag its border to move, drag corners to resize.
+                    </p>
                     <label class="field">
                       <span>Marker</span>
                       <select id="markerMode">
@@ -382,11 +386,11 @@
                     <input id="contextFractureEnabled" type="checkbox" hidden />
                     <input id="fractureTargets" type="hidden" />
                     <div id="fractureTargetList" class="fracture-target-list is-retracted"></div>
-                    <label class="field color-field">
+                    <label class="field color-field grouping-dependent-control is-retracted">
                       <span>Original pair box</span>
                       <input id="groupingOriginalColor" type="color" />
                     </label>
-                    <label class="field color-field context-dependent-control">
+                    <label class="field color-field context-dependent-control grouping-dependent-control is-retracted">
                       <span>Context box</span>
                       <input id="groupingContextColor" type="color" />
                     </label>
@@ -477,9 +481,6 @@
                     </label>
                   </div>
                 </div>
-                <p class="special-note">
-                  These are visible or audible extras. Use them only when they are part of the condition.
-                </p>
                 <input id="crosshairX" type="hidden" />
                 <input id="crosshairY" type="hidden" />
                 <input id="railStartX" type="hidden" />
@@ -763,6 +764,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260502-michotte-defaults"></script>
+    <script src="app.js?v=20260502-grouping-toggle"></script>
   </body>
 </html>

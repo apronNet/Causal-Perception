@@ -50,7 +50,7 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 
 ## Perceptual Grouping
 
-Perceptual grouping is in **Special features** because the boxes are visible cues. It can draw solid boxes around the original pair, each pair separately, the first context pair, or all context pairs together.
+Perceptual grouping is in **Special features** because the boxes are visible cues. The grouping toggle automatically boxes the original pair and Context 1 when context is shown. If you need a custom region, click **Add rectangle** and drag its border or corners in the preview.
 
 ![Perceptual grouping guide](docs/screenshots/perceptual-grouping-guide.svg)
 

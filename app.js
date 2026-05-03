@@ -21,6 +21,8 @@
   const MAX_EXPORT_BASENAME_LENGTH = 180;
   const CONTEXT_PAIR_MAX = 10;
   const RAIL_MAX = 6;
+  const MANUAL_GROUPING_RECT_MIN_SIZE = 24;
+  const MANUAL_GROUPING_RECT_MAX = 12;
   const PHYSICS_ENGINE = {
     restitution: 0.9,
     baseRadius: 28,
@@ -125,6 +127,9 @@
   const contextPositionPairList = document.getElementById("contextPositionPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
   const fractureTargetList = document.getElementById("fractureTargetList");
+  const groupingEnabledControl = document.getElementById("groupingEnabled");
+  const addGroupingRectButton = document.getElementById("addGroupingRectButton");
+  const clearGroupingRectsButton = document.getElementById("clearGroupingRectsButton");
 
   /*
    * Parameter propagation rule
@@ -177,6 +182,7 @@
     "stageColor",
     "objectStyle",
     "groupingMode",
+    "manualGroupingRects",
     "contactGuideMode",
     "physicsEngineEnabled",
     "fractureEnabled",
@@ -289,7 +295,12 @@
     stageTheme: "Changes: preset background luminance and sets the background color picker.",
     stageColor: "Changes: exact stimulus-field color. Causal-capture displays commonly use bright colored discs on a black field.",
     objectStyle: "Changes: visual rendering of the balls. Simple filled discs are the most controlled; shaded or ring styles are for display variants.",
-    groupingMode: "Changes: solid boxes that group one pair, every pair separately, or all context pairs together. Use for: testing perceptual grouping.",
+    groupingEnabled:
+      "Changes: turns visible grouping boxes on. The app automatically boxes the original pair and Context 1 if context is shown.",
+    groupingMode:
+      "Changes: internal grouping state kept for saved presets. New UI uses a simple on/off grouping toggle.",
+    manualGroupingRects:
+      "Changes: extra grouping rectangles drawn in preview and export. Use Add rectangle, then drag borders or corners in the preview.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     fractureEnabled:
       "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
@@ -901,6 +912,7 @@
     stageColor: CLASSIC_BACKGROUND_COLOR,
     objectStyle: "flat",
     groupingMode: "none",
+    manualGroupingRects: "[]",
     contactGuideMode: "none",
     physicsEngineEnabled: false,
     fractureEnabled: false,
@@ -968,6 +980,7 @@
   const railDependentControls = Array.from(document.querySelectorAll(".rail-dependent-control"));
   const crosshairDependentControls = Array.from(document.querySelectorAll(".crosshair-dependent-control"));
   const trajectoryDependentControls = Array.from(document.querySelectorAll(".trajectory-dependent-control"));
+  const groupingDependentControls = Array.from(document.querySelectorAll(".grouping-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
   const choiceControlButtons = Array.from(document.querySelectorAll("[data-choice-for]"));
@@ -989,6 +1002,7 @@
   let startDragTarget = null;
   let specialDragTarget = null;
   let trajectoryDragTarget = null;
+  let groupingRectDragTarget = null;
   let customStartPositionsInitialized = false;
   let sharedPresetKeys = [];
   let customPresetKeys = [];
@@ -1020,6 +1034,58 @@
 
   function normalizeOcclusionMode(value) {
     return value === "launcher-front" ? value : "target-front";
+  }
+
+  function normalizeGroupingMode(value) {
+    return value === "none" ? "none" : "both";
+  }
+
+  function parseManualGroupingRects(value) {
+    if (!value) {
+      return [];
+    }
+    try {
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      return Array.isArray(parsed) ? parsed.filter((rect) => rect && typeof rect === "object") : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function normalizeManualGroupingRect(rect, state = null, index = 0) {
+    const fallbackColor =
+      index === 0 ? state?.groupingOriginalColor || "#e0b24a" : state?.groupingContextColor || "#80a7a1";
+    const rawWidth = Number(rect.width);
+    const rawHeight = Number(rect.height);
+    const rawX = Number(rect.x);
+    const rawY = Number(rect.y);
+    const width = clamp(Math.abs(Number.isFinite(rawWidth) ? rawWidth : 180), MANUAL_GROUPING_RECT_MIN_SIZE, STAGE_WIDTH);
+    const height = clamp(Math.abs(Number.isFinite(rawHeight) ? rawHeight : 90), MANUAL_GROUPING_RECT_MIN_SIZE, STAGE_HEIGHT);
+    return {
+      x: clamp(Number.isFinite(rawX) ? rawX : 80, 0, STAGE_WIDTH - width),
+      y: clamp(Number.isFinite(rawY) ? rawY : 80, 0, STAGE_HEIGHT - height),
+      width,
+      height,
+      color: normalizeHexColor(rect.color, fallbackColor)
+    };
+  }
+
+  function normalizeManualGroupingRects(rects, state = null) {
+    return parseManualGroupingRects(rects)
+      .slice(0, MANUAL_GROUPING_RECT_MAX)
+      .map((rect, index) => normalizeManualGroupingRect(rect, state, index));
+  }
+
+  function serializeManualGroupingRects(rects) {
+    return JSON.stringify(
+      normalizeManualGroupingRects(rects).map((rect) => ({
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        color: rect.color
+      }))
+    );
   }
 
   /*
@@ -1132,6 +1198,9 @@
     if (key === "fractureTargets") {
       return serializeFractureTargets(value);
     }
+    if (key === "manualGroupingRects") {
+      return serializeManualGroupingRects(value);
+    }
     return value;
   }
 
@@ -1226,7 +1295,8 @@
       stageTheme: controls.stageTheme.value,
       stageColor: controls.stageColor.value,
       objectStyle: controls.objectStyle.value,
-      groupingMode: controls.groupingMode.value,
+      groupingMode: normalizeGroupingMode(controls.groupingMode.value),
+      manualGroupingRects: parseManualGroupingRects(controls.manualGroupingRects.value),
       contactGuideMode: controls.contactGuideMode.value,
       physicsEngineEnabled: controls.physicsEngineEnabled.value === "true",
       fractureEnabled: controls.fractureEnabled.checked,
@@ -1288,6 +1358,7 @@
     state.fractureTargets = normalizeFractureTargetsForState(state.fractureTargets, state);
     state.railSegments = state.railEnabled ? getRailSegments(state).slice(1) : [];
     state.trajectoryOverrides = parseTrajectoryOverrides(state.trajectoryOverrides);
+    state.manualGroupingRects = normalizeManualGroupingRects(state.manualGroupingRects, state);
     return state.physicsEngineEnabled ? normalizePhysicsEngineState(state) : state;
   }
 
@@ -1627,8 +1698,7 @@
       ["contextTargetVisibleMs", "targetVisibleMs"],
       ["contextFractureEnabled", "fractureEnabled"],
       ["contextColor", "launcherColor"],
-      ["contextTargetColor", "targetColor"],
-      ["groupingContextColor", "groupingOriginalColor"]
+      ["contextTargetColor", "targetColor"]
     ];
 
     pairs.forEach(([contextId, originalId]) => {
@@ -2543,7 +2613,8 @@
   }
 
   function syncSpecialDragUi() {
-    const enabled = Boolean(controls.crosshairEnabled.checked || controls.railEnabled.checked);
+    const manualGroupingEnabled = Boolean(controls.groupingMode.value !== "none" && controls.manualGroupingRects.value !== "[]");
+    const enabled = Boolean(controls.crosshairEnabled.checked || controls.railEnabled.checked || manualGroupingEnabled);
     const trajectoryEnabled = Boolean(controls.trajectoryEditEnabled.checked);
     canvas.classList.toggle("special-drag-enabled", enabled);
     canvas.classList.toggle("trajectory-edit-enabled", trajectoryEnabled);
@@ -2553,6 +2624,23 @@
     if (!trajectoryEnabled) {
       trajectoryDragTarget = null;
     }
+  }
+
+  function syncGroupingControlsVisibility() {
+    controls.groupingMode.value = normalizeGroupingMode(controls.groupingMode.value);
+    const enabled = controls.groupingMode.value !== "none";
+    const contextEnabled = controls.contextMode.value !== "none";
+    if (groupingEnabledControl) {
+      groupingEnabledControl.checked = enabled;
+    }
+    groupingDependentControls.forEach((field) => {
+      const hiddenBecauseContextIsOff = field.classList.contains("context-dependent-control") && !contextEnabled;
+      field.classList.toggle("is-retracted", !enabled || hiddenBecauseContextIsOff);
+    });
+    if (!enabled) {
+      groupingRectDragTarget = null;
+    }
+    syncSpecialDragUi();
   }
 
   function syncCrosshairControlVisibility() {
@@ -3087,6 +3175,7 @@
     syncRailControlVisibility();
     syncTrajectoryControlVisibility();
     syncRailSegments();
+    syncGroupingControlsVisibility();
     syncSpecialDragUi();
     enforceCustomStartConstraints();
     updateOutputs();
@@ -3430,9 +3519,6 @@
     }
     if (state.contactGuideMode !== "none") {
       warnings.push("Contact guide is visible in export. Turn off unless it is a condition.");
-    }
-    if (state.groupingMode !== "none") {
-      warnings.push("Grouping boxes are visible to participants. Keep only if grouping is tested.");
     }
     if (state.colorChangeMode !== "none") {
       warnings.push("Color-change cue is visible at contact. Keep only if feature change is part of the condition.");
@@ -4000,6 +4086,43 @@
     return contextWindowMs >= 740 || Math.abs(adjustedTime - contextGeometry.stopTime) <= contextWindowMs / 2;
   }
 
+  function drawManualGroupingRects(drawCtx, state, showHandles = false) {
+    const rects = state.manualGroupingRects || [];
+    if (state.groupingMode === "none" || rects.length === 0) {
+      return;
+    }
+
+    drawCtx.save();
+    rects.forEach((rect, index) => {
+      const fallback = index === 0 ? "#e0b24a" : "#80a7a1";
+      const strokeColor = hexToRgba(rect.color, state.stageTheme === "light" ? 0.86 : 0.9, fallback);
+      const fillColor = hexToRgba(rect.color, state.stageTheme === "light" ? 0.06 : 0.04, fallback);
+      drawCtx.strokeStyle = strokeColor;
+      drawCtx.fillStyle = fillColor;
+      drawCtx.lineWidth = 2.3;
+      drawCtx.setLineDash([]);
+      drawCtx.beginPath();
+      drawCtx.roundRect(rect.x, rect.y, rect.width, rect.height, clamp(Math.min(rect.width, rect.height) * 0.08, 4, 14));
+      drawCtx.fill();
+      drawCtx.stroke();
+
+      if (showHandles) {
+        const handleSize = 10;
+        const half = handleSize / 2;
+        drawCtx.fillStyle = strokeColor;
+        [
+          [rect.x, rect.y],
+          [rect.x + rect.width, rect.y],
+          [rect.x, rect.y + rect.height],
+          [rect.x + rect.width, rect.y + rect.height]
+        ].forEach(([x, y]) => {
+          drawCtx.fillRect(x - half, y - half, handleSize, handleSize);
+        });
+      }
+    });
+    drawCtx.restore();
+  }
+
   function drawGroupingBoxes(drawCtx, state, eventState) {
     if (state.groupingMode === "none") {
       return;
@@ -4107,6 +4230,7 @@
     }
 
     if (!contextVisible || contextGeometries.length === 0) {
+      drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
       return;
     }
 
@@ -4114,6 +4238,7 @@
       contextGeometries.forEach((geometry, index) => {
         drawBox(`Context ${index + 1}`, geometry, state.groupingContextColor, "#80a7a1");
       });
+      drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
       return;
     }
 
@@ -4121,6 +4246,7 @@
       const grouped = state.groupingMode === "both" ? contextGeometries.slice(0, 1) : contextGeometries;
       drawBox("Context set", grouped, state.groupingContextColor, "#80a7a1");
     }
+    drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
   }
 
   function drawContactGuides(drawCtx, state, eventState) {
@@ -5232,6 +5358,151 @@
     return Math.hypot(point.x - projectionX, point.y - projectionY);
   }
 
+  function writeManualGroupingRects(rects) {
+    controls.manualGroupingRects.value = serializeManualGroupingRects(rects);
+  }
+
+  function addManualGroupingRect() {
+    const state = cloneState();
+    const rects = state.manualGroupingRects || [];
+    if (rects.length >= MANUAL_GROUPING_RECT_MAX) {
+      statusText.textContent = "Maximum manual rectangles reached.";
+      return;
+    }
+
+    const offset = Math.min(rects.length * 18, 90);
+    const nextRect = normalizeManualGroupingRect(
+      {
+        x: STAGE_WIDTH / 2 - 150 + offset,
+        y: STAGE_HEIGHT / 2 - 70 + offset,
+        width: 300,
+        height: 140,
+        color: state.groupingContextColor
+      },
+      state,
+      rects.length
+    );
+    writeManualGroupingRects([...rects, nextRect]);
+    activePresetKey = null;
+    syncGroupingControlsVisibility();
+    updateOutputs();
+    refreshText();
+    statusText.textContent = "Manual grouping rectangle added. Drag its border or corners in the preview.";
+    drawIdlePreview();
+  }
+
+  function clearManualGroupingRects() {
+    writeManualGroupingRects([]);
+    groupingRectDragTarget = null;
+    activePresetKey = null;
+    syncGroupingControlsVisibility();
+    updateOutputs();
+    refreshText();
+    statusText.textContent = "Manual grouping rectangles cleared.";
+    drawIdlePreview();
+  }
+
+  function findManualGroupingRectTarget(state, point) {
+    if (state.groupingMode === "none") {
+      return null;
+    }
+
+    const rects = state.manualGroupingRects || [];
+    const handleRadius = 13;
+    const edgeRadius = 9;
+    for (let index = rects.length - 1; index >= 0; index -= 1) {
+      const rect = rects[index];
+      const corners = [
+        { corner: "nw", x: rect.x, y: rect.y },
+        { corner: "ne", x: rect.x + rect.width, y: rect.y },
+        { corner: "sw", x: rect.x, y: rect.y + rect.height },
+        { corner: "se", x: rect.x + rect.width, y: rect.y + rect.height }
+      ];
+      const cornerHit = corners.find((corner) => Math.hypot(point.x - corner.x, point.y - corner.y) <= handleRadius);
+      if (cornerHit) {
+        return { type: "groupingRectResize", rectIndex: index, corner: cornerHit.corner };
+      }
+
+      const insideX = point.x >= rect.x && point.x <= rect.x + rect.width;
+      const insideY = point.y >= rect.y && point.y <= rect.y + rect.height;
+      const nearLeft = Math.abs(point.x - rect.x) <= edgeRadius && insideY;
+      const nearRight = Math.abs(point.x - (rect.x + rect.width)) <= edgeRadius && insideY;
+      const nearTop = Math.abs(point.y - rect.y) <= edgeRadius && insideX;
+      const nearBottom = Math.abs(point.y - (rect.y + rect.height)) <= edgeRadius && insideX;
+      if (nearLeft || nearRight || nearTop || nearBottom) {
+        return {
+          type: "groupingRectMove",
+          rectIndex: index,
+          offset: { x: rect.x - point.x, y: rect.y - point.y }
+        };
+      }
+    }
+    return null;
+  }
+
+  function writeDraggedGroupingRect(target, point) {
+    const state = cloneState();
+    const rects = [...(state.manualGroupingRects || [])];
+    const rect = rects[target.rectIndex];
+    if (!rect) {
+      return;
+    }
+
+    if (target.type === "groupingRectMove") {
+      rects[target.rectIndex] = normalizeManualGroupingRect(
+        {
+          ...rect,
+          x: point.x + target.offset.x,
+          y: point.y + target.offset.y
+        },
+        state,
+        target.rectIndex
+      );
+    } else if (target.type === "groupingRectResize") {
+      let left = rect.x;
+      let right = rect.x + rect.width;
+      let top = rect.y;
+      let bottom = rect.y + rect.height;
+      if (target.corner.includes("w")) {
+        left = clamp(point.x, 0, right - MANUAL_GROUPING_RECT_MIN_SIZE);
+      }
+      if (target.corner.includes("e")) {
+        right = clamp(point.x, left + MANUAL_GROUPING_RECT_MIN_SIZE, STAGE_WIDTH);
+      }
+      if (target.corner.includes("n")) {
+        top = clamp(point.y, 0, bottom - MANUAL_GROUPING_RECT_MIN_SIZE);
+      }
+      if (target.corner.includes("s")) {
+        bottom = clamp(point.y, top + MANUAL_GROUPING_RECT_MIN_SIZE, STAGE_HEIGHT);
+      }
+      rects[target.rectIndex] = normalizeManualGroupingRect(
+        {
+          ...rect,
+          x: left,
+          y: top,
+          width: right - left,
+          height: bottom - top
+        },
+        state,
+        target.rectIndex
+      );
+    }
+
+    writeManualGroupingRects(rects);
+  }
+
+  function updateDraggedGroupingRect(event) {
+    if (!groupingRectDragTarget) {
+      return;
+    }
+    writeDraggedGroupingRect(groupingRectDragTarget, getStagePoint(event));
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = "Grouping rectangle updated.";
+    drawIdlePreview();
+  }
+
   function findSpecialDragTarget(state, point) {
     if (state.crosshairEnabled) {
       const crosshair = {
@@ -5513,6 +5784,15 @@
         }
       }
 
+      const groupingTarget = findManualGroupingRectTarget(state, point);
+      if (groupingTarget) {
+        stopPreview();
+        groupingRectDragTarget = groupingTarget;
+        canvas.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+
       const specialTarget = findSpecialDragTarget(state, point);
       if (specialTarget && specialTarget.type !== "railLine") {
         stopPreview();
@@ -5543,6 +5823,10 @@
     });
 
     canvas.addEventListener("pointermove", (event) => {
+      if (groupingRectDragTarget) {
+        updateDraggedGroupingRect(event);
+        return;
+      }
       if (trajectoryDragTarget) {
         updateDraggedTrajectory(event);
         return;
@@ -5558,6 +5842,12 @@
     });
 
     const endDrag = (event) => {
+      if (groupingRectDragTarget) {
+        updateDraggedGroupingRect(event);
+        canvas.releasePointerCapture?.(event.pointerId);
+        groupingRectDragTarget = null;
+        return;
+      }
       if (trajectoryDragTarget) {
         updateDraggedTrajectory(event);
         canvas.releasePointerCapture?.(event.pointerId);
@@ -6319,6 +6609,7 @@
       },
       stageColor: state.stageColor,
       contextPairSnapshots: state.contextPairSnapshots,
+      manualGroupingRects: state.manualGroupingRects,
       trajectoryOverrides: state.trajectoryOverrides,
       fractureEnabled: state.fractureEnabled,
       contextFractureEnabled: state.contextFractureEnabled,
@@ -6403,6 +6694,7 @@
       contextLauncherVisibleMs: state.contextLauncherVisibleMs,
       contextTargetVisibleMs: state.contextTargetVisibleMs,
       groupingMode: state.groupingMode,
+      manualGroupingRects: JSON.stringify(state.manualGroupingRects),
       contactGuideMode: state.contactGuideMode,
       crosshairEnabled: state.crosshairEnabled,
       crosshairX: state.crosshairX,
@@ -6645,6 +6937,9 @@
       stageColor: readConditionParameter(parameters, "stageColor", baseState.stageColor),
       objectStyle: readConditionParameter(parameters, "objectStyle", baseState.objectStyle),
       groupingMode: readConditionParameter(parameters, "groupingMode", baseState.groupingMode),
+      manualGroupingRects: parseManualGroupingRects(
+        readConditionParameter(parameters, "manualGroupingRects", baseState.manualGroupingRects)
+      ),
       contactGuideMode: readConditionParameter(parameters, "contactGuideMode", baseState.contactGuideMode),
       fractureEnabled: readConditionParameter(parameters, "fractureEnabled", baseState.fractureEnabled),
       contextFractureEnabled: readConditionParameter(parameters, "contextFractureEnabled", baseState.contextFractureEnabled),
@@ -6839,6 +7134,7 @@
       stageColor: condition.parameters.stageColor,
       objectStyle: condition.parameters.objectStyle,
       groupingMode: condition.parameters.groupingMode,
+      manualGroupingRects: JSON.stringify(condition.parameters.manualGroupingRects || []),
       contactGuideMode: condition.parameters.contactGuideMode,
       crosshairEnabled: condition.parameters.crosshairEnabled,
       crosshairX: condition.parameters.crosshairX,
@@ -7027,6 +7323,7 @@
         stageColor: condition.stageColor,
         objectStyle: condition.objectStyle,
         groupingMode: condition.groupingMode,
+        manualGroupingRects: condition.manualGroupingRects || [],
         contactGuideMode: condition.contactGuideMode,
         fractureEnabled: condition.fractureEnabled,
         contextFractureEnabled: condition.contextFractureEnabled,
@@ -7839,6 +8136,20 @@
   }
 
   function bindControls() {
+    groupingEnabledControl?.addEventListener("change", () => {
+      activePresetKey = null;
+      controls.groupingMode.value = groupingEnabledControl.checked ? "both" : "none";
+      syncGroupingControlsVisibility();
+      updateOutputs();
+      refreshText();
+      statusText.textContent = groupingEnabledControl.checked
+        ? "Grouping on. Original pair and Context 1 are boxed automatically."
+        : READY_STATUS;
+      drawIdlePreview();
+    });
+    addGroupingRectButton?.addEventListener("click", addManualGroupingRect);
+    clearGroupingRectsButton?.addEventListener("click", clearManualGroupingRects);
+
     choiceControlButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const control = document.getElementById(button.dataset.choiceFor);
@@ -7872,6 +8183,7 @@
           renderFractureTargetEditors();
           lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
           syncTrajectoryControlVisibility();
+          syncGroupingControlsVisibility();
           enforceCustomStartConstraints();
           updateOutputs();
           refreshText();
@@ -8032,6 +8344,7 @@
         id.endsWith("StartY") ||
         id === "contextPairSnapshots" ||
         id === "fractureTargets" ||
+        id === "manualGroupingRects" ||
         id === "selectedTrajectoryBall" ||
         id === "trajectoryOverrides" ||
         ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)

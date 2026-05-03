@@ -393,6 +393,7 @@ h3 {
 .rail-dependent-control.is-retracted,
 .crosshair-dependent-control.is-retracted,
 .trajectory-dependent-control.is-retracted,
+.grouping-dependent-control.is-retracted,
 .fracture-target-list.is-retracted,
 .occluder-width-field.is-retracted {
   display: none;
