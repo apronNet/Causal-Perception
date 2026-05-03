@@ -4220,6 +4220,20 @@
     return { x: clamp(x, radius, STAGE_WIDTH - radius), y: clamp(y, radius, STAGE_HEIGHT - radius), vx, vy };
   }
 
+  function advanceSingleBilliardBody(geometry, elapsedMs, state) {
+    return advanceBilliardBody(
+      {
+        x: geometry.launcherStopX,
+        y: geometry.launcherStopY,
+        vx: geometry.targetUnitX * geometry.launcherImpactSpeed,
+        vy: geometry.targetUnitY * geometry.launcherImpactSpeed,
+        radius: geometry.radius
+      },
+      elapsedMs,
+      state
+    );
+  }
+
   function getBilliardRealismSeed(state, geometry, scope = geometry?.trajectoryScope || "original") {
     return [
       scope,
@@ -5272,7 +5286,11 @@
     let singleX = geometry.launcherStartX + geometry.approachUnitX * approachDistance;
     let singleY = geometry.launcherStartY + geometry.approachUnitY * approachDistance;
 
-    if (t > geometry.stopTime) {
+    if (eventState.physicsEngineEnabled && t >= geometry.stopTime) {
+      const body = advanceSingleBilliardBody(geometry, t - geometry.stopTime, eventState);
+      singleX = body.x;
+      singleY = body.y;
+    } else if (t > geometry.stopTime) {
       const elapsed = t - geometry.stopTime;
       const moveDistance = displacementAt(elapsed, geometry.launcherImpactSpeed, eventState.launcherAccel);
       singleX = geometry.launcherStopX + geometry.targetUnitX * moveDistance;
@@ -7370,6 +7388,28 @@
     return events;
   }
 
+  function getSingleBilliardWallSoundEvents(eventState, geometry, state, baseMovieTimeMs, labelPrefix, scopePrefix) {
+    if (!eventState.physicsEngineEnabled || baseMovieTimeMs >= state.durationMs) {
+      return [];
+    }
+    const movieRemainingMs = Math.max(0, state.durationMs - baseMovieTimeMs);
+    const elapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.launcherVisibleMs)));
+    return getBilliardWallSoundEventsForBody(
+      {
+        x: geometry.launcherStopX,
+        y: geometry.launcherStopY,
+        vx: geometry.targetUnitX * geometry.launcherImpactSpeed,
+        vy: geometry.targetUnitY * geometry.launcherImpactSpeed,
+        radius: geometry.radius
+      },
+      eventState,
+      baseMovieTimeMs,
+      elapsedLimitMs,
+      `${labelPrefix} rail collision`,
+      `${scopePrefix}Rail`
+    );
+  }
+
   function getRealisticBilliardSoundEvents(eventState, geometry, state, baseMovieTimeMs, labelPrefix, scopePrefix) {
     const movieRemainingMs = Math.max(0, state.durationMs - baseMovieTimeMs);
     const launcherElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.launcherVisibleMs)));
@@ -7458,7 +7498,7 @@
     const events = [makeSoundCueEvent("Original pair collision", originalCollisionTimeMs, "original")];
     events.push(...getBilliardWallSoundEvents(state, mainGeometry, state, originalCollisionTimeMs, "Original pair", "original"));
 
-    if (state.contextMode === "launch") {
+    if (state.contextMode === "launch" || state.contextMode === "single") {
       const pairCount = getContextPairCount(state);
       const directionSign = mainGeometry.contextDirectionSign;
       const contextState = getContextMotionState(state);
@@ -7480,19 +7520,32 @@
         const stimulusTime = state.contextOffsetMs + contextGeometry.stopTime;
         if (isContextEventVisible(state, stimulusTime, mainGeometry)) {
           const contextCollisionTimeMs = blinkMs + stimulusTime;
-          events.push(
-            makeSoundCueEvent(`Context ${pairIndex + 1} collision`, contextCollisionTimeMs, trajectoryScope)
-          );
-          events.push(
-            ...getBilliardWallSoundEvents(
-              eventState,
-              contextGeometry,
-              state,
-              contextCollisionTimeMs,
-              `Context ${pairIndex + 1}`,
-              trajectoryScope
-            )
-          );
+          if (state.contextMode === "launch") {
+            events.push(
+              makeSoundCueEvent(`Context ${pairIndex + 1} collision`, contextCollisionTimeMs, trajectoryScope)
+            );
+            events.push(
+              ...getBilliardWallSoundEvents(
+                eventState,
+                contextGeometry,
+                state,
+                contextCollisionTimeMs,
+                `Context ${pairIndex + 1}`,
+                trajectoryScope
+              )
+            );
+          } else {
+            events.push(
+              ...getSingleBilliardWallSoundEvents(
+                eventState,
+                contextGeometry,
+                state,
+                contextCollisionTimeMs,
+                `Context ${pairIndex + 1}`,
+                trajectoryScope
+              )
+            );
+          }
         }
       }
     }

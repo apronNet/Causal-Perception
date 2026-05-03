@@ -190,6 +190,55 @@ const browserProbe = String.raw`
     return count;
   };
 
+  const colorComponents = (imageData, rgb, threshold = 95, minPixels = 80) => {
+    const { data, width, height } = imageData;
+    const visited = new Uint8Array(width * height);
+    const components = [];
+    const stack = [];
+    const isMatch = (index) => colorDistance(data, index * 4, rgb) <= threshold;
+    for (let index = 0; index < width * height; index += 1) {
+      if (visited[index] || !isMatch(index)) {
+        continue;
+      }
+      visited[index] = 1;
+      stack.push(index);
+      let count = 0;
+      let minX = width;
+      let maxX = -1;
+      let minY = height;
+      let maxY = -1;
+      while (stack.length > 0) {
+        const current = stack.pop();
+        const x = current % width;
+        const y = Math.floor(current / width);
+        count += 1;
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+        const neighbors = [current - 1, current + 1, current - width, current + width];
+        for (const next of neighbors) {
+          if (
+            next < 0 ||
+            next >= width * height ||
+            visited[next] ||
+            (next === current - 1 && x === 0) ||
+            (next === current + 1 && x === width - 1) ||
+            !isMatch(next)
+          ) {
+            continue;
+          }
+          visited[next] = 1;
+          stack.push(next);
+        }
+      }
+      if (count >= minPixels) {
+        components.push({ count, minX, maxX, minY, maxY });
+      }
+    }
+    return components;
+  };
+
   const previewImageData = () => {
     const canvas = document.getElementById("stage");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -379,6 +428,24 @@ const browserProbe = String.raw`
   const rightRailCenterX = billiardFrame.width - billiardTarget.radius;
 
   commonControls();
+  setControl("durationMs", 3600);
+  setControl("contextMode", "single");
+  setControl("contextPairCount", 8);
+  setControl("launcherSpeed", 760);
+  setControl("soundEnabled", true);
+  setControl("physicsEngineEnabled", true);
+  setControl("fileLabel", "probe-single-context-billiard");
+  const singleBilliardExport = await exportAndRead();
+  const singleBilliardFrame = await sampleVideo(singleBilliardExport.video, 3.25);
+  const singleBilliardRgb = hexToRgb(
+    singleBilliardExport.metadata.parameters.contextTargetColor ||
+      singleBilliardExport.metadata.parameters.targetColor
+  );
+  const singleBilliardComponents = colorComponents(singleBilliardFrame, singleBilliardRgb, 95, 90);
+  const singleBilliardSoundEvents = singleBilliardExport.metadata.sound?.cueEvents || [];
+  const singleBilliardSoundLabels = singleBilliardSoundEvents.map((event) => event.label);
+
+  commonControls();
   setControl("durationMs", 5000);
   setControl("launcherSpeed", 720);
   setControl("physicsEngineEnabled", true);
@@ -487,6 +554,21 @@ const browserProbe = String.raw`
       targetCenterX: billiardTarget.centerX === null ? null : Number(billiardTarget.centerX.toFixed(2)),
       rightRailCenterX: Number(rightRailCenterX.toFixed(2)),
       stoppedBeforeRightRail: billiardTarget.centerX !== null && billiardTarget.centerX < rightRailCenterX - 8
+    },
+    singleContextBilliard: {
+      sampledSec: 3.25,
+      contextPairCount: singleBilliardExport.metadata.parameters.contextPairCount,
+      componentCount: singleBilliardComponents.length,
+      components: singleBilliardComponents.map((component) => ({
+        count: component.count,
+        minX: component.minX,
+        maxX: component.maxX,
+        minY: component.minY,
+        maxY: component.maxY
+      })),
+      keepsManySingleContextBallsInBounds: singleBilliardComponents.length >= 6,
+      soundLabels: singleBilliardSoundLabels,
+      hasSingleRailCollisionSound: singleBilliardSoundLabels.some((label) => label.includes("rail collision"))
     },
     billiardRealism: {
       defaultChecked: realismChecked,
