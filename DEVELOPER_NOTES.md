@@ -75,6 +75,8 @@ Clip sequences are one movie made from several saved clip states. `sequenceClips
 
 For timing, visibility, contact-geometry, or Billiard changes, run `node tools/export-pixel-probe.mjs`. It exports real videos in Chrome and measures decoded pixels without `ffmpeg`.
 
+For clip-composition changes, run `node tools/sequence-export-probe.mjs`. It creates a two-clip sequence, exports one movie, and checks the decoded video, metadata JSON, PsychoPy CSV, and frame-log CSV for matching clip order and duration.
+
 ## README / GitHub Page
 
 The GitHub page is part of the tool. Keep it current whenever the app gains a new parameter, special feature, export behavior, or PsychoPy workflow.
