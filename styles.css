@@ -502,6 +502,17 @@ h3 {
   background: var(--paper-soft);
 }
 
+.billiard-header-row {
+  display: grid;
+  grid-template-columns: auto minmax(130px, 0.34fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.billiard-toggle-field {
+  min-height: 28px;
+}
+
 .context-pair-list {
   grid-column: 1 / -1;
   display: grid;
@@ -1396,6 +1407,7 @@ canvas.trajectory-edit-enabled:active {
   .preset-compact-grid,
   .preset-save-row,
   .preview-bar,
+  .billiard-header-row,
   .control-grid,
   .control-subgrid,
   .utility-strip,
