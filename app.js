@@ -285,7 +285,7 @@
     launcherBehavior: "Changes: what O1 does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of O2 motion after contact. Use for: straight launch versus angled launch.",
     targetTravelMs:
-      "Changes: how long O2 keeps moving after it starts at collision. To let O2 move offscreen, keep Video duration and O2 on-screen long enough too.",
+      "Changes: how long O2 keeps moving after it starts at collision. Raising this can extend Video duration so the motion is visible.",
     launcherVisibleMs:
       "Changes: how long O1 stays visible after O2 starts moving. O1 stays visible before contact so the event is inspectable.",
     targetVisibleMs:
@@ -2048,6 +2048,49 @@
 
   function getBlinkClassicLaunchDurationMs(blinkMs = getBlinkMsControlValue()) {
     return blinkMs + (Number(controlDefaults.durationMs) || 1200);
+  }
+
+  function getTravelDurationPadMs() {
+    return 240;
+  }
+
+  function ensureDurationCoversTravelControl(controlId) {
+    if (controlId !== "targetTravelMs" && controlId !== "contextTargetTravelMs") {
+      return "";
+    }
+
+    const state = cloneState();
+    if (state.physicsEngineEnabled) {
+      return "";
+    }
+
+    const isContext = controlId === "contextTargetTravelMs";
+    if (isContext && state.contextMode === "none") {
+      return "";
+    }
+
+    const travelMs = Math.max(0, Number(controls[controlId].value) || 0);
+    const laneY = getMainLaneY(state);
+    const geometry = isContext
+      ? getGeometry(getContextMotionState(state), getContextLaneY(state, laneY, 0), {
+          scope: "context",
+          directionSign: getGeometry(state, laneY, { scope: "original", directionSign: 1 }).contextDirectionSign,
+          trajectoryScope: "context"
+        })
+      : getGeometry(state, laneY, { scope: "original", directionSign: 1 });
+    const stimulusStartMs = Math.max(0, (isContext ? state.contextOffsetMs : 0) + geometry.targetStartTime);
+    const requiredDurationMs = getPreBallBlinkMs(state) + stimulusStartMs + travelMs + getTravelDurationPadMs();
+    const maxDurationMs = Math.max(0, Number(controls.durationMs.max) || state.durationMs);
+    const nextDurationMs = Math.min(maxDurationMs, Math.ceil(requiredDurationMs / 50) * 50);
+
+    if (Number(controls.durationMs.value) >= nextDurationMs) {
+      return "";
+    }
+
+    controls.durationMs.value = nextDurationMs;
+    return nextDurationMs >= maxDurationMs && requiredDurationMs > maxDurationMs
+      ? "Video duration is at its maximum; O2 will move until the clip ends."
+      : "Video duration extended so O2 can use the travel time.";
   }
 
   function getClassicLaunchValuesAfterBlink(state = cloneState()) {
@@ -9663,6 +9706,7 @@
       const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
       control.addEventListener(eventName, () => {
         activePresetKey = null;
+        const travelDurationStatus = ensureDurationCoversTravelControl(id);
         if (id === "occluderEnabled" || id === "contextOccluderEnabled") {
           syncOccluderWidthVisibility();
         }
@@ -9672,7 +9716,7 @@
         updateOutputs();
         refreshText();
         updateCompatibilityNotice(cloneState());
-        statusText.textContent = READY_STATUS;
+        statusText.textContent = travelDurationStatus || READY_STATUS;
         drawIdlePreview();
       });
     });

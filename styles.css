@@ -633,7 +633,7 @@ button:focus-visible,
 
 .range-pair {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr) 64px;
   gap: 3px;
   align-items: center;
 }

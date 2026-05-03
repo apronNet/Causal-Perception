@@ -387,6 +387,20 @@ const browserProbe = String.raw`
 
   commonControls();
   setControl("durationMs", 1200);
+  setControl("targetTravelMs", 60000);
+  const maxTravelAutoDurationMs = Number(document.getElementById("durationMs").value);
+  const maxTravelStatus = document.getElementById("statusText").textContent.trim();
+  const maxTravelRgb = hexToRgb(document.getElementById("targetColor").value);
+  const maxTravelPreviewBefore = componentBox(previewImageData(), maxTravelRgb);
+  document.getElementById("previewButton").click();
+  await new Promise((resolve) => setTimeout(resolve, 3100));
+  const maxTravelPreviewAfter = componentBox(previewImageData(), maxTravelRgb);
+  const maxTravelPreviewTimer = document.getElementById("previewTimerBadge").textContent.trim();
+  setControl("durationMs", 1200);
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
+  commonControls();
+  setControl("durationMs", 1200);
   setControl("gapPx", 0);
   setControl("targetTravelMs", 150);
   setControl("targetVisibleMs", 9000);
@@ -609,6 +623,13 @@ const browserProbe = String.raw`
     },
     travelTime: {
       rangeCaps,
+      maxTravelAutoDurationMs,
+      maxTravelStatus,
+      maxTravelExtendsClip: maxTravelAutoDurationMs > 1200,
+      maxTravelPreviewTimer,
+      maxTravelPreviewBeforePixels: maxTravelPreviewBefore.count,
+      maxTravelPreviewAfterPixels: maxTravelPreviewAfter.count,
+      maxTravelPreviewMovesOffscreen: maxTravelPreviewBefore.count > 0 && maxTravelPreviewAfter.count === 0,
       targetOnsetSec: travelOnsetSec,
       targetTravelAfterCollisionMs: travelExport.metadata.parameters.targetTravelMs,
       metadataTravelAfterCollisionSec: travelExport.metadata.timing.targetTravelAfterCollisionSec,
