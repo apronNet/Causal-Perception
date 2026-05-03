@@ -96,6 +96,7 @@
   const scenarioBadge = document.getElementById("scenarioBadge");
   const timingBadge = document.getElementById("timingBadge");
   const previewTimerBadge = document.getElementById("previewTimerBadge");
+  const previewScopeRow = document.getElementById("previewScopeRow");
   const sequencePanel = document.getElementById("sequencePanel");
   const sequenceClipList = document.getElementById("sequenceClipList");
   const sequenceTotalLabel = document.getElementById("sequenceTotalLabel");
@@ -1502,14 +1503,16 @@
   }
 
   function syncPreviewScopeButtons() {
-    if (sequenceClips.length < 2 && previewScopeMode === "sequence") {
+    const hasSequence = sequenceClips.length > 1;
+    previewScopeRow?.classList.toggle("hidden", !hasSequence);
+    if (!hasSequence && previewScopeMode === "sequence") {
       previewScopeMode = "clip";
     }
     previewScopeButtons.forEach((button) => {
       const scope = button.dataset.previewScope;
       button.classList.toggle("is-active", scope === previewScopeMode);
       button.setAttribute("aria-pressed", String(scope === previewScopeMode));
-      button.disabled = scope === "sequence" && sequenceClips.length < 2;
+      button.disabled = scope === "sequence" && !hasSequence;
     });
   }
 

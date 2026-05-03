@@ -960,13 +960,15 @@ button:disabled {
 }
 
 .preview-scope-row {
-  min-width: 214px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 170px;
 }
 
 .preview-scope-row .choice-button {
-  min-height: 40px;
-  padding: 7px 9px;
-  font-size: 0.7rem;
+  min-height: 34px;
+  padding: 5px 8px;
+  font-size: 0.64rem;
 }
 
 .preview-button {
