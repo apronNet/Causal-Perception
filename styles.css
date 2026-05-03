@@ -921,7 +921,7 @@ button:disabled {
 
 .summary-details > summary {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   min-height: 31px;
@@ -954,16 +954,6 @@ button:disabled {
   font-size: 0.6rem;
   font-weight: 900;
   letter-spacing: -0.02em;
-}
-
-.summary-details summary em {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 0.56rem;
-  font-style: normal;
-  font-weight: 760;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .summary-strip {

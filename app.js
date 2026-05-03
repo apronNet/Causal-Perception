@@ -72,7 +72,6 @@
   const timingBadge = document.getElementById("timingBadge");
   const previewTimerBadge = document.getElementById("previewTimerBadge");
   const summaryPreset = document.getElementById("summaryPreset");
-  const summaryCompact = document.getElementById("summaryCompact");
   const summaryCategory = document.getElementById("summaryCategory");
   const summaryDuration = document.getElementById("summaryDuration");
   const summaryFps = document.getElementById("summaryFps");
@@ -3718,14 +3717,10 @@
   }
 
   function refreshSummary(state, copy, standards) {
-    const relationText = describeSummaryRelation(state, standards);
     const contextText = describeContext(state);
     const contextPairCount = getContextPairCount(state);
     const contextIsOff = state.contextMode === "none";
     const exportSize = getExportCanvasSize(state);
-    if (summaryCompact) {
-      summaryCompact.textContent = `${copy.label}, ${relationText}, ${Math.round(state.durationMs)} ms`;
-    }
     if (summaryPreset) {
       summaryPreset.textContent = copy.label;
     }
