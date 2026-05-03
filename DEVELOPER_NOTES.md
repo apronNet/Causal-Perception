@@ -1,4 +1,4 @@
-# Launching Video Maker Code Notes
+# Launching Video Maker Developer Notes
 
 This is a browser-only, single-page stimulus generator. There is no build step.
 

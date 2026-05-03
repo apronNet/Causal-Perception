@@ -1,6 +1,6 @@
 (async function () {
   /*
-   * Maintainer map
+   * Launching Video Maker maintainer map
    * 1. DOM/control registry: every adjustable HTML control is listed in controlIds.
    * 2. Presets/defaults: built-ins are partial parameter records merged in applyPreset().
    * 3. State serialization: cloneState() is the canonical in-memory stimulus object.

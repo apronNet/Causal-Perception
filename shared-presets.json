@@ -1,5 +1,7 @@
-[
-  {
+{
+  "_comment": "Shared presets loaded for every Launching Video Maker visitor.",
+  "presets": [
+    {
     "key": "fast-clean-launch",
     "label": "Shared: fast clean launch",
     "summary": "A shared lab preset committed with the app, visible to every visitor.",
@@ -31,5 +33,6 @@
       "fps": 60,
       "fileLabel": "shared-fast-clean-launch"
     }
-  }
-]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import os
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Serve the causal-launching studio locally.")
+    parser = argparse.ArgumentParser(description="Serve Launching Video Maker locally.")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind to.")
     args = parser.parse_args()
 

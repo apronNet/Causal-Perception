@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="980" height="360" viewBox="0 0 980 360" role="img" aria-labelledby="title desc">
+  <!-- Static guide image for using exported videos with PsychoPy. -->
   <title id="title">PsychoPy export workflow</title>
   <desc id="desc">A practical flow from the web app to a PsychoPy Builder loop and MovieStim component.</desc>
   <rect width="980" height="360" fill="#eee7d8"/>
