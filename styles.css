@@ -393,6 +393,7 @@ h3 {
 .rail-dependent-control.is-retracted,
 .crosshair-dependent-control.is-retracted,
 .trajectory-dependent-control.is-retracted,
+.text-box-dependent-control.is-retracted,
 .grouping-dependent-control.is-retracted,
 .fracture-target-list.is-retracted,
 .occluder-width-field.is-retracted {
@@ -445,6 +446,14 @@ h3 {
   letter-spacing: 0.018em;
   line-height: 0.95;
   overflow-wrap: anywhere;
+}
+
+.compact-choice-row .choice-button,
+.wide-choice-field .choice-button {
+  min-height: 22px;
+  padding: 2px 4px;
+  font-size: 0.46rem;
+  letter-spacing: 0.012em;
 }
 
 .choice-button.is-active {
@@ -1018,14 +1027,12 @@ canvas.trajectory-edit-enabled:active {
 .stage-overlay {
   position: absolute;
   inset: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   padding: 10px;
   pointer-events: none;
 }
 
 .stage-overlay span {
+  position: absolute;
   display: inline-flex;
   align-items: center;
   min-height: 30px;
@@ -1037,6 +1044,24 @@ canvas.trajectory-edit-enabled:active {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+#scenarioBadge {
+  top: 10px;
+  left: 10px;
+}
+
+#timingBadge {
+  top: 10px;
+  right: 10px;
+}
+
+.preview-timer-badge {
+  right: 10px;
+  bottom: 10px;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 0.56rem;
 }
 
 .video-panel {

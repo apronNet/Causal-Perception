@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Launching Video Maker</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111514'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23ff2f2f'/%3E%3Ccircle cx='21' cy='16' r='5' fill='%2327c76f'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=20260502-header-layout" />
+    <link rel="stylesheet" href="styles.css?v=20260503-text-timer-travel" />
   </head>
   <body>
     <div class="page-shell">
@@ -162,13 +162,21 @@
                     <output data-for="targetAngle"></output>
                   </label>
                   <label class="field">
+                    <span>O2 travel</span>
+                    <input id="targetTravelMode" type="hidden" value="continue" />
+                    <span class="choice-row two-choice-row compact-choice-row" role="group" aria-label="O2 travel">
+                      <button class="choice-button" data-choice-for="targetTravelMode" data-choice-value="continue" type="button">Offscreen</button>
+                      <button class="choice-button" data-choice-for="targetTravelMode" data-choice-value="park" type="button">Park</button>
+                    </span>
+                  </label>
+                  <label class="field">
                     <span>O1 on-screen</span>
-                    <input id="launcherVisibleMs" data-format="visibilityMs" min="25" max="20000" step="25" type="range" />
+                    <input id="launcherVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
                     <output data-for="launcherVisibleMs"></output>
                   </label>
                   <label class="field">
                     <span>O2 on-screen</span>
-                    <input id="targetVisibleMs" data-format="visibilityMs" min="25" max="20000" step="25" type="range" />
+                    <input id="targetVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
                     <output data-for="targetVisibleMs"></output>
                   </label>
                 </div>
@@ -229,13 +237,21 @@
                     <output data-for="contextTargetAngle"></output>
                   </label>
                   <label class="field">
+                    <span>O2 travel</span>
+                    <input id="contextTargetTravelMode" type="hidden" value="continue" />
+                    <span class="choice-row two-choice-row compact-choice-row" role="group" aria-label="Context O2 travel">
+                      <button class="choice-button" data-choice-for="contextTargetTravelMode" data-choice-value="continue" type="button">Offscreen</button>
+                      <button class="choice-button" data-choice-for="contextTargetTravelMode" data-choice-value="park" type="button">Park</button>
+                    </span>
+                  </label>
+                  <label class="field">
                     <span>O1 on-screen</span>
-                    <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="25" max="20000" step="25" type="range" />
+                    <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
                     <output data-for="contextLauncherVisibleMs"></output>
                   </label>
                   <label class="field">
                     <span>O2 on-screen</span>
-                    <input id="contextTargetVisibleMs" data-format="visibilityMs" min="25" max="20000" step="25" type="range" />
+                    <input id="contextTargetVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
                     <output data-for="contextTargetVisibleMs"></output>
                   </label>
                 </div>
@@ -452,6 +468,33 @@
                 </label>
                 <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
                 <input id="trajectoryOverrides" type="hidden" value="{}" />
+                <label class="field checkbox-field">
+                  <input id="textBoxEnabled" type="checkbox" />
+                  <span>Text box</span>
+                </label>
+                <label class="field text-box-dependent-control is-retracted">
+                  <span>Text</span>
+                  <input id="textBoxText" type="text" maxlength="80" placeholder="Label" />
+                </label>
+                <label class="field color-field text-box-dependent-control is-retracted">
+                  <span>Text color</span>
+                  <input id="textBoxColor" type="color" />
+                </label>
+                <label class="field text-box-dependent-control is-retracted">
+                  <span>Text size</span>
+                  <input id="textBoxSize" data-format="intPx" min="10" max="64" step="1" type="range" />
+                  <output data-for="textBoxSize"></output>
+                </label>
+                <label class="field text-box-dependent-control is-retracted">
+                  <span>Text X</span>
+                  <input id="textBoxX" data-format="intPx" min="0" max="960" step="1" type="range" />
+                  <output data-for="textBoxX"></output>
+                </label>
+                <label class="field text-box-dependent-control is-retracted">
+                  <span>Text Y</span>
+                  <input id="textBoxY" data-format="intPx" min="0" max="540" step="1" type="range" />
+                  <output data-for="textBoxY"></output>
+                </label>
                   </div>
                 </div>
                 <div class="control-subgroup">
@@ -722,6 +765,7 @@
             <div class="stage-overlay">
               <span id="scenarioBadge">Canonical launching</span>
               <span id="timingBadge">Contact + 0 ms delay</span>
+              <span id="previewTimerBadge" class="preview-timer-badge">0.00 s / 1.20 s</span>
             </div>
           </div>
           <p class="preview-note">Preview is for editing. Check the exported video for final timing, FPS, aspect ratio, and sound.</p>
@@ -760,6 +804,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260502-grouping-toggle"></script>
+    <script src="app.js?v=20260503-text-timer-travel"></script>
   </body>
 </html>

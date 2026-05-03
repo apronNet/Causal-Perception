@@ -71,6 +71,7 @@
   const stageOverlay = document.querySelector(".stage-overlay");
   const scenarioBadge = document.getElementById("scenarioBadge");
   const timingBadge = document.getElementById("timingBadge");
+  const previewTimerBadge = document.getElementById("previewTimerBadge");
   const summaryPreset = document.getElementById("summaryPreset");
   const summaryCompact = document.getElementById("summaryCompact");
   const summaryCategory = document.getElementById("summaryCategory");
@@ -146,6 +147,7 @@
     "targetAccel",
     "launcherBehavior",
     "targetAngle",
+    "targetTravelMode",
     "launcherVisibleMs",
     "targetVisibleMs",
     "delayMs",
@@ -175,6 +177,7 @@
     "contextTargetSpeedRatio",
     "contextTargetAccel",
     "contextTargetAngle",
+    "contextTargetTravelMode",
     "contextLauncherVisibleMs",
     "contextTargetVisibleMs",
     "renderMode",
@@ -206,6 +209,12 @@
     "selectedTrajectoryBall",
     "selectedTrajectoryAngle",
     "trajectoryOverrides",
+    "textBoxEnabled",
+    "textBoxText",
+    "textBoxColor",
+    "textBoxSize",
+    "textBoxX",
+    "textBoxY",
     "customStartEnabled",
     "customStartKeepRowsHorizontal",
     "customStartAlignStartsVertical",
@@ -252,10 +261,12 @@
     targetAccel: "Changes: whether O2 speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
     launcherBehavior: "Changes: what O1 does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of O2 motion after contact. Use for: straight launch versus angled launch.",
+    targetTravelMode:
+      "Changes: whether O2 keeps moving until it can leave the frame, or parks at the screen edge. O2 on-screen still controls when O2 disappears.",
     launcherVisibleMs:
       "Changes: how long O1 stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
     targetVisibleMs:
-      "Changes: how long O2 stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
+      "Changes: how long O2 stays visible after O2 starts moving. O2 is still visible before contact. Longer than the remaining clip means it stays visible until the clip ends or moves offscreen.",
     delayMs: "Changes: time between contact and O2 motion. Short delays look more directly causal; long delays look less like immediate launching.",
     gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
@@ -287,6 +298,8 @@
     contextTargetSpeedRatio: "Changes: context O2 speed as a multiple of context O1 impact speed. Use for: matching the original pair launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
+    contextTargetTravelMode:
+      "Changes: whether context O2 keeps moving until it can leave the frame, or parks at the screen edge. Context O2 on-screen still controls when it disappears.",
     contextLauncherVisibleMs:
       "Changes: how long context O1 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     contextTargetVisibleMs:
@@ -320,6 +333,12 @@
       "Changes: shows draggable vector arrows in the preview. Drag an arrow head to set that ball's trajectory; use Angle for exact numeric entry.",
     selectedTrajectoryAngle:
       "Changes: angle of the selected trajectory vector. Dragging a preview arrow updates this value; 0 follows the default path.",
+    textBoxEnabled: "Changes: adds a simple text label to preview and export.",
+    textBoxText: "Changes: the text drawn in the stimulus field.",
+    textBoxColor: "Changes: text and box line color.",
+    textBoxSize: "Changes: text size in pixels.",
+    textBoxX: "Changes: horizontal position of the text box.",
+    textBoxY: "Changes: vertical position of the text box.",
     customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1 and O2 start positions manually; exports use the positions but hide the rings.",
     customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position within each pair.",
     customStartAlignStartsVertical: "Changes: keeps O1 starts on one vertical line when context is shown.",
@@ -882,6 +901,7 @@
     targetAccel: 0,
     launcherVisibleMs: 9000,
     targetVisibleMs: 9000,
+    targetTravelMode: "continue",
     contextPairCount: 1,
     contextPairSnapshots: "[]",
     contextDurationMs: 750,
@@ -898,6 +918,7 @@
     contextTargetSpeedRatio: controlDefaults.targetSpeedRatio,
     contextTargetAccel: 0,
     contextTargetAngle: controlDefaults.targetAngle,
+    contextTargetTravelMode: "continue",
     contextLauncherVisibleMs: 9000,
     contextTargetVisibleMs: 9000,
     contactOcclusionMode: "target-front",
@@ -936,6 +957,12 @@
     selectedTrajectoryBall: "originalTarget",
     selectedTrajectoryAngle: 0,
     trajectoryOverrides: "{}",
+    textBoxEnabled: false,
+    textBoxText: "Label",
+    textBoxColor: "#fffaf0",
+    textBoxSize: 24,
+    textBoxX: 36,
+    textBoxY: 504,
     colorChangeMode: "none",
     colorChangeColor: "#e0b24a",
     launcherColor: CLASSIC_LAUNCHER_COLOR,
@@ -980,6 +1007,7 @@
   const railDependentControls = Array.from(document.querySelectorAll(".rail-dependent-control"));
   const crosshairDependentControls = Array.from(document.querySelectorAll(".crosshair-dependent-control"));
   const trajectoryDependentControls = Array.from(document.querySelectorAll(".trajectory-dependent-control"));
+  const textBoxDependentControls = Array.from(document.querySelectorAll(".text-box-dependent-control"));
   const groupingDependentControls = Array.from(document.querySelectorAll(".grouping-dependent-control"));
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
@@ -994,6 +1022,7 @@
   let currentPresetJsonUrl = null;
   let lastExportSignature = null;
   let previewHandle = null;
+  let previewFallbackTimer = null;
   let impactSoundTimer = null;
   let sharedAudioContext = null;
   let parameterTooltip = null;
@@ -1034,6 +1063,10 @@
 
   function normalizeOcclusionMode(value) {
     return value === "launcher-front" ? value : "target-front";
+  }
+
+  function normalizeTargetTravelMode(value) {
+    return value === "park" ? "park" : "continue";
   }
 
   function normalizeGroupingMode(value) {
@@ -1240,6 +1273,7 @@
         targetSpeedRatio: Math.max(0, normalizeSnapshotNumber(normalized.targetSpeedRatio, state.contextTargetSpeedRatio)),
         targetAccel: normalizeSnapshotNumber(normalized.targetAccel, state.contextTargetAccel),
         targetAngle: clamp(Math.round(normalizeSnapshotNumber(normalized.targetAngle, state.contextTargetAngle)), -90, 90),
+        targetTravelMode: normalizeTargetTravelMode(normalized.targetTravelMode || state.contextTargetTravelMode),
         launcherVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.launcherVisibleMs, state.contextLauncherVisibleMs)),
         targetVisibleMs: Math.max(0, normalizeSnapshotNumber(normalized.targetVisibleMs, state.contextTargetVisibleMs)),
         launcherFractureEnabled: Boolean(normalized.launcherFractureEnabled),
@@ -1260,6 +1294,7 @@
       targetAccel: Number(controls.targetAccel.value),
       launcherBehavior: controls.launcherBehavior.value,
       targetAngle: Number(controls.targetAngle.value),
+      targetTravelMode: normalizeTargetTravelMode(controls.targetTravelMode.value),
       launcherVisibleMs: Number(controls.launcherVisibleMs.value),
       targetVisibleMs: Number(controls.targetVisibleMs.value),
       delayMs: Number(controls.delayMs.value),
@@ -1289,6 +1324,7 @@
       contextTargetSpeedRatio: Number(controls.contextTargetSpeedRatio.value),
       contextTargetAccel: Number(controls.contextTargetAccel.value),
       contextTargetAngle: Number(controls.contextTargetAngle.value),
+      contextTargetTravelMode: normalizeTargetTravelMode(controls.contextTargetTravelMode.value),
       contextLauncherVisibleMs: Number(controls.contextLauncherVisibleMs.value),
       contextTargetVisibleMs: Number(controls.contextTargetVisibleMs.value),
       renderMode: controls.renderMode.value,
@@ -1320,6 +1356,12 @@
       selectedTrajectoryBall: controls.selectedTrajectoryBall.value,
       selectedTrajectoryAngle: Number(controls.selectedTrajectoryAngle.value),
       trajectoryOverrides: parseTrajectoryOverrides(controls.trajectoryOverrides.value),
+      textBoxEnabled: controls.textBoxEnabled.checked,
+      textBoxText: controls.textBoxText.value,
+      textBoxColor: controls.textBoxColor.value,
+      textBoxSize: Number(controls.textBoxSize.value),
+      textBoxX: Number(controls.textBoxX.value),
+      textBoxY: Number(controls.textBoxY.value),
       customStartEnabled: controls.customStartEnabled.checked,
       customStartKeepRowsHorizontal: controls.customStartKeepRowsHorizontal.checked,
       customStartAlignStartsVertical: controls.customStartAlignStartsVertical.checked,
@@ -1694,6 +1736,7 @@
       ["contextTargetSpeedRatio", "targetSpeedRatio"],
       ["contextTargetAccel", "targetAccel"],
       ["contextTargetAngle", "targetAngle"],
+      ["contextTargetTravelMode", "targetTravelMode"],
       ["contextLauncherVisibleMs", "launcherVisibleMs"],
       ["contextTargetVisibleMs", "targetVisibleMs"],
       ["contextFractureEnabled", "fractureEnabled"],
@@ -1768,6 +1811,7 @@
       targetAccel: collision.targetAccel,
       launcherBehavior: Math.abs(collision.launcherPostSpeedRatio) <= PHYSICS_ENGINE.stopThreshold ? "stop" : "continue",
       targetAngle: 0,
+      targetTravelMode: "park",
       delayMs: 0,
       gapPx: 0,
       contactOcclusionMode: "target-front",
@@ -1785,6 +1829,7 @@
       launcherAccel: physics.launcherAccel,
       targetSpeedRatio: physics.targetSpeedRatio,
       targetAccel: physics.targetAccel,
+      targetTravelMode: physics.targetTravelMode,
       launcherBehavior: physics.launcherBehavior,
       targetAngle: physics.targetAngle,
       delayMs: physics.delayMs,
@@ -1805,6 +1850,7 @@
       launcherAccel: originalPhysics.launcherAccel,
       targetSpeedRatio: originalPhysics.targetSpeedRatio,
       targetAccel: originalPhysics.targetAccel,
+      targetTravelMode: originalPhysics.targetTravelMode,
       launcherBehavior: originalPhysics.launcherBehavior,
       targetAngle: originalPhysics.targetAngle,
       delayMs: originalPhysics.delayMs,
@@ -1816,6 +1862,7 @@
       contextLauncherAccel: contextPhysics.launcherAccel,
       contextTargetSpeedRatio: contextPhysics.targetSpeedRatio,
       contextTargetAccel: contextPhysics.targetAccel,
+      contextTargetTravelMode: contextPhysics.targetTravelMode,
       contextLauncherBehavior: contextPhysics.launcherBehavior,
       contextTargetAngle: contextPhysics.targetAngle,
       contextDelayMs: contextPhysics.delayMs,
@@ -1844,6 +1891,7 @@
       launcherAccel: originalPhysics.launcherAccel,
       targetSpeedRatio: originalPhysics.targetSpeedRatio,
       targetAccel: originalPhysics.targetAccel,
+      targetTravelMode: originalPhysics.targetTravelMode,
       launcherBehavior: originalPhysics.launcherBehavior,
       targetAngle: originalPhysics.targetAngle,
       delayMs: originalPhysics.delayMs,
@@ -1857,6 +1905,7 @@
       contextLauncherAccel: contextPhysics.launcherAccel,
       contextTargetSpeedRatio: contextPhysics.targetSpeedRatio,
       contextTargetAccel: contextPhysics.targetAccel,
+      contextTargetTravelMode: contextPhysics.targetTravelMode,
       contextLauncherBehavior: contextPhysics.launcherBehavior,
       contextTargetAngle: contextPhysics.targetAngle,
       contextDelayMs: contextPhysics.delayMs,
@@ -2204,6 +2253,7 @@
       targetSpeedRatio: state.targetSpeedRatio,
       targetAccel: state.targetAccel,
       targetAngle: state.targetAngle,
+      targetTravelMode: state.targetTravelMode,
       launcherVisibleMs: state.launcherVisibleMs,
       targetVisibleMs: state.targetVisibleMs,
       launcherFractureEnabled: isFractureTargetEnabled(state, "originalLauncher"),
@@ -2413,8 +2463,12 @@
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "O2 speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
             ${renderContextRange(pairNumber, "Movement", "targetAccel", "O2 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
-            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
-            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 25, 20000, 25)}
+            ${renderContextSelect(pairNumber, "Movement", "targetTravelMode", "O2 travel", snapshot, [
+              ["continue", "Offscreen"],
+              ["park", "Park"]
+            ])}
+            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 100, 12000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 100, 12000, 50)}
           </div>
         </div>`);
 
@@ -2521,7 +2575,12 @@
 
     snapshots[snapshotIndex] = {
       ...normalizeContextPairSnapshot(snapshots[snapshotIndex], state, snapshotIndex + 1),
-      [field]: field === "contactOcclusionMode" ? normalizeOcclusionMode(value) : value
+      [field]:
+        field === "contactOcclusionMode"
+          ? normalizeOcclusionMode(value)
+          : field === "targetTravelMode"
+            ? normalizeTargetTravelMode(value)
+            : value
     };
     controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
     activePresetKey = null;
@@ -2668,6 +2727,13 @@
       return;
     }
     ensureSelectedTrajectoryTarget(state);
+  }
+
+  function syncTextBoxControlVisibility() {
+    const enabled = Boolean(controls.textBoxEnabled.checked);
+    textBoxDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !enabled);
+    });
   }
 
   function getRailCount(state) {
@@ -3157,6 +3223,8 @@
       const normalizedValue =
         key === "contactOcclusionMode" || key === "contextContactOcclusionMode"
           ? normalizeOcclusionMode(value)
+          : key === "targetTravelMode" || key === "contextTargetTravelMode"
+            ? normalizeTargetTravelMode(value)
           : getHiddenJsonControlValue(key, value);
       if (control.type === "checkbox") {
         control.checked = Boolean(normalizedValue);
@@ -3175,6 +3243,7 @@
     syncCrosshairControlVisibility();
     syncRailControlVisibility();
     syncTrajectoryControlVisibility();
+    syncTextBoxControlVisibility();
     syncRailSegments();
     syncGroupingControlsVisibility();
     syncSpecialDragUi();
@@ -3203,6 +3272,7 @@
       contextTargetSpeedRatio: values.contextTargetSpeedRatio ?? values.targetSpeedRatio ?? stimulusDefaults.contextTargetSpeedRatio,
       contextTargetAccel: values.contextTargetAccel ?? values.targetAccel ?? stimulusDefaults.contextTargetAccel,
       contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle,
+      contextTargetTravelMode: values.contextTargetTravelMode ?? values.targetTravelMode ?? stimulusDefaults.contextTargetTravelMode,
       contextLauncherVisibleMs:
         values.contextLauncherVisibleMs ?? values.launcherVisibleMs ?? stimulusDefaults.contextLauncherVisibleMs,
       contextTargetVisibleMs: values.contextTargetVisibleMs ?? values.targetVisibleMs ?? stimulusDefaults.contextTargetVisibleMs
@@ -3713,6 +3783,17 @@
     return !Number.isFinite(limit) || localTimeMs <= limit;
   }
 
+  function isLauncherVisibleAt(eventTimeMs, visibleMs) {
+    return isObjectVisibleAt(eventTimeMs, visibleMs);
+  }
+
+  function isTargetVisibleAt(eventTimeMs, geometry, visibleMs) {
+    if (eventTimeMs < geometry.targetStartTime) {
+      return true;
+    }
+    return isObjectVisibleAt(eventTimeMs - geometry.targetStartTime, visibleMs);
+  }
+
   function normalizeHexColor(value, fallback) {
     return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   }
@@ -3821,6 +3902,21 @@
     return Math.max(0, velocity * t + 0.5 * a * t * t);
   }
 
+  function freeDisplacementAt(elapsedMs, initialVelocity, acceleration) {
+    const t = Math.max(0, elapsedMs) / 1000;
+    const velocity = Math.max(0, Number(initialVelocity) || 0);
+    const a = Number(acceleration) || 0;
+    if (Math.abs(a) < 0.001) {
+      return velocity * t;
+    }
+    if (a < 0) {
+      const stopTime = velocity > 0 ? velocity / Math.abs(a) : 0;
+      const activeTime = Math.min(t, stopTime);
+      return Math.max(0, velocity * activeTime + 0.5 * a * activeTime * activeTime);
+    }
+    return Math.max(0, velocity * t + 0.5 * a * t * t);
+  }
+
   function signedDisplacementAt(elapsedMs, initialVelocity, acceleration = 0) {
     const t = Math.max(0, elapsedMs) / 1000;
     return (Number(initialVelocity) || 0) * t + 0.5 * (Number(acceleration) || 0) * t * t;
@@ -3851,6 +3947,31 @@
     }
 
     return high;
+  }
+
+  function getParkDistanceToStageEdge(x, y, unitX, unitY, radius) {
+    const candidates = [];
+    if (unitX > 0.001) {
+      candidates.push((STAGE_WIDTH - radius - x) / unitX);
+    } else if (unitX < -0.001) {
+      candidates.push((radius - x) / unitX);
+    }
+    if (unitY > 0.001) {
+      candidates.push((STAGE_HEIGHT - radius - y) / unitY);
+    } else if (unitY < -0.001) {
+      candidates.push((radius - y) / unitY);
+    }
+    const positiveDistances = candidates.filter((distance) => Number.isFinite(distance) && distance >= 0);
+    return positiveDistances.length > 0 ? Math.max(0, Math.min(...positiveDistances)) : Infinity;
+  }
+
+  function getTargetMoveDistance(state, geometry, elapsedMs) {
+    const travelMode = normalizeTargetTravelMode(state.targetTravelMode);
+    const rawDistance =
+      travelMode === "park"
+        ? freeDisplacementAt(elapsedMs, geometry.targetSpeed, geometry.targetAccel)
+        : displacementAt(elapsedMs, geometry.targetSpeed, geometry.targetAccel);
+    return travelMode === "park" ? Math.min(rawDistance, geometry.targetParkDistance) : rawDistance;
   }
 
   function getInsideStrokeRadius(radius, lineWidth) {
@@ -4381,7 +4502,16 @@
     const customTargetUnit = rotateVector(approachUnitX, approachUnitY, angleRad);
     const targetUnitX = usesCustomStarts ? customTargetUnit.x : directionSign * Math.cos(angleRad);
     const targetUnitY = usesCustomStarts ? customTargetUnit.y : Math.sin(angleRad);
-    const targetDistance = displacementAt(remainingMs, targetSpeed, state.targetAccel);
+    const targetParkDistance = getParkDistanceToStageEdge(targetBase.x, targetBase.y, targetUnitX, targetUnitY, radius);
+    const targetDistance = getTargetMoveDistance(
+      { ...state, targetTravelMode: normalizeTargetTravelMode(state.targetTravelMode) },
+      {
+        targetSpeed,
+        targetAccel: effectiveTargetAccel,
+        targetParkDistance
+      },
+      remainingMs
+    );
     const contextDirectionSign = state.contextDirection === "same" ? 1 : -1;
 
     return {
@@ -4408,6 +4538,8 @@
       launcherPostSpeed,
       targetSpeed,
       targetAccel: effectiveTargetAccel,
+      targetTravelMode: normalizeTargetTravelMode(state.targetTravelMode),
+      targetParkDistance,
       physicsCollision,
       angleRad,
       targetDistance,
@@ -4431,7 +4563,7 @@
     let targetY = geometry.targetBaseY;
     if ((state.physicsEngineEnabled || state.launcherBehavior !== "continue") && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
-      const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, geometry.targetAccel);
+      const moveDistance = getTargetMoveDistance(state, geometry, targetElapsed);
       targetX += geometry.targetUnitX * moveDistance;
       targetY += geometry.targetUnitY * moveDistance;
     }
@@ -4479,6 +4611,7 @@
       targetSpeedRatio: state.contextTargetSpeedRatio,
       targetAccel: state.contextTargetAccel,
       targetAngle: state.contextTargetAngle,
+      targetTravelMode: state.contextTargetTravelMode,
       contactOcclusionMode: state.contextContactOcclusionMode,
       fractureEnabled: state.contextFractureEnabled,
       launcherVisibleMs: state.contextLauncherVisibleMs,
@@ -4500,7 +4633,7 @@
 
     if ((eventState.physicsEngineEnabled || eventState.launcherBehavior !== "continue") && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
-      const moveDistance = displacementAt(targetElapsed, geometry.targetSpeed, geometry.targetAccel);
+      const moveDistance = getTargetMoveDistance(eventState, geometry, targetElapsed);
       targetX += geometry.targetUnitX * moveDistance;
       targetY += geometry.targetUnitY * moveDistance;
     }
@@ -4585,6 +4718,7 @@
       targetSpeedRatio: Number(snapshot.targetSpeedRatio) || baseState.targetSpeedRatio,
       targetAccel: Number(snapshot.targetAccel) || 0,
       targetAngle: Number(snapshot.targetAngle) || 0,
+      targetTravelMode: normalizeTargetTravelMode(snapshot.targetTravelMode || baseState.targetTravelMode),
       launcherFractureEnabled: Boolean(snapshot.launcherFractureEnabled),
       targetFractureEnabled: Boolean(snapshot.targetFractureEnabled ?? snapshot.fractureEnabled),
       fractureEnabled: Boolean(snapshot.fractureEnabled),
@@ -4903,7 +5037,7 @@
         tunnelLaneYs
       );
       if (
-        isObjectVisibleAt(t, eventState.launcherVisibleMs) &&
+        isLauncherVisibleAt(t, eventState.launcherVisibleMs) &&
         (!eventState.occluderEnabled || isObjectOutsideOccluder(singleEvent.singleX, radius, contextOccluderBounds))
       ) {
         drawRenderedObject(
@@ -4929,7 +5063,7 @@
       y: contextEvent.launcherY,
       fill: colors.launcher.fill,
       outline: colors.launcher.outline,
-      visible: isObjectVisibleAt(t, eventState.launcherVisibleMs),
+      visible: isLauncherVisibleAt(t, eventState.launcherVisibleMs),
       cracked: shouldDrawFracture(state, contextEvent, `${pairKey}Launcher`)
     };
     const target = {
@@ -4937,7 +5071,7 @@
       y: contextEvent.targetY,
       fill: colors.target.fill,
       outline: colors.target.outline,
-      visible: isObjectVisibleAt(t, eventState.targetVisibleMs),
+      visible: isTargetVisibleAt(t, contextEvent.geometry, eventState.targetVisibleMs),
       cracked: shouldDrawFracture(state, contextEvent, `${pairKey}Target`)
     };
     const contextOccluderBounds = drawTunnelOccluder(
@@ -5150,7 +5284,7 @@
       y: eventState.launcherY,
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
-      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs),
+      visible: isLauncherVisibleAt(eventState.time, state.launcherVisibleMs),
       cracked: shouldDrawFracture(state, eventState, "originalLauncher")
     };
     const target = {
@@ -5158,7 +5292,7 @@
       y: eventState.targetY,
       fill: palette.target.fill,
       outline: palette.target.outline,
-      visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs),
+      visible: isTargetVisibleAt(eventState.time, eventState.geometry, state.targetVisibleMs),
       cracked: shouldDrawFracture(state, eventState, "originalTarget")
     };
     drawObjectPair(drawCtx, state, eventState, launcher, target, radius, state.contactOcclusionMode);
@@ -5172,7 +5306,7 @@
       y: eventState.launcherY,
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
-      visible: isObjectVisibleAt(eventState.time, state.launcherVisibleMs),
+      visible: isLauncherVisibleAt(eventState.time, state.launcherVisibleMs),
       cracked: shouldDrawFracture(state, eventState, "originalLauncher")
     };
     const target = {
@@ -5180,7 +5314,7 @@
       y: eventState.targetY,
       fill: palette.target.fill,
       outline: palette.target.outline,
-      visible: isObjectVisibleAt(eventState.time, state.targetVisibleMs),
+      visible: isTargetVisibleAt(eventState.time, eventState.geometry, state.targetVisibleMs),
       cracked: shouldDrawFracture(state, eventState, "originalTarget")
     };
     drawOccludedObjectPair(drawCtx, state, launcher, target, radius, occluderBounds);
@@ -5259,6 +5393,40 @@
     drawCtx.restore();
   }
 
+  function drawTextBoxFeature(drawCtx, state) {
+    if (!state.textBoxEnabled) {
+      return;
+    }
+    const text = String(state.textBoxText || "").trim();
+    if (!text) {
+      return;
+    }
+    const fontSize = clamp(Number(state.textBoxSize) || 24, 10, 64);
+    const x = clamp(Number(state.textBoxX) || 0, 0, STAGE_WIDTH);
+    const y = clamp(Number(state.textBoxY) || 0, 0, STAGE_HEIGHT);
+    const color = normalizeHexColor(state.textBoxColor, "#fffaf0");
+
+    drawCtx.save();
+    drawCtx.font = `700 ${fontSize}px Helvetica Neue, Helvetica, Arial, sans-serif`;
+    drawCtx.textBaseline = "alphabetic";
+    const metrics = drawCtx.measureText(text);
+    const paddingX = Math.max(8, fontSize * 0.4);
+    const paddingY = Math.max(5, fontSize * 0.25);
+    const boxWidth = metrics.width + paddingX * 2;
+    const boxHeight = fontSize + paddingY * 2;
+    const boxX = clamp(x, 0, Math.max(0, STAGE_WIDTH - boxWidth));
+    const boxY = clamp(y - boxHeight, 0, Math.max(0, STAGE_HEIGHT - boxHeight));
+
+    drawCtx.fillStyle = state.stageTheme === "light" ? "rgba(255, 250, 240, 0.72)" : "rgba(17, 21, 20, 0.68)";
+    drawCtx.strokeStyle = hexToRgba(color, 0.92, color);
+    drawCtx.lineWidth = 1.5;
+    drawCtx.fillRect(boxX, boxY, boxWidth, boxHeight);
+    drawCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    drawCtx.fillStyle = color;
+    drawCtx.fillText(text, boxX + paddingX, boxY + boxHeight - paddingY - fontSize * 0.14);
+    drawCtx.restore();
+  }
+
   function isCrosshairBlinkWindow(state, t) {
     return getPreBallBlinkMs(state) > 0 && t < getPreBallBlinkMs(state);
   }
@@ -5311,6 +5479,7 @@
 
     drawFixation(drawCtx, state);
     drawCrosshairFeature(drawCtx, state, 1);
+    drawTextBoxFeature(drawCtx, state);
 
     if (drawCtx === ctx) {
       drawTrajectoryGuides(drawCtx, state);
@@ -5335,7 +5504,9 @@
   }
 
   function drawIdlePreview(state = cloneState()) {
-    drawFrame(state, getIdlePreviewTime(state), ctx);
+    const idleTime = getIdlePreviewTime(state);
+    drawFrame(state, idleTime, ctx);
+    updatePreviewTimer(idleTime, state);
   }
 
   function getStagePoint(event) {
@@ -6019,7 +6190,12 @@
       cancelAnimationFrame(previewHandle);
       previewHandle = null;
     }
+    if (previewFallbackTimer !== null) {
+      window.clearTimeout(previewFallbackTimer);
+      previewFallbackTimer = null;
+    }
     previewStart = 0;
+    updatePreviewTimer(0, cloneState());
     if (impactSoundTimer !== null) {
       window.clearTimeout(impactSoundTimer);
       impactSoundTimer = null;
@@ -6035,19 +6211,56 @@
     return Math.min(Math.floor(elapsed / frameDuration) * frameDuration, state.durationMs);
   }
 
+  function formatPreviewTime(ms) {
+    return `${(Math.max(0, ms) / 1000).toFixed(2)} s`;
+  }
+
+  function updatePreviewTimer(elapsedMs, state) {
+    if (!previewTimerBadge) {
+      return;
+    }
+    const clampedElapsed = clamp(elapsedMs, 0, state.durationMs);
+    previewTimerBadge.textContent = `${formatPreviewTime(clampedElapsed)} / ${formatPreviewTime(state.durationMs)}`;
+  }
+
   function tickPreview(now) {
     const state = cloneState();
     if (previewStart === 0) {
       previewStart = now;
     }
     const elapsed = now - previewStart;
-    drawFrame(state, getPreviewFrameTime(elapsed, state), ctx);
+    const frameTime = getPreviewFrameTime(elapsed, state);
+    drawFrame(state, frameTime, ctx);
+    updatePreviewTimer(frameTime, state);
 
     if (elapsed < state.durationMs) {
       previewHandle = requestAnimationFrame(tickPreview);
+      if (previewFallbackTimer !== null) {
+        window.clearTimeout(previewFallbackTimer);
+        previewFallbackTimer = null;
+      }
     } else {
       previewHandle = null;
       previewStart = 0;
+      if (previewFallbackTimer !== null) {
+        window.clearTimeout(previewFallbackTimer);
+        previewFallbackTimer = null;
+      }
+      updatePreviewTimer(state.durationMs, state);
+    }
+  }
+
+  function tickPreviewFallback() {
+    if (previewHandle === null || previewStart === 0) {
+      return;
+    }
+    const state = cloneState();
+    const elapsed = performance.now() - previewStart;
+    const frameTime = getPreviewFrameTime(elapsed, state);
+    drawFrame(state, frameTime, ctx);
+    updatePreviewTimer(frameTime, state);
+    if (elapsed < state.durationMs) {
+      previewFallbackTimer = window.setTimeout(tickPreviewFallback, Math.max(16, 1000 / Math.max(1, state.fps || 60)));
     }
   }
 
@@ -6070,6 +6283,12 @@
     }
     previewStart = 0;
     previewHandle = requestAnimationFrame(tickPreview);
+    previewFallbackTimer = window.setTimeout(() => {
+      if (previewHandle !== null && previewStart === 0) {
+        previewStart = performance.now();
+      }
+      tickPreviewFallback();
+    }, 120);
   }
 
   function sanitizeLabel(label) {
@@ -6659,6 +6878,7 @@
       physicsMassModel: state.physicsEngineEnabled ? `equal-density visible discs, mass proportional to radius^${PHYSICS_ENGINE.massPower}` : "",
       physicsRestitution: state.physicsEngineEnabled ? PHYSICS_ENGINE.restitution : "",
       targetAngleDegrees: state.targetAngle,
+      targetTravelMode: state.targetTravelMode,
       launcherVisibleMs: state.launcherVisibleMs,
       targetVisibleMs: state.targetVisibleMs,
       contactDelayMs: state.delayMs,
@@ -6882,6 +7102,7 @@
       physicsEngineEnabled: readConditionParameter(parameters, "physicsEngineEnabled", baseState.physicsEngineEnabled),
       launcherBehavior: readConditionParameter(parameters, "launcherBehavior", baseState.launcherBehavior),
       targetAngle: readConditionParameter(parameters, "targetAngleDegrees", baseState.targetAngle),
+      targetTravelMode: readConditionParameter(parameters, "targetTravelMode", baseState.targetTravelMode),
       launcherVisibleMs: readConditionParameter(parameters, "launcherVisibleMs", baseState.launcherVisibleMs),
       targetVisibleMs: readConditionParameter(parameters, "targetVisibleMs", baseState.targetVisibleMs),
       delayMs: readConditionParameter(parameters, "contactDelayMs", baseState.delayMs),
@@ -7096,6 +7317,7 @@
       physicsMassModel: condition.parameters.physicsMassModel,
       physicsRestitution: condition.parameters.physicsRestitution,
       targetAngleDegrees: condition.parameters.targetAngleDegrees,
+      targetTravelMode: condition.parameters.targetTravelMode,
       launcherVisibleMs: condition.parameters.launcherVisibleMs,
       targetVisibleMs: condition.parameters.targetVisibleMs,
       contactDelayMs: condition.parameters.contactDelayMs,
@@ -7288,6 +7510,7 @@
         physicsRestitution: condition.physicsEngineEnabled ? PHYSICS_ENGINE.restitution : "",
         launcherBehavior: condition.launcherBehavior,
         targetAngleDegrees: condition.targetAngle,
+        targetTravelMode: condition.targetTravelMode,
         launcherVisibleMs: condition.launcherVisibleMs,
         targetVisibleMs: condition.targetVisibleMs,
         contactDelayMs: condition.delayMs,
@@ -8292,6 +8515,17 @@
         });
         return;
       }
+      if (id === "textBoxEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          syncTextBoxControlVisibility();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = control.checked ? "Text box on." : READY_STATUS;
+          drawIdlePreview();
+        });
+        return;
+      }
       if (id === "selectedTrajectoryAngle") {
         control.addEventListener("input", () => {
           activePresetKey = null;
@@ -8365,6 +8599,11 @@
           "contactGuideMode",
           "crosshairBlinkMs",
           "crosshairColor",
+          "textBoxText",
+          "textBoxColor",
+          "textBoxSize",
+          "textBoxX",
+          "textBoxY",
           "colorChangeMode",
           "colorChangeColor",
           "launcherColor",
