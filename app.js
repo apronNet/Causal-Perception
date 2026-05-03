@@ -932,10 +932,10 @@
   const stimulusDefaults = {
     launcherAccel: 0,
     targetAccel: 0,
-    launcherVisibleMs: 9000,
-    targetVisibleMs: 9000,
+    launcherVisibleMs: controlDefaults.durationMs,
+    targetVisibleMs: controlDefaults.durationMs,
     targetTravelMode: "continue",
-    targetTravelMs: 9000,
+    targetTravelMs: controlDefaults.durationMs,
     contextPairCount: 1,
     contextPairSnapshots: "[]",
     contextDurationMs: 750,
@@ -953,9 +953,9 @@
     contextTargetAccel: 0,
     contextTargetAngle: controlDefaults.targetAngle,
     contextTargetTravelMode: "continue",
-    contextTargetTravelMs: 9000,
-    contextLauncherVisibleMs: 9000,
-    contextTargetVisibleMs: 9000,
+    contextTargetTravelMs: controlDefaults.durationMs,
+    contextLauncherVisibleMs: controlDefaults.durationMs,
+    contextTargetVisibleMs: controlDefaults.durationMs,
     contactOcclusionMode: "target-front",
     trajectoryEditEnabled: false,
     selectedTrajectoryBall: "originalTarget",
@@ -1619,8 +1619,47 @@
     unitBadge.textContent = ` ${unit}`;
   }
 
+  function getRangeSoftMax(range) {
+    return Number(range?.dataset?.softMax || range?.max || 0);
+  }
+
+  function getRangeHardMax(range) {
+    return Number(range?.dataset?.hardMax || range?.max || 0);
+  }
+
+  function syncRangeScaleForValue(range, rawValue) {
+    if (!range || range.type !== "range" || !range.dataset.hardMax) {
+      return;
+    }
+    if (!range.dataset.softMax) {
+      range.dataset.softMax = range.max;
+    }
+    const value = Number(rawValue);
+    const softMax = getRangeSoftMax(range);
+    const hardMax = getRangeHardMax(range);
+    if (!Number.isFinite(value) || !Number.isFinite(softMax) || !Number.isFinite(hardMax)) {
+      return;
+    }
+    range.max = String(value > softMax ? Math.min(value, hardMax) : softMax);
+  }
+
+  function setRangeValue(range, rawValue) {
+    if (!range || range.type !== "range") {
+      return;
+    }
+    const minimum = Number(range.min);
+    const maximum = getRangeHardMax(range) || Number(range.max);
+    const nextValue = clamp(Number(rawValue), Number.isFinite(minimum) ? minimum : 0, maximum);
+    syncRangeScaleForValue(range, nextValue);
+    range.value = String(nextValue);
+  }
+
   function enhanceRangePrecision() {
     document.querySelectorAll('input[type="range"]').forEach((range) => {
+      if (range.dataset.hardMax && !range.dataset.softMax) {
+        range.dataset.softMax = range.max;
+      }
+      syncRangeScaleForValue(range, range.value);
       syncFieldUnitLabel(range);
       if (range.dataset.precisionEnhanced === "true") {
         return;
@@ -1632,7 +1671,7 @@
       fineInput.id = `${range.id}Fine`;
       fineInput.value = range.value;
       fineInput.min = range.min;
-      fineInput.max = range.max;
+      fineInput.max = range.dataset.hardMax || range.max;
       fineInput.step = range.step || "1";
       fineInput.inputMode = "decimal";
       fineInput.setAttribute("aria-label", `${labelText} exact value`);
@@ -1647,11 +1686,12 @@
       range.dataset.fineControlId = fineInput.id;
 
       range.addEventListener("input", () => {
+        syncRangeScaleForValue(range, range.value);
         fineInput.value = range.value;
       });
       fineInput.addEventListener("input", () => {
         const nextValue = fineInput.value === "" ? range.min : fineInput.value;
-        range.value = clamp(Number(nextValue), Number(range.min), Number(range.max));
+        setRangeValue(range, nextValue);
         range.dispatchEvent(new Event("input", { bubbles: true }));
       });
       fineInput.addEventListener("change", () => {
@@ -1783,6 +1823,9 @@
     }
     if (control.type === "checkbox") {
       control.checked = Boolean(value);
+    } else if (control.type === "range") {
+      setRangeValue(control, value);
+      syncChoiceControlButtons(control.id, String(control.value));
     } else {
       control.value = value;
       syncChoiceControlButtons(control.id, String(control.value));
@@ -2080,14 +2123,14 @@
       : getGeometry(state, laneY, { scope: "original", directionSign: 1 });
     const stimulusStartMs = Math.max(0, (isContext ? state.contextOffsetMs : 0) + geometry.targetStartTime);
     const requiredDurationMs = getPreBallBlinkMs(state) + stimulusStartMs + travelMs + getTravelDurationPadMs();
-    const maxDurationMs = Math.max(0, Number(controls.durationMs.max) || state.durationMs);
+    const maxDurationMs = Math.max(0, getRangeHardMax(controls.durationMs) || state.durationMs);
     const nextDurationMs = Math.min(maxDurationMs, Math.ceil(requiredDurationMs / 50) * 50);
 
     if (Number(controls.durationMs.value) >= nextDurationMs) {
       return "";
     }
 
-    controls.durationMs.value = nextDurationMs;
+    setRangeValue(controls.durationMs, nextDurationMs);
     return nextDurationMs >= maxDurationMs && requiredDurationMs > maxDurationMs
       ? "Video duration is at its maximum; O2 will move until the clip ends."
       : "Video duration extended so O2 can use the travel time.";
@@ -2173,7 +2216,7 @@
     }
     const requiredDuration = getBlinkClassicLaunchDurationMs();
     if (Number(controls.durationMs.value) < requiredDuration) {
-      controls.durationMs.value = requiredDuration;
+      setRangeValue(controls.durationMs, requiredDuration);
     }
   }
 
@@ -2571,7 +2614,17 @@
   function renderContextRange(pairNumber, group, field, label, snapshot, format, min, max, step, extra = "") {
     const id = contextPairFieldId(pairNumber, group, field);
     const value = snapshot[field];
-    return `<label class="${getContextPairFieldClass(group, field)}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" data-format="${format}" ${extra} min="${min}" max="${max}" step="${step}" type="range" value="${value}" /><output data-for="${id}"></output></label>`;
+    const hardMaxFields = ["targetTravelMs", "launcherVisibleMs", "targetVisibleMs"];
+    const hardMaxAttribute = hardMaxFields.includes(field) ? ` data-hard-max="${max}"` : "";
+    const softMax = Math.min(max, 6000);
+    const numericValue = Number(value);
+    const sliderMax =
+      hardMaxFields.includes(field) && Number.isFinite(numericValue) && numericValue > softMax
+        ? Math.min(max, numericValue)
+        : hardMaxFields.includes(field)
+          ? softMax
+          : max;
+    return `<label class="${getContextPairFieldClass(group, field)}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" data-format="${format}" ${extra} min="${min}" max="${sliderMax}"${hardMaxAttribute} step="${step}" type="range" value="${value}" /><output data-for="${id}"></output></label>`;
   }
 
   function renderContextSelect(pairNumber, group, field, label, snapshot, options) {
@@ -3438,6 +3491,8 @@
           : getHiddenJsonControlValue(key, value);
       if (control.type === "checkbox") {
         control.checked = Boolean(normalizedValue);
+      } else if (control.type === "range") {
+        setRangeValue(control, normalizedValue);
       } else {
         control.value = normalizedValue;
       }
@@ -3467,8 +3522,15 @@
 
   // Presets can omit context-specific fields; this keeps Context 1 symmetric with the original pair.
   function withContextMotionDefaults(values) {
+    const durationMs = values.durationMs ?? controlDefaults.durationMs;
+    const targetTravelMs = values.targetTravelMs ?? durationMs;
+    const launcherVisibleMs = values.launcherVisibleMs ?? durationMs;
+    const targetVisibleMs = values.targetVisibleMs ?? durationMs;
     return {
       ...values,
+      targetTravelMs,
+      launcherVisibleMs,
+      targetVisibleMs,
       contextLeadInMs: values.contextLeadInMs ?? values.leadInMs ?? stimulusDefaults.contextLeadInMs,
       contextBallRadius: values.contextBallRadius ?? values.ballRadius ?? stimulusDefaults.contextBallRadius,
       contextLauncherSpeed: values.contextLauncherSpeed ?? values.launcherSpeed ?? stimulusDefaults.contextLauncherSpeed,
@@ -3484,10 +3546,9 @@
       contextTargetAccel: values.contextTargetAccel ?? values.targetAccel ?? stimulusDefaults.contextTargetAccel,
       contextTargetAngle: values.contextTargetAngle ?? values.targetAngle ?? stimulusDefaults.contextTargetAngle,
       contextTargetTravelMode: values.contextTargetTravelMode ?? values.targetTravelMode ?? stimulusDefaults.contextTargetTravelMode,
-      contextTargetTravelMs: values.contextTargetTravelMs ?? values.targetTravelMs ?? stimulusDefaults.contextTargetTravelMs,
-      contextLauncherVisibleMs:
-        values.contextLauncherVisibleMs ?? values.launcherVisibleMs ?? stimulusDefaults.contextLauncherVisibleMs,
-      contextTargetVisibleMs: values.contextTargetVisibleMs ?? values.targetVisibleMs ?? stimulusDefaults.contextTargetVisibleMs
+      contextTargetTravelMs: values.contextTargetTravelMs ?? targetTravelMs,
+      contextLauncherVisibleMs: values.contextLauncherVisibleMs ?? launcherVisibleMs,
+      contextTargetVisibleMs: values.contextTargetVisibleMs ?? targetVisibleMs
     };
   }
 

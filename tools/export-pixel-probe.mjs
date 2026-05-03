@@ -108,6 +108,14 @@ const browserProbe = String.raw`
     if (control.type === "checkbox") {
       control.checked = Boolean(value);
     } else {
+      if (control.type === "range" && control.dataset.hardMax) {
+        const number = Number(value);
+        const softMax = Number(control.dataset.softMax || control.max);
+        const hardMax = Number(control.dataset.hardMax);
+        if (Number.isFinite(number) && Number.isFinite(softMax) && Number.isFinite(hardMax)) {
+          control.max = String(number > softMax ? Math.min(number, hardMax) : softMax);
+        }
+      }
       control.value = String(value);
     }
     control.dispatchEvent(new Event("input", { bubbles: true }));
@@ -321,17 +329,28 @@ const browserProbe = String.raw`
     setChoice("renderMode", "stimulus");
     setChoice("stageTheme", "dark");
     setChoice("objectStyle", "flat");
-    setControl("launcherVisibleMs", 9000);
-    setControl("targetVisibleMs", 9000);
-    setControl("targetTravelMs", 9000);
+    setControl("launcherVisibleMs", 1200);
+    setControl("targetVisibleMs", 1200);
+    setControl("targetTravelMs", 1200);
   };
 
   const rangeCaps = {
-    durationMaxMs: Number(document.getElementById("durationMs").max),
-    targetTravelMaxMs: Number(document.getElementById("targetTravelMs").max),
-    targetVisibleMaxMs: Number(document.getElementById("targetVisibleMs").max),
-    contextTargetTravelMaxMs: Number(document.getElementById("contextTargetTravelMs").max),
-    contextTargetVisibleMaxMs: Number(document.getElementById("contextTargetVisibleMs").max)
+    durationSliderMaxMs: Number(document.getElementById("durationMs").max),
+    durationMaxMs: Number(document.getElementById("durationMs").dataset.hardMax || document.getElementById("durationMs").max),
+    targetTravelSliderMaxMs: Number(document.getElementById("targetTravelMs").max),
+    targetTravelMaxMs: Number(document.getElementById("targetTravelMs").dataset.hardMax || document.getElementById("targetTravelMs").max),
+    targetVisibleSliderMaxMs: Number(document.getElementById("targetVisibleMs").max),
+    targetVisibleMaxMs: Number(document.getElementById("targetVisibleMs").dataset.hardMax || document.getElementById("targetVisibleMs").max),
+    contextTargetTravelSliderMaxMs: Number(document.getElementById("contextTargetTravelMs").max),
+    contextTargetTravelMaxMs: Number(
+      document.getElementById("contextTargetTravelMs").dataset.hardMax ||
+        document.getElementById("contextTargetTravelMs").max
+    ),
+    contextTargetVisibleSliderMaxMs: Number(document.getElementById("contextTargetVisibleMs").max),
+    contextTargetVisibleMaxMs: Number(
+      document.getElementById("contextTargetVisibleMs").dataset.hardMax ||
+        document.getElementById("contextTargetVisibleMs").max
+    )
   };
 
   commonControls();

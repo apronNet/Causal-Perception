@@ -164,17 +164,17 @@
                   <label class="field">
                     <span>Travel after collision</span>
                     <input id="targetTravelMode" type="hidden" value="continue" />
-                    <input id="targetTravelMs" data-format="ms" min="0" max="60000" step="50" type="range" />
+                    <input id="targetTravelMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="targetTravelMs"></output>
                   </label>
                   <label class="field">
                     <span>O1 on-screen</span>
-                    <input id="launcherVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
+                    <input id="launcherVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="launcherVisibleMs"></output>
                   </label>
                   <label class="field">
                     <span>O2 on-screen</span>
-                    <input id="targetVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
+                    <input id="targetVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="targetVisibleMs"></output>
                   </label>
                 </div>
@@ -237,17 +237,17 @@
                   <label class="field context-pair-only-control">
                     <span>Travel after collision</span>
                     <input id="contextTargetTravelMode" type="hidden" value="continue" />
-                    <input id="contextTargetTravelMs" data-format="ms" min="0" max="60000" step="50" type="range" />
+                    <input id="contextTargetTravelMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="contextTargetTravelMs"></output>
                   </label>
                   <label class="field">
                     <span>O1 on-screen</span>
-                    <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
+                    <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="contextLauncherVisibleMs"></output>
                   </label>
                   <label class="field context-pair-only-control">
                     <span>O2 on-screen</span>
-                    <input id="contextTargetVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
+                    <input id="contextTargetVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="contextTargetVisibleMs"></output>
                   </label>
                 </div>
@@ -655,7 +655,7 @@
             <div class="control-grid">
               <label class="field">
                 <span>Video duration</span>
-                <input id="durationMs" data-format="int" min="200" max="60000" step="50" type="range" />
+                <input id="durationMs" data-format="int" min="200" max="6000" data-hard-max="60000" step="50" type="range" />
                 <output data-for="durationMs"></output>
               </label>
               <label class="field">
@@ -773,9 +773,9 @@
               <span><b>O2 angle</b><em id="summaryTargetAngle">0 deg</em></span>
               <span><b>Radius</b><em id="summaryRadius">28 px</em></span>
               <span><b>After contact</b><em id="summaryAfter">stops</em></span>
-              <span><b>O2 travel</b><em id="summaryTargetTravel">9000 ms</em></span>
-              <span><b>O1 visible</b><em id="summaryLauncherVisible">9000 ms</em></span>
-              <span><b>O2 visible</b><em id="summaryTargetVisible">9000 ms</em></span>
+              <span><b>O2 travel</b><em id="summaryTargetTravel">1200 ms</em></span>
+              <span><b>O1 visible</b><em id="summaryLauncherVisible">1200 ms</em></span>
+              <span><b>O2 visible</b><em id="summaryTargetVisible">1200 ms</em></span>
               <span><b>Context</b><em id="summaryContext">none</em></span>
               <span><b>Context duration</b><em id="summaryContextWindow">off</em></span>
               <span><b>Context offset</b><em id="summaryContextOffset">0 ms</em></span>
@@ -836,6 +836,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-fork-guide"></script>
+    <script src="app.js?v=20260503-slider-scale"></script>
   </body>
 </html>
