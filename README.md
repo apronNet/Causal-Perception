@@ -4,7 +4,7 @@
 
 No installation is needed. The app runs in the browser and exports participant-ready launching videos for causal perception experiments.
 
-The default case is the canonical Michotte launch: O1 contacts O2 with no gap, O1 stops, and O2 immediately moves in the same direction at matched speed. Added context pairs copy that same clear-launch relation when they are created.
+The default case is the canonical Michotte launch: O1 contacts O2 with no gap, O1 stops, and O2 immediately moves in the same direction at about 0.29 of O1 speed. Added context pairs copy that same clear-launch relation when they are created.
 
 ## Basic Workflow
 
@@ -80,14 +80,14 @@ my_experiment/
   conditions/
     launch_trials.csv
   stimuli/
-    sn-0-overlap-launch-v876pxs-delay0ms-contact-ratio100pct.mp4
+    sn-0-overlap-launch-v876pxs-delay0ms-contact-ratio29pct.mp4
 ```
 
 Example CSV idea:
 
 ```csv
 movieFile,conditionLabel,intendedDurationSec,forceEndRoutine
-stimuli/sn-0-overlap-launch-v876pxs-delay0ms-contact-ratio100pct.mp4,clear_launch,1.8,true
+stimuli/sn-0-overlap-launch-v876pxs-delay0ms-contact-ratio29pct.mp4,clear_launch,1.8,true
 ```
 
 In Builder, use:

@@ -388,7 +388,7 @@
     canonical: {
       label: "Clear launch (0% overlap)",
       summary:
-        "Canonical Michotte launch: contact, no delay, O1 stops, and O2 leaves at matched speed.",
+        "Canonical Michotte launch: contact, no delay, O1 stops, and O2 leaves at about 0.29 of O1 speed.",
       note:
         "Use this as the clear-launch comparison. Slower, delayed, displaced, or gapped cases should be treated as manipulations.",
       literature:
@@ -397,7 +397,7 @@
         durationMs: 1200,
         leadInMs: 200,
         launcherSpeed: 876,
-        targetSpeedRatio: 1,
+        targetSpeedRatio: 0.294,
         launcherBehavior: "stop",
         targetAngle: 0,
         delayMs: 0,
