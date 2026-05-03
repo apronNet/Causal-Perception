@@ -26,7 +26,7 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 **Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, travel time after collision, and what O1 does after contact. Travel time controls how long O2 keeps moving after contact; O2 on-screen time controls when O2 disappears.
 
-**Position** controls contact geometry. `Overlap / gap = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap. Tunnel occluders can hide the contact region.
+**Position** controls contact geometry. `Overlap / gap = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap. Tunnel occluders can hide the contact region. **Move start points** and **Individual trajectories** let you edit object positions and vector directions in the preview.
 
 **Context** adds extra object pairs. New context pairs copy the original pair when they are added; later changes to the original pair do not automatically change those copied pairs.
 
@@ -41,17 +41,16 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 ![Special feature guide](docs/screenshots/special-features-guide.svg)
 ![Billiard guide](docs/screenshots/billiard-guide.svg)
 
-- **Crosshair** adds a draggable fixation-like crosshair to the stimulus.
+- **Crosshair** adds a movable fixation-like crosshair to the stimulus.
 - **Blink before launch** shows only the crosshair before the balls appear. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
-- **Rail** adds one or more draggable line segments. Use this for alignment or path-cue manipulations.
-- **Individual trajectories** shows draggable vector arrows in the preview. Drag the arrow head to set that ball's trajectory. The angle slider remains available for exact entry.
+- **Rail** adds one or more movable line segments. Use this for alignment or path-cue manipulations.
 - **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
-- **Billiard** uses ball size to estimate mass, solves a simple collision, then lets balls slow and bank off the field edges. Table drag controls whether a ball reaches a rail; weak shots stop before the wall. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
+- **Billiard** uses ball size to estimate mass, solves a simple collision, then lets balls slow and bank off the field edges. Table friction controls whether a ball reaches a rail; weak shots stop before the wall. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
 - **Impact sound** adds a contact sound. If sound is not a condition, leave it off.
 
 ## Perceptual Grouping
 
-Perceptual grouping is in **Special features** because the boxes are visible cues. The grouping toggle automatically boxes the original pair and Context 1 when context is shown. If you need a custom region, click **Add rectangle** and drag its border or corners in the preview.
+Perceptual grouping is in **Special features** because the boxes are visible cues. The grouping toggle automatically boxes the original pair and Context 1 when context is shown. If you need a custom region, click **Add rectangle** and move its border or resize from a corner in the preview.
 
 ![Perceptual grouping guide](docs/screenshots/perceptual-grouping-guide.svg)
 

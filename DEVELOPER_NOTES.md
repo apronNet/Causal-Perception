@@ -55,7 +55,7 @@ Main-event motion is computed by `getMainEventState()`. Context-event motion is 
 
 `targetTravelMs` controls how long O2 keeps moving after collision. `targetVisibleMs` is separate: it controls whether O2 disappears while still on screen.
 
-Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table drag, and reflects balls off stage bounds. If table drag stops a ball before the next wall, the ball stops there; do not force a wall contact.
+Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table friction, and reflects balls off stage bounds. If table friction stops a ball before the next wall, the ball stops there; do not force a wall contact.
 
 ## PsychoPy Export
 

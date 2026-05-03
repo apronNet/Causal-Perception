@@ -291,7 +291,7 @@ h3 {
 
 .position-header-controls {
   display: grid;
-  grid-template-columns: minmax(130px, 0.85fr) repeat(2, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, minmax(128px, 0.85fr)) repeat(2, minmax(130px, 1fr));
   gap: 5px;
   align-items: center;
 }
@@ -406,7 +406,7 @@ h3 {
   display: none;
 }
 
-/* app.js toggles these when context, drag, rail, crosshair, trajectory, or tunnel controls are inactive. */
+/* app.js toggles these when context, canvas editing, rail, crosshair, trajectory, or tunnel controls are inactive. */
 .context-dependent-control.is-retracted,
 .original-pair-context-label.is-retracted,
 .custom-start-dependent-control.is-retracted,
@@ -1078,7 +1078,7 @@ canvas {
   -webkit-touch-callout: none;
 }
 
-/* app.js owns these cursor states during drag-position, rail/crosshair, and trajectory editing. */
+/* app.js owns these cursor states during start-point, rail/crosshair, and trajectory editing. */
 canvas.start-drag-enabled {
   cursor: grab;
 }

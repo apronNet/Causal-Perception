@@ -324,23 +324,23 @@
     groupingMode:
       "Changes: internal grouping state kept for saved presets. New UI uses a simple on/off grouping toggle.",
     manualGroupingRects:
-      "Changes: extra grouping rectangles drawn in preview and export. Use Add rectangle, then drag borders or corners in the preview.",
+      "Changes: extra grouping rectangles drawn in preview and export. Use Add rectangle, then move borders or resize from corners in the preview.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     physicsEngineEnabled:
       "Changes: turns Billiard on. It uses ball size to estimate mass, solves a simple collision, and then lets balls slow and bounce off table rails.",
     billiardFriction:
-      "Changes: table drag after impact. Higher values make balls lose speed sooner, so weak shots stop before reaching a rail.",
+      "Changes: table friction after impact. Higher values make balls lose speed sooner, so weak shots stop before reaching a rail.",
     billiardRestitution: "Changes: ball-to-ball bounce. Higher values keep more speed after impact.",
     billiardWallRestitution: "Changes: rail bounce. Higher values keep more speed after a wall bounce.",
     billiardStopSpeed: "Changes: the speed below which billiard balls are treated as stopped.",
     fractureEnabled:
       "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
     contextFractureEnabled: "Legacy Context 1 O2 fracture value, kept for older presets and exported records.",
-    crosshairEnabled: "Changes: adds a draggable crosshair to the stimulus. Drag the crosshair center in the preview.",
+    crosshairEnabled: "Changes: adds a movable crosshair to the stimulus. Move the crosshair center in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
-    railEnabled: "Changes: adds one or more draggable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
+    railEnabled: "Changes: adds one or more movable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
     railCount:
-      "Changes: number of rail lines drawn. Extra rails start parallel to Rail 1 and can then be dragged independently in the preview.",
+      "Changes: number of rail lines drawn. Extra rails start parallel to Rail 1 and can then be moved independently in the preview.",
     railLength:
       "Changes: rail length in pixels. Use for: making rails shorter or longer while preserving each rail's center and angle.",
     crosshairBlinkEnabled:
@@ -348,17 +348,17 @@
     crosshairBlinkMs:
       "Changes: duration of the pre-ball crosshair blink. If this is long, increase Video duration so the launch still has time to play after the blink.",
     trajectoryEditEnabled:
-      "Changes: shows draggable vector arrows in the preview. Drag an arrow head to set that ball's trajectory; use Angle for exact numeric entry.",
+      "Changes: shows editable vector arrows in the preview. Move an arrow head to set that ball's trajectory; use Angle for exact numeric entry.",
     selectedTrajectoryAngle:
-      "Changes: angle of the selected trajectory vector. Dragging a preview arrow updates this value; 0 follows the default path.",
+      "Changes: angle of the selected trajectory vector. Moving a preview arrow updates this value; 0 follows the default path.",
     textBoxEnabled: "Changes: adds a simple text label to preview and export.",
     textBoxText: "Changes: the text drawn in the stimulus field.",
     textBoxColor: "Changes: text and box line color.",
     textBoxSize: "Changes: text size in pixels.",
     textBoxX: "Changes: horizontal position of the text box.",
     textBoxY: "Changes: vertical position of the text box.",
-    customStartEnabled: "Changes: enables drag editing in the preview. Use for: placing O1 and O2 start positions manually; exports use the positions but hide the rings.",
-    customStartKeepRowsHorizontal: "Changes: keeps each event row level while dragging. Use for: O1 and O2 share one y-position within each pair.",
+    customStartEnabled: "Changes: enables start-point editing in the preview. Use for: placing O1 and O2 start positions manually; exports use the positions but hide the rings.",
+    customStartKeepRowsHorizontal: "Changes: keeps each event row level while moving start points. Use for: O1 and O2 share one y-position within each pair.",
     customStartAlignStartsVertical: "Changes: keeps O1 starts on one vertical line when context is shown.",
     colorChangeMode: "Changes: whether a ball changes color exactly at contact. Use for: testing whether a feature change affects the launch impression.",
     colorChangeColor: "Changes: the new color used by sudden color change. Use for: setting the contact-locked feature change.",
@@ -1453,7 +1453,7 @@
         return `${number.toFixed(3)} ×`;
       case "speedOnly":
         return `${Math.round(number)} px/s`;
-      case "drag":
+      case "friction":
         return `${Math.round(number)} px/s^2`;
       case "accel":
         return `${number >= 0 ? "+" : ""}${Math.round(number)} px/s^2`;
@@ -1554,8 +1554,9 @@
       if (!input) {
         return;
       }
-      output.textContent = "";
-      output.title = formatValue(input.dataset.format, input.value, input.id, input);
+      const formattedValue = formatValue(input.dataset.format, input.value, input.id, input);
+      output.textContent = formattedValue;
+      output.title = formattedValue;
       syncFieldUnitLabel(input);
       const fineInput = input.dataset.fineControlId ? document.getElementById(input.dataset.fineControlId) : null;
       if (fineInput && document.activeElement !== fineInput) {
@@ -3374,7 +3375,7 @@
     if (state.physicsEngineEnabled) {
       return {
         label: "Billiard display",
-        summary: "Ball size sets mass; table drag and rail bounce control post-impact motion.",
+        summary: "Ball size sets mass; table friction and rail bounce control post-impact motion.",
         note: "Billiard turns off delay, gaps, tunnels, markers, sudden color changes, and manual trajectories.",
         literature:
           "Use this for a physically constrained comparison condition rather than a pure Michotte-style parameter manipulation."
@@ -5175,17 +5176,20 @@
     let bestTarget = null;
     let bestDistance = Infinity;
     getTrajectoryTargets(state).forEach((target) => {
+      const endDistance = Math.hypot(point.x - target.end.x, point.y - target.end.y);
+      const startDistance = Math.hypot(point.x - target.start.x, point.y - target.start.y);
+      const segmentDistance = distanceToSegment(point, target.start, target.end);
       const distance = Math.min(
-        distanceToSegment(point, target.start, target.end),
-        Math.hypot(point.x - target.start.x, point.y - target.start.y),
-        Math.hypot(point.x - target.end.x, point.y - target.end.y)
+        endDistance,
+        segmentDistance + 8,
+        startDistance + 12
       );
       if (distance < bestDistance) {
         bestDistance = distance;
         bestTarget = target;
       }
     });
-    return bestDistance <= 22 ? bestTarget : null;
+    return bestDistance <= 36 ? bestTarget : null;
   }
 
   function drawTrajectoryGuides(drawCtx, state) {
@@ -5777,7 +5781,7 @@
     syncGroupingControlsVisibility();
     updateOutputs();
     refreshText();
-    statusText.textContent = "Manual grouping rectangle added. Drag its border or corners in the preview.";
+    statusText.textContent = "Manual grouping rectangle added. Move its border or resize from a corner in the preview.";
     drawIdlePreview();
   }
 
@@ -6622,7 +6626,7 @@
       parts.push(`accel${compactNumber(state.launcherAccel)}-${compactNumber(state.targetAccel)}`);
     }
     if (state.physicsEngineEnabled) {
-      parts.push(`billiard-drag${compactNumber(state.billiardFriction)}-rail${compactNumber(state.billiardWallRestitution, 2)}`);
+      parts.push(`billiard-friction${compactNumber(state.billiardFriction)}-rail${compactNumber(state.billiardWallRestitution, 2)}`);
     }
     if (state.launcherVisibleMs < state.durationMs || state.targetVisibleMs < state.durationMs) {
       parts.push(`vis${compactNumber(state.launcherVisibleMs)}-${compactNumber(state.targetVisibleMs)}ms`);
@@ -8820,7 +8824,7 @@
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = control.checked ? "Drag a trajectory vector in the preview." : READY_STATUS;
+          statusText.textContent = control.checked ? "Move a trajectory vector in the preview." : READY_STATUS;
           drawIdlePreview();
         });
         return;
@@ -8865,7 +8869,7 @@
           syncStartDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = control.checked ? "Drag start positions on." : READY_STATUS;
+          statusText.textContent = control.checked ? "Start-point editing on." : READY_STATUS;
           drawIdlePreview();
         });
         return;

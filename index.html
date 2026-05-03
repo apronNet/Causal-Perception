@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Launching Video Maker</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111514'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23ff2f2f'/%3E%3Ccircle cx='21' cy='16' r='5' fill='%2327c76f'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=20260503-summary-brief" />
+    <link rel="stylesheet" href="styles.css?v=20260503-trajectory-position" />
   </head>
   <body>
     <div class="page-shell">
@@ -262,7 +262,11 @@
               <div class="position-header-controls">
                 <label class="field checkbox-field">
                   <input id="customStartEnabled" type="checkbox" />
-                  <span>Drag start positions</span>
+                  <span>Move start points</span>
+                </label>
+                <label class="field checkbox-field">
+                  <input id="trajectoryEditEnabled" type="checkbox" />
+                  <span>Individual trajectories</span>
                 </label>
                 <label class="field compact-offset-field">
                   <span>X offset</span>
@@ -335,6 +339,18 @@
                 <input id="customStartAlignStartsVertical" type="checkbox" />
                 <span>Align starting balls vertically</span>
               </label>
+              <label class="field trajectory-dependent-control trajectory-selected-field is-retracted">
+                <span>Selected trajectory</span>
+                <input id="selectedTrajectoryBall" data-format="trajectoryTarget" type="hidden" value="originalTarget" />
+                <output data-for="selectedTrajectoryBall"></output>
+              </label>
+              <label class="field trajectory-dependent-control is-retracted">
+                <span>Angle</span>
+                <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
+                <output data-for="selectedTrajectoryAngle"></output>
+              </label>
+              <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
+              <input id="trajectoryOverrides" type="hidden" value="{}" />
               <input id="originalLauncherStartX" type="hidden" />
               <input id="originalLauncherStartY" type="hidden" />
               <input id="originalTargetStartX" type="hidden" />
@@ -366,7 +382,7 @@
                       Clear rectangles
                     </button>
                     <p class="microcopy wide-copy grouping-dependent-control is-retracted">
-                      On = auto-box original pair and Context 1. Add rectangle = draw an extra box; drag its border to move, drag corners to resize.
+                      On = auto-box original pair and Context 1. Add rectangle = draw an extra box; move its border or resize from a corner.
                     </p>
                     <label class="field color-field grouping-dependent-control is-retracted">
                       <span>Original pair box</span>
@@ -414,8 +430,8 @@
                   </div>
                   <div class="control-subgrid">
                     <label class="field billiard-dependent-control is-retracted">
-                      <span>Table drag</span>
-                      <input id="billiardFriction" data-format="drag" min="0" max="900" step="10" type="range" />
+                      <span>Table friction</span>
+                      <input id="billiardFriction" data-format="friction" min="0" max="900" step="10" type="range" />
                       <output data-for="billiardFriction"></output>
                     </label>
                     <label class="field billiard-dependent-control is-retracted">
@@ -472,22 +488,6 @@
                   <input id="crosshairBlinkMs" data-format="ms" min="100" max="3000" step="50" type="range" />
                   <output data-for="crosshairBlinkMs"></output>
                 </label>
-                <label class="field checkbox-field">
-                  <input id="trajectoryEditEnabled" type="checkbox" />
-                  <span>Individual trajectories</span>
-                </label>
-                <label class="field trajectory-dependent-control trajectory-selected-field is-retracted">
-                  <span>Selected trajectory</span>
-                  <input id="selectedTrajectoryBall" data-format="trajectoryTarget" type="hidden" value="originalTarget" />
-                  <output data-for="selectedTrajectoryBall"></output>
-                </label>
-                <label class="field trajectory-dependent-control is-retracted">
-                  <span>Angle</span>
-                  <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
-                  <output data-for="selectedTrajectoryAngle"></output>
-                </label>
-                <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
-                <input id="trajectoryOverrides" type="hidden" value="{}" />
                 <label class="field checkbox-field">
                   <input id="textBoxEnabled" type="checkbox" />
                   <span>Text box</span>
