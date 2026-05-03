@@ -773,6 +773,68 @@ const browserProbe = String.raw`
   );
 
   commonControls();
+  setControl("durationMs", 1200);
+  setControl("contextMode", "launch");
+  setControl("contextPairCount", 5);
+  setControl("customStartEnabled", true);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const startEditCanvas = document.getElementById("stage");
+  const startEditRect = startEditCanvas.getBoundingClientRect();
+  const startEditSnapshotsBefore = JSON.parse(document.getElementById("contextPairSnapshots").value || "[]");
+  const startEditBeforeLast = startEditSnapshotsBefore.at(-1) || {};
+  const startEditCenter = {
+    x: Number(startEditBeforeLast.launcherStartX),
+    y: Number(startEditBeforeLast.launcherStartY)
+  };
+  const toClientPoint = (point) => ({
+    clientX: startEditRect.left + (point.x / startEditCanvas.width) * startEditRect.width,
+    clientY: startEditRect.top + (point.y / startEditCanvas.height) * startEditRect.height
+  });
+  const startEditPointerStart = toClientPoint(startEditCenter);
+  const startEditPointerEnd = toClientPoint({
+    x: startEditCenter.x + 140,
+    y: startEditCenter.y + 34
+  });
+  startEditCanvas.dispatchEvent(
+    new PointerEvent("pointerdown", {
+      bubbles: true,
+      pointerId: 21,
+      clientX: startEditPointerStart.clientX,
+      clientY: startEditPointerStart.clientY,
+      button: 0,
+      buttons: 1,
+      isPrimary: true
+    })
+  );
+  startEditCanvas.dispatchEvent(
+    new PointerEvent("pointermove", {
+      bubbles: true,
+      pointerId: 21,
+      clientX: startEditPointerEnd.clientX,
+      clientY: startEditPointerEnd.clientY,
+      button: 0,
+      buttons: 1,
+      isPrimary: true
+    })
+  );
+  startEditCanvas.dispatchEvent(
+    new PointerEvent("pointerup", {
+      bubbles: true,
+      pointerId: 21,
+      clientX: startEditPointerEnd.clientX,
+      clientY: startEditPointerEnd.clientY,
+      button: 0,
+      isPrimary: true
+    })
+  );
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const startEditSnapshotsAfter = JSON.parse(document.getElementById("contextPairSnapshots").value || "[]");
+  const startEditAfterLast = startEditSnapshotsAfter.at(-1) || {};
+  const startEditContextPairCount = Number(document.getElementById("contextPairCount").value);
+  const startEditMovedX = Number(startEditAfterLast.launcherStartX) - Number(startEditBeforeLast.launcherStartX);
+  const startEditMovedY = Number(startEditAfterLast.launcherStartY) - Number(startEditBeforeLast.launcherStartY);
+
+  commonControls();
   setControl("durationMs", 2400);
   setControl("physicsEngineEnabled", true);
   setControl("soundEnabled", true);
@@ -893,7 +955,7 @@ const browserProbe = String.raw`
       samples: realismBoxes,
       earlyStepPx: realismEarlyStepPx === null ? null : Number(realismEarlyStepPx.toFixed(2)),
       targetYDriftPx: realismYDrift === null ? null : Number(realismYDrift.toFixed(2)),
-      nonStraightTargetPath: realismYDrift !== null && realismYDrift > 6,
+      cleanHeadOnPath: realismYDrift !== null && realismYDrift <= 3,
       soundLabels: realismSoundLabels,
       hasRailCollision: realismSoundLabels.some((label) => label.includes("rail collision")),
       hasRecollision: realismSoundLabels.some((label) => label.includes("recollision"))
@@ -933,6 +995,19 @@ const browserProbe = String.raw`
         hasRailCollision: billiardSoundLabels.some((label) => label.includes("rail collision")),
         hasRecollision: billiardSoundLabels.some((label) => label.includes("recollision"))
       }
+    },
+    startPointEditor: {
+      contextPairCount: startEditContextPairCount,
+      snapshotBackedContextPairs: startEditSnapshotsBefore.length,
+      movedLastContextLauncherX: Number(startEditMovedX.toFixed(1)),
+      movedLastContextLauncherY: Number(startEditMovedY.toFixed(1)),
+      lastContextTargetY: Number(startEditAfterLast.targetStartY),
+      lastContextLauncherY: Number(startEditAfterLast.launcherStartY),
+      movedLastContextPair:
+        startEditSnapshotsBefore.length >= 4 &&
+        startEditMovedX > 80 &&
+        Math.abs(startEditMovedY) > 10 &&
+        Math.abs(Number(startEditAfterLast.targetStartY) - Number(startEditAfterLast.launcherStartY)) < 0.6
     },
     longBilliardRealism: {
       durationMs: longRealismExport.metadata.parameters.durationMs,
@@ -984,6 +1059,7 @@ async function main() {
     await cdp.send("Runtime.enable");
     await cdp.send("Page.enable");
     await cdp.send("Page.navigate", { url: origin });
+    await delay(500);
     const result = await cdp.send("Runtime.evaluate", {
       expression: browserProbe,
       awaitPromise: true,

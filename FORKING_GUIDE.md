@@ -21,6 +21,19 @@ flowchart LR
 
 The exported video is the timing reference. The preview is an editing aid. Any fork that changes participant-visible motion, timing, color, sound, or cues must keep the exported video, PsychoPy CSV, metadata JSON, and frame log CSV consistent.
 
+## Why This App Is Forkable
+
+The app is deliberately ordinary web technology. A fork does not need to understand a framework, a build system, a backend service, or a deployment pipeline before making a useful change.
+
+- It is static: GitHub Pages can serve it directly.
+- It has one main script: `app.js` is large, but it keeps the control, state, motion, drawing, and export contracts in one searchable place.
+- It has one canonical state path: `cloneState()` is the object that preview, export, metadata, PsychoPy CSV, presets, and condition sets read from.
+- It has one drawing path: `drawFrame()` is used by both the preview and exported movie frames, so a visible cue should not accidentally exist only in the editor.
+- It has explicit sidecar records: CSV, JSON, and frame-log exports are meant to make stimulus settings inspectable after the movie is generated.
+- It has a repeatable export probe: `tools/export-pixel-probe.mjs` exports real videos in Chrome and checks decoded frames, which catches bugs that DOM-only tests miss.
+
+The tradeoff is that a new experimental parameter must be wired through several places. That is intentional. It makes the parameter visible to users, reproducible in exported records, and testable after export.
+
 ## Repository Map
 
 ```mermaid
@@ -56,6 +69,46 @@ Start in `app.js` only after checking whether the change also needs a control in
 - `buildConditionSet()` and related CSV helpers create experiment plans. They do not render every planned movie.
 - `tools/export-pixel-probe.mjs` is the repeatable check for contact, visibility, Billiard, sound scheduling, and exported-frame behavior.
 
+## How To Read `app.js`
+
+Read the file by contracts, not by line count.
+
+1. Start with the maintainer map at the top of `app.js`.
+2. Find the relevant control id in `controlIds`.
+3. Check its default in `stimulusDefaults` or `presentationDefaults`.
+4. Check its tooltip in `parameterHelp`; that usually states the intended user-facing meaning.
+5. Check `cloneState()` to see the stored type and field name.
+6. Search for that field name in motion, rendering, export, metadata, and condition-set helpers.
+7. Only then edit behavior.
+
+This order prevents the most common fork failure: changing what a control does on screen without changing the exported records, or changing exported records without changing the UI.
+
+## State Contracts
+
+| Contract | Where it lives | What it means | Forking risk |
+| --- | --- | --- | --- |
+| Control ids | `index.html`, `controlIds` | Adjustable user inputs that the app knows how to read. | A visible control not in `controlIds` is usually inert or missing from records. |
+| Stimulus defaults | `stimulusDefaults` | Motion, geometry, cues, color, and other stimulus parameters. | Presets and reset behavior can silently omit new stimulus fields. |
+| Presentation defaults | `presentationDefaults` | Export, display, PsychoPy, and editor-related defaults. | Metadata can drift from what the lab thinks it exported. |
+| Canonical state | `cloneState()` | The one object used by preview, export, records, and condition sets. | Type mismatches here spread everywhere. |
+| Context snapshots | `contextPairSnapshots` | Stored JSON for Context 2+ after a pair is created. | Context 1 can work while Context 2+ stays stale. |
+| Trajectory overrides | `trajectoryOverrides` | Stored JSON mapping selected object ids to angle offsets. | Individual trajectory edits can appear in preview but be absent from export records if not wired through state. |
+| Sidecar records | CSV, JSON, frame log | The durable evidence for generated stimuli. | A movie without sidecars is hard to audit or reproduce. |
+
+## Control Ownership
+
+Keep controls near the conceptual feature they change.
+
+| Section | Owns | Does not own |
+| --- | --- | --- |
+| Movement | Lead-in, speed, acceleration, delay, O2 angle, individual trajectories, travel time, visibility timing, after-contact behavior. | Contact geometry or object radius. |
+| Position | Radius, overlap/gap, tunnels, move-start editing. | Hidden whole-stimulus x/y offsets; keep those internal unless a specific experiment needs them exposed. |
+| Context | Number of added pairs, context timing, context direction, and copied context-pair state. | Global export behavior. |
+| Special features | Participant-visible cues such as grouping, marker, contact guide, fracture, Billiard, crosshair, blink, rail, text, and sound. | Ordinary motion parameters that define the base launch. |
+| PsychoPy / Export | File format, FPS, aspect ratio, bitrate, CSV, JSON, frame log, and condition sets. | Participant-visible stimulus design. |
+
+If a control feels awkward in the UI, move it to the section that owns its experimental meaning before adding styling around it.
+
 ## Adding One Parameter
 
 Use this path when adding a parameter such as a new cue strength, timing value, or context setting.
@@ -73,6 +126,16 @@ flowchart TD
 ```
 
 Do not treat a visible parameter as finished until a saved movie and its sidecar records agree about the value.
+
+## Change Safety Rules
+
+- Preserve old field names in exported CSV and JSON unless there is a migration reason to break them.
+- Do not remove hidden compatibility controls merely because they are not shown in the UI; check whether presets, metadata, or condition rows still read them.
+- If a feature changes what participants can see or hear, update `README.md`.
+- If a feature changes the internal pipeline, update this guide.
+- If a feature changes a maintenance checklist, update `DEVELOPER_NOTES.md`.
+- If a feature changes exported timing, visibility, contact geometry, Billiard behavior, sound scheduling, or frame logging, update or rerun `tools/export-pixel-probe.mjs`.
+- If a feature changes context behavior, test Context 1 and Context 2+ separately.
 
 ## Timing Vocabulary
 
@@ -170,6 +233,30 @@ Use this path when a lab wants a grid such as delay by overlap, capture context 
 | Add a condition family | `index.html`, `app.js`, `README.md` | Condition rows imply movies that have not been rendered. |
 | Add shared presets | `shared-presets.json`, `README.md` | Presets omit a new parameter or depend on local browser storage. |
 | Change layout density | `styles.css`, `index.html` | Controls fit desktop but break on narrow screens. |
+| Move a control to a better section | `index.html`, `styles.css`, `README.md` | The visible UI improves, but docs still describe the old ownership. |
+| Expose a formerly hidden field | `index.html`, `app.js`, sidecar records | A technical helper becomes a user-facing experimental parameter without enough explanation. |
+| Tune Billiard realism | `app.js`, `tools/export-pixel-probe.mjs`, `README.md` | Synthetic scatter makes a clean head-on hit look like a trick shot. |
+
+## Documentation Maintenance
+
+Documentation is part of the app's reliability story. A fork should be able to answer three questions quickly:
+
+1. What does this control mean experimentally?
+2. Where does that value enter the state, rendering, export, and records?
+3. How do I check that a generated movie really matches the intended condition?
+
+Use this update rule:
+
+- User-facing workflow change: update `README.md`.
+- Internal pipeline or control ownership change: update `FORKING_GUIDE.md`.
+- Maintenance checklist or code-path convention change: update `DEVELOPER_NOTES.md`.
+- Visual explanation needed: update or add a small file in `docs/screenshots/`.
+
+Examples:
+
+- Moving **Individual trajectories** into Movement requires README and this guide to describe trajectories as movement controls.
+- Hiding x/y offsets while keeping the hidden fields requires this guide to say that whole-stimulus offsets are internal unless a specific experiment needs them exposed.
+- Adding a new output artifact requires README, developer notes, and the forking guide to say when to use it and how it relates to the movie.
 
 ## Checks Before Sharing a Fork
 
@@ -190,3 +277,4 @@ Then test in the browser:
 4. Play the preview.
 5. Export a video.
 6. Confirm the movie, PsychoPy CSV, metadata JSON, and frame log CSV all reflect the same settings.
+7. Read `README.md`, `DEVELOPER_NOTES.md`, and this guide as if you were a new lab member; update any section that describes the old behavior.

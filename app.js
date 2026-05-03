@@ -30,17 +30,14 @@
     stopThreshold: 0.075
   };
   const BILLIARD_REALISM = {
-    friction: 58,
+    friction: 72,
     restitution: 0.94,
     wallRestitution: 0.88,
     stopSpeed: 8,
-    velocityScale: 1.35,
-    minCutDeg: 9,
-    maxCutDeg: 26,
-    tangentTransfer: 0.16,
-    railScatterDeg: 7,
-    bankReturnDeg: 82,
-    recollisionScatterDeg: 5,
+    velocityScale: 1,
+    railScatterDeg: 1.5,
+    bankReturnDeg: 0,
+    recollisionScatterDeg: 0,
     stepSec: 1 / 120,
     maxSteps: 1800
   };
@@ -340,7 +337,7 @@
     physicsEngineEnabled:
       "Changes: turns Billiard on. It uses ball size to estimate mass, solves a simple collision, and then lets balls slow and bounce off table rails.",
     billiardRealismEnabled:
-      "Changes: uses a quicker initial shot with deterministic cut, spin, rail scatter, and ball recollisions. Turn off to edit manual friction and bounce controls.",
+      "Changes: uses a fixed table model with clean straight head-on hits, friction, rail bounce, and recollisions only when the motion produces them. Turn off to edit manual friction and bounce controls.",
     billiardFriction:
       "Changes: table friction after impact. Higher values make balls lose speed sooner, so weak shots stop before reaching a rail.",
     billiardRestitution: "Changes: ball-to-ball bounce. Higher values keep more speed after impact.",
@@ -2847,6 +2844,42 @@
     controls[yId].value = Number(clamp(y, 0, STAGE_HEIGHT).toFixed(1));
   }
 
+  function writeContextPairSnapshotFields(snapshotIndex, fields, baseState = cloneState()) {
+    if (!Number.isInteger(snapshotIndex) || snapshotIndex < 0) {
+      return;
+    }
+    const snapshots = [...baseState.contextPairSnapshots];
+    while (snapshots.length <= snapshotIndex) {
+      snapshots.push(makeContextPairSnapshotFromOriginal(baseState, snapshots.length + 1));
+    }
+    snapshots[snapshotIndex] = {
+      ...normalizeContextPairSnapshot(snapshots[snapshotIndex], baseState, snapshotIndex + 1),
+      ...fields
+    };
+    controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
+  }
+
+  function writeContextPairSnapshotStart(handle, point, state) {
+    const snapshotX = handle.directionSign === -1 ? STAGE_WIDTH - point.x : point.x;
+    writeContextPairSnapshotFields(
+      handle.snapshotIndex,
+      {
+        laneY: handle.laneY,
+        [handle.xField]: Number(clamp(snapshotX, 0, STAGE_WIDTH).toFixed(1)),
+        [handle.yField]: Number(clamp(point.y, 0, STAGE_HEIGHT).toFixed(1))
+      },
+      state
+    );
+  }
+
+  function writeStartHandlePosition(handle, point, state) {
+    if (handle.snapshotIndex !== undefined) {
+      writeContextPairSnapshotStart(handle, point, state);
+      return;
+    }
+    writeCoordinateControl(handle.xControl, handle.yControl, point.x, point.y);
+  }
+
   function getCoordinateControlValue(id) {
     return Number(controls[id].value);
   }
@@ -2908,6 +2941,11 @@
       positions.contextLauncher.y
     );
     writeCoordinateControl("contextTargetStartX", "contextTargetStartY", positions.contextTarget.x, positions.contextTarget.y);
+    const state = { ...cloneState(), customStartEnabled: false };
+    const snapshots = state.contextPairSnapshots.map((snapshot, snapshotIndex) =>
+      makeContextPairSnapshotFromOriginal(state, snapshotIndex + 1)
+    );
+    controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
     customStartPositionsInitialized = false;
   }
 
@@ -3581,7 +3619,7 @@
       return {
         label: "Billiard display",
         summary: state.billiardRealismEnabled
-          ? "Realism uses a quicker initial shot, then adds cut, spin, rail scatter, and possible recollisions."
+          ? "Realism keeps clean head-on hits straight, then applies table friction, rail bounce, and real recollisions."
           : "Ball size sets mass; table friction and rail bounce control post-impact motion.",
         note: "Billiard turns off delay, gaps, tunnels, markers, sudden color changes, and manual trajectories.",
         literature:
@@ -4415,13 +4453,7 @@
   }
 
   function getRealisticPostCollisionBodies(geometry, state) {
-    const seed = getBilliardRealismSeed(state, geometry);
-    const cutUnit = signedDeterministicUnit(seed, "cut");
-    const cutMagnitudeDeg =
-      BILLIARD_REALISM.minCutDeg +
-      Math.abs(cutUnit) * (BILLIARD_REALISM.maxCutDeg - BILLIARD_REALISM.minCutDeg);
-    const cutRadians = Math.sign(cutUnit || 1) * (cutMagnitudeDeg * Math.PI) / 180;
-    const normal = rotateVector(geometry.approachUnitX, geometry.approachUnitY, cutRadians);
+    const normal = normalizeVector(geometry.approachUnitX, geometry.approachUnitY) || { x: 1, y: 0 };
     const tangent = { x: -normal.y, y: normal.x };
     const realismImpactSpeed = geometry.launcherImpactSpeed * getBilliardVelocityScale(state);
     const incomingVx = geometry.approachUnitX * realismImpactSpeed;
@@ -4432,12 +4464,10 @@
     const targetMass = getEqualDensityDiscMass(geometry.radius);
     const massSum = Math.max(0.001, launcherMass + targetMass);
     const restitution = getBilliardRestitution(state);
-    const spinSign = signedDeterministicUnit(seed, "spin") >= 0 ? 1 : -1;
-    const spinSpeed = realismImpactSpeed * BILLIARD_REALISM.tangentTransfer * spinSign;
     const launcherNormalSpeed = ((launcherMass - restitution * targetMass) / massSum) * normalSpeed;
     const targetNormalSpeed = (((1 + restitution) * launcherMass) / massSum) * normalSpeed;
-    const launcherTangentSpeed = tangentSpeed * 0.9 - spinSpeed * 0.35;
-    const targetTangentSpeed = spinSpeed + tangentSpeed * 0.12;
+    const launcherTangentSpeed = tangentSpeed;
+    const targetTangentSpeed = 0;
 
     return {
       launcher: {
@@ -6640,10 +6670,13 @@
   function getStartDragHandles(state) {
     const laneY = getMainLaneY(state);
     const originalGeometry = getGeometry(state, laneY, { scope: "original", directionSign: 1 });
+    const directionSign = originalGeometry.contextDirectionSign;
     const handles = [
       {
         id: "originalLauncher",
         label: "O1",
+        pairKey: "original",
+        role: "launcher",
         x: originalGeometry.launcherStartX,
         y: originalGeometry.launcherStartY,
         radius: originalGeometry.radius,
@@ -6653,6 +6686,8 @@
       {
         id: "originalTarget",
         label: "O2",
+        pairKey: "original",
+        role: "target",
         x: originalGeometry.targetBaseX,
         y: originalGeometry.targetBaseY,
         radius: originalGeometry.radius,
@@ -6662,30 +6697,67 @@
     ];
 
     if (state.contextMode !== "none") {
-      const contextGeometry = getGeometry(getContextMotionState(state), getContextLaneY(state, laneY, 0), {
-        scope: "context",
-        directionSign: originalGeometry.contextDirectionSign
-      });
-      handles.push(
-        {
-          id: "contextLauncher",
-          label: "O1",
-          x: contextGeometry.launcherStartX,
-          y: contextGeometry.launcherStartY,
-          radius: contextGeometry.radius,
-          xControl: "contextLauncherStartX",
-          yControl: "contextLauncherStartY"
-        },
-        {
-          id: "contextTarget",
-          label: "O2",
-          x: contextGeometry.targetBaseX,
-          y: contextGeometry.targetBaseY,
-          radius: contextGeometry.radius,
-          xControl: "contextTargetStartX",
-          yControl: "contextTargetStartY"
+      getContextPairDescriptors(state, originalGeometry).forEach((descriptor) => {
+        if (descriptor.pairIndex === 0) {
+          handles.push(
+            {
+              id: "contextLauncher",
+              label: "C1 O1",
+              pairKey: "context1",
+              role: "launcher",
+              x: descriptor.geometry.launcherStartX,
+              y: descriptor.geometry.launcherStartY,
+              radius: descriptor.geometry.radius,
+              xControl: "contextLauncherStartX",
+              yControl: "contextLauncherStartY"
+            },
+            {
+              id: "contextTarget",
+              label: "C1 O2",
+              pairKey: "context1",
+              role: "target",
+              x: descriptor.geometry.targetBaseX,
+              y: descriptor.geometry.targetBaseY,
+              radius: descriptor.geometry.radius,
+              xControl: "contextTargetStartX",
+              yControl: "contextTargetStartY"
+            }
+          );
+          return;
         }
-      );
+
+        const pairNumber = descriptor.pairIndex + 1;
+        handles.push(
+          {
+            id: `context${pairNumber}Launcher`,
+            label: `C${pairNumber} O1`,
+            pairKey: `context${pairNumber}`,
+            role: "launcher",
+            x: descriptor.geometry.launcherStartX,
+            y: descriptor.geometry.launcherStartY,
+            radius: descriptor.geometry.radius,
+            snapshotIndex: descriptor.pairIndex - 1,
+            laneY: descriptor.laneY,
+            directionSign,
+            xField: "launcherStartX",
+            yField: "launcherStartY"
+          },
+          {
+            id: `context${pairNumber}Target`,
+            label: `C${pairNumber} O2`,
+            pairKey: `context${pairNumber}`,
+            role: "target",
+            x: descriptor.geometry.targetBaseX,
+            y: descriptor.geometry.targetBaseY,
+            radius: descriptor.geometry.radius,
+            snapshotIndex: descriptor.pairIndex - 1,
+            laneY: descriptor.laneY,
+            directionSign,
+            xField: "targetStartX",
+            yField: "targetStartY"
+          }
+        );
+      });
     }
 
     return handles;
@@ -6724,53 +6796,25 @@
     drawCtx.restore();
   }
 
-  function getHorizontalPartnerForStartHandle(handleId) {
-    const partners = {
-      originalLauncher: {
-        xControl: "originalTargetStartX",
-        yControl: "originalTargetStartY"
-      },
-      originalTarget: {
-        xControl: "originalLauncherStartX",
-        yControl: "originalLauncherStartY"
-      },
-      contextLauncher: {
-        xControl: "contextTargetStartX",
-        yControl: "contextTargetStartY"
-      },
-      contextTarget: {
-        xControl: "contextLauncherStartX",
-        yControl: "contextLauncherStartY"
-      }
-    };
-    return partners[handleId] || null;
-  }
-
   function writeDraggedStartPosition(handle, point, state) {
-    writeCoordinateControl(handle.xControl, handle.yControl, point.x, point.y);
+    const handles = getStartDragHandles(state);
+    writeStartHandlePosition(handle, point, state);
 
     if (state.customStartKeepRowsHorizontal) {
-      const partner = getHorizontalPartnerForStartHandle(handle.id);
+      const partner = handles.find((candidate) => candidate.pairKey === handle.pairKey && candidate.role !== handle.role);
       if (partner) {
-        writeCoordinateControl(partner.xControl, partner.yControl, getCoordinateControlValue(partner.xControl), point.y);
+        writeStartHandlePosition(partner, { x: partner.x, y: point.y }, cloneState());
       }
     }
 
     if (state.customStartAlignStartsVertical && state.contextMode !== "none") {
-      if (handle.id === "originalLauncher") {
-        writeCoordinateControl(
-          "contextLauncherStartX",
-          "contextLauncherStartY",
-          point.x,
-          getCoordinateControlValue("contextLauncherStartY")
-        );
-      } else if (handle.id === "contextLauncher") {
-        writeCoordinateControl(
-          "originalLauncherStartX",
-          "originalLauncherStartY",
-          point.x,
-          getCoordinateControlValue("originalLauncherStartY")
-        );
+      const alignX = handle.role === "launcher" ? point.x : handles.find((candidate) => candidate.id === "originalLauncher")?.x;
+      if (Number.isFinite(alignX)) {
+        handles
+          .filter((candidate) => candidate.role === "launcher")
+          .forEach((candidate) => {
+            writeStartHandlePosition(candidate, { x: alignX, y: candidate.id === handle.id ? point.y : candidate.y }, cloneState());
+          });
       }
     }
   }
@@ -6780,31 +6824,28 @@
       return;
     }
 
+    const state = cloneState();
+    const handles = getStartDragHandles(state);
     if (controls.customStartKeepRowsHorizontal.checked) {
-      writeCoordinateControl(
-        "originalTargetStartX",
-        "originalTargetStartY",
-        getCoordinateControlValue("originalTargetStartX"),
-        getCoordinateControlValue("originalLauncherStartY")
-      );
-
-      if (controls.contextMode.value !== "none") {
-        writeCoordinateControl(
-          "contextTargetStartX",
-          "contextTargetStartY",
-          getCoordinateControlValue("contextTargetStartX"),
-          getCoordinateControlValue("contextLauncherStartY")
-        );
-      }
+      handles
+        .filter((handle) => handle.role === "launcher")
+        .forEach((launcher) => {
+          const target = handles.find((candidate) => candidate.pairKey === launcher.pairKey && candidate.role === "target");
+          if (target) {
+            writeStartHandlePosition(target, { x: target.x, y: launcher.y }, cloneState());
+          }
+        });
     }
 
     if (controls.customStartAlignStartsVertical.checked && controls.contextMode.value !== "none") {
-      writeCoordinateControl(
-        "contextLauncherStartX",
-        "contextLauncherStartY",
-        getCoordinateControlValue("originalLauncherStartX"),
-        getCoordinateControlValue("contextLauncherStartY")
-      );
+      const originalLauncher = handles.find((handle) => handle.id === "originalLauncher");
+      if (originalLauncher) {
+        handles
+          .filter((handle) => handle.role === "launcher" && handle.id !== "originalLauncher")
+          .forEach((handle) => {
+            writeStartHandlePosition(handle, { x: originalLauncher.x, y: handle.y }, cloneState());
+          });
+      }
     }
   }
 

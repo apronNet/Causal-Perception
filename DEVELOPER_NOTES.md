@@ -36,7 +36,7 @@ Touch every relevant point below. Missing one is the usual source of silent bugs
 9. Use it in the relevant motion or drawing helper.
 10. If it should be reproducible, update `getExportFilenameBase()`, `buildPsychopyMetadata()`, and `buildPsychopyCsv()`.
 11. If condition sets need it, update `withCondition()`, `stateFromConditionParameters()`, `buildConditionSetCsv()`, and the relevant `buildConditionSet()` family.
-12. Update `README.md`. If the feature is visual, add or refresh a small guide image in `docs/screenshots/`.
+12. Update documentation. Use `README.md` for user-facing workflow, `FORKING_GUIDE.md` for internal pipeline or control-ownership changes, and this file for maintainer checklist changes. If the feature is visual, add or refresh a small guide image in `docs/screenshots/`.
 
 ## Context Pairs
 
@@ -59,7 +59,7 @@ Main-event motion is computed by `getMainEventState()`. Context-event motion is 
 
 `targetTravelMs` controls how long O2 keeps moving after collision. `targetVisibleMs` is separate: it controls whether O2 disappears while still on screen.
 
-Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table friction, and reflects balls off stage bounds. If table friction stops a ball before the next wall, the ball stops there; do not force a wall contact.
+Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table friction, and reflects balls off stage bounds. Clean head-on hits should stay straight: do not add synthetic cut, spin, or bank steering unless the visible setup actually creates that geometry. If table friction stops a ball before the next wall, the ball stops there; do not force a wall contact.
 
 ## PsychoPy Export
 
@@ -81,6 +81,18 @@ The GitHub page is part of the tool. Keep it current whenever the app gains a ne
 - Add practical PsychoPy consequences when a feature changes export or CSV behavior.
 - Add a guide image in `docs/screenshots/` when a feature is easier to understand visually.
 - Keep images simple enough that they stay useful even if the interface layout changes.
+
+## Documentation Maintenance Rule
+
+Keep the documentation updated with every project adjustment, including changes made in nearby work sessions. Documentation is not only a user manual; it is the confidence layer for labs that want to fork or repurpose the app.
+
+- If a control moves sections, update `README.md` and `FORKING_GUIDE.md` so control ownership stays current.
+- If an internal value remains hidden for compatibility, mention that in `FORKING_GUIDE.md` when it could confuse a fork maintainer.
+- If export artifacts change, update `README.md`, `FORKING_GUIDE.md`, and the PsychoPy/export notes above.
+- If a code path changes, update the relevant checklist in this file.
+- If a feature changes what participants see or hear, include its experimental meaning, not only its UI label.
+
+Current ownership reminder: **Individual trajectories** belongs to Movement. **Move start points** belongs to Position. Whole-stimulus x/y offsets are internal hidden fields unless a specific experiment needs them exposed.
 
 ## Utility Interface Benchmarks
 

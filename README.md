@@ -27,9 +27,9 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 ## Core Controls
 
-**Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, travel time after collision, and what O1 does after contact. Travel time controls how long O2 keeps moving after contact; O2 on-screen time controls when O2 disappears.
+**Movement** controls when and how the two objects move. Important settings are lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, individual trajectories, travel time after collision, and what O1 does after contact. Travel time controls how long O2 keeps moving after contact; O2 on-screen time controls when O2 disappears.
 
-**Position** controls contact geometry. `Overlap / gap = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap. Tunnel occluders can hide the contact region. **Move start points** and **Individual trajectories** let you edit object positions and vector directions in the preview.
+**Position** controls contact geometry. `Overlap / gap = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap. Tunnel occluders can hide the contact region. **Move start points** lets you edit object positions in the preview.
 
 **Context** adds extra object pairs. New context pairs copy the original pair when they are added; later changes to the original pair do not automatically change those copied pairs.
 
@@ -48,7 +48,7 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 - **Blink before launch** shows only the crosshair before the balls appear. The crosshair disappears after the blink by default; use **After blink: Stay** if it should remain during the launch. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
 - **Rail** adds one or more movable line segments. Use this for alignment or path-cue manipulations.
 - **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
-- **Billiard** uses ball size to estimate mass and solves a simple collision. Realism is on by default: it adds deterministic cut, spin, rail scatter, and possible recollisions so the balls do not simply run straight. Turn Realism off to edit manual friction and bounce values. With context pairs, each row acts as its own table lane so balls do not cross through other rows. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
+- **Billiard** uses ball size to estimate mass and solves a simple collision. Realism is on by default: clean head-on hits stay straight, while table friction, rail bounce, and real recollisions still apply. Turn Realism off to edit manual friction and bounce values. With context pairs, each row acts as its own table lane so balls do not cross through other rows. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
 - **Impact sound** adds a short cue at each visible collision event, including context-pair collisions. If sound is not a condition, leave it off.
 
 ## Perceptual Grouping
@@ -132,7 +132,9 @@ The probe opens the local app in headless Chrome, exports real WebM videos, deco
 
 ## Forking The Code
 
-Labs adapting the app for a new experiment should start with [FORKING_GUIDE.md](FORKING_GUIDE.md). It maps the control, state, motion, rendering, export, context-pair, and condition-set paths with Mermaid diagrams.
+Labs adapting the app for a new experiment should start with [FORKING_GUIDE.md](FORKING_GUIDE.md). It explains why the app is safe to fork as a static browser tool, then maps the control, state, motion, rendering, export, context-pair, and condition-set paths with Mermaid diagrams.
+
+The short version: visible controls are registered in `controlIds`, read into the canonical state by `cloneState()`, turned into motion by `getGeometry()` and event-state helpers, drawn by `drawFrame()`, and recorded through movie, PsychoPy CSV, metadata JSON, and frame-log exports. Preview is for editing; exported files are the lab record.
 
 ## Maintainer Note
 

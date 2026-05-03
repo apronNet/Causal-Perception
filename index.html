@@ -102,8 +102,14 @@
           </section>
 
           <section class="panel-block">
-            <div class="section-heading">
+            <div class="section-heading movement-heading">
               <h2>03 Movement</h2>
+              <div class="movement-header-controls">
+                <label class="field checkbox-field">
+                  <input id="trajectoryEditEnabled" type="checkbox" />
+                  <span>Individual trajectories</span>
+                </label>
+              </div>
             </div>
             <div class="control-grid">
               <div class="control-subgroup">
@@ -253,6 +259,18 @@
                 </div>
               </details>
               <div id="contextMovementPairList" class="context-pair-list context-dependent-control"></div>
+              <label class="field trajectory-dependent-control trajectory-selected-field is-retracted">
+                <span>Selected trajectory</span>
+                <input id="selectedTrajectoryBall" data-format="trajectoryTarget" type="hidden" value="originalTarget" />
+                <output data-for="selectedTrajectoryBall"></output>
+              </label>
+              <label class="field trajectory-dependent-control is-retracted">
+                <span>Angle</span>
+                <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
+                <output data-for="selectedTrajectoryAngle"></output>
+              </label>
+              <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
+              <input id="trajectoryOverrides" type="hidden" value="{}" />
             </div>
           </section>
 
@@ -263,20 +281,6 @@
                 <label class="field checkbox-field">
                   <input id="customStartEnabled" type="checkbox" />
                   <span>Move start points</span>
-                </label>
-                <label class="field checkbox-field">
-                  <input id="trajectoryEditEnabled" type="checkbox" />
-                  <span>Individual trajectories</span>
-                </label>
-                <label class="field compact-offset-field">
-                  <span>X offset</span>
-                  <input id="stimulusXOffset" data-format="signedPx" min="-140" max="220" step="5" type="range" />
-                  <output data-for="stimulusXOffset"></output>
-                </label>
-                <label class="field compact-offset-field">
-                  <span>Y offset</span>
-                  <input id="stimulusYOffset" data-format="signedPx" min="-180" max="180" step="5" type="range" />
-                  <output data-for="stimulusYOffset"></output>
                 </label>
               </div>
             </div>
@@ -339,18 +343,6 @@
                 <input id="customStartAlignStartsVertical" type="checkbox" />
                 <span>Align starting balls vertically</span>
               </label>
-              <label class="field trajectory-dependent-control trajectory-selected-field is-retracted">
-                <span>Selected trajectory</span>
-                <input id="selectedTrajectoryBall" data-format="trajectoryTarget" type="hidden" value="originalTarget" />
-                <output data-for="selectedTrajectoryBall"></output>
-              </label>
-              <label class="field trajectory-dependent-control is-retracted">
-                <span>Angle</span>
-                <input id="selectedTrajectoryAngle" data-format="degrees" min="-90" max="90" step="1" type="range" />
-                <output data-for="selectedTrajectoryAngle"></output>
-              </label>
-              <!-- JSON object mapping selectable trajectory ids to angle offsets. -->
-              <input id="trajectoryOverrides" type="hidden" value="{}" />
               <input id="originalLauncherStartX" type="hidden" />
               <input id="originalLauncherStartY" type="hidden" />
               <input id="originalTargetStartX" type="hidden" />
@@ -359,6 +351,8 @@
               <input id="contextLauncherStartY" type="hidden" />
               <input id="contextTargetStartX" type="hidden" />
               <input id="contextTargetStartY" type="hidden" />
+              <input id="stimulusXOffset" type="hidden" />
+              <input id="stimulusYOffset" type="hidden" />
             </div>
           </section>
 
@@ -454,7 +448,7 @@
                       <output data-for="billiardStopSpeed"></output>
                     </label>
                     <p class="microcopy wide-copy billiard-dependent-control is-retracted">
-                      Realism adds cut, spin, rail scatter, and possible recollisions.
+                      Realism keeps clean hits straight, then adds table friction, rail bounce, and real recollisions.
                     </p>
                   </div>
                 </div>
@@ -840,6 +834,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-slider-scale"></script>
+    <script src="app.js?v=20260503-start-points"></script>
   </body>
 </html>
