@@ -372,9 +372,10 @@
     fixationDva: "Changes: fixation mark size in degrees. Only applies in fixation mode.",
     stimulusXOffset: "Changes: horizontal shift of the whole stimulus. Use for: aligning the movie in a PsychoPy window.",
     stimulusYOffset: "Changes: vertical shift of the whole stimulus. Use for: moving the event set without changing row separation.",
-    soundEnabled: "Changes: adds a brief sound at contact if the browser supports audio export. Use only when sound is part of the design.",
-    soundType: "Changes: contact sound shape. Click is sharp; thud is softer; tone is less impact-like.",
-    soundVolume: "Changes: contact sound level. Keep fixed unless sound strength is a condition.",
+    soundEnabled:
+      "Changes: adds a brief sound at every visible collision event if the browser supports audio export. Use only when sound is part of the design.",
+    soundType: "Changes: collision sound shape. Click is sharp; thud is softer; tone is less impact-like.",
+    soundVolume: "Changes: collision sound level. Keep fixed unless sound strength is a condition.",
     outputFormat: "Changes: requested movie container and codec preference for the exported file. PsychoPy usually accepts MP4/H.264 most easily, but Safari may provide MP4 while other browsers may fall back to WebM.",
     aspectRatio:
       "Changes: exported movie frame shape. The stimulus is centered without stretching the balls; non-16:9 exports add background padding.",
@@ -1049,7 +1050,7 @@
   let lastExportSignature = null;
   let previewHandle = null;
   let previewFallbackTimer = null;
-  let impactSoundTimer = null;
+  let impactSoundTimers = [];
   let sharedAudioContext = null;
   let parameterTooltip = null;
   let previewStart = 0;
@@ -5203,15 +5204,15 @@
     drawCtx.textBaseline = "middle";
     getTrajectoryTargets(state).forEach((target) => {
       const selected = target.id === selectedId;
-      drawCtx.strokeStyle = selected ? "rgba(224, 178, 74, 0.95)" : "rgba(255, 248, 234, 0.38)";
-      drawCtx.fillStyle = selected ? "rgba(224, 178, 74, 0.95)" : "rgba(255, 248, 234, 0.72)";
-      drawCtx.lineWidth = selected ? 3 : 1.5;
+      drawCtx.strokeStyle = selected ? "rgba(232, 197, 116, 0.98)" : "rgba(255, 248, 234, 0.58)";
+      drawCtx.fillStyle = selected ? "rgba(232, 197, 116, 0.98)" : "rgba(255, 248, 234, 0.84)";
+      drawCtx.lineWidth = selected ? 4 : 2.25;
       drawCtx.beginPath();
       drawCtx.moveTo(target.start.x, target.start.y);
       drawCtx.lineTo(target.end.x, target.end.y);
       drawCtx.stroke();
       const angle = Math.atan2(target.end.y - target.start.y, target.end.x - target.start.x);
-      const arrowSize = selected ? 10 : 7;
+      const arrowSize = selected ? 12 : 8;
       drawCtx.beginPath();
       drawCtx.moveTo(target.end.x, target.end.y);
       drawCtx.lineTo(target.end.x - Math.cos(angle - 0.45) * arrowSize, target.end.y - Math.sin(angle - 0.45) * arrowSize);
@@ -5219,15 +5220,19 @@
       drawCtx.closePath();
       drawCtx.fill();
       drawCtx.beginPath();
-      drawCtx.arc(target.start.x, target.start.y, selected ? 4.5 : 3, 0, Math.PI * 2);
+      drawCtx.arc(target.start.x, target.start.y, selected ? 5.5 : 3.5, 0, Math.PI * 2);
       drawCtx.fill();
       drawCtx.beginPath();
-      drawCtx.arc(target.end.x, target.end.y, selected ? 8 : 6, 0, Math.PI * 2);
+      drawCtx.arc(target.end.x, target.end.y, selected ? 10 : 7, 0, Math.PI * 2);
       drawCtx.fill();
       drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(31, 28, 24, 0.72)" : "rgba(7, 15, 14, 0.85)";
       drawCtx.lineWidth = 1.25;
       drawCtx.stroke();
       if (selected) {
+        drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(255, 250, 240, 0.9)" : "rgba(7, 15, 14, 0.9)";
+        drawCtx.lineWidth = 3;
+        drawCtx.strokeText(getTrajectoryTargetLabel(target.id), target.end.x + 8, target.end.y);
+        drawCtx.fillStyle = "rgba(232, 197, 116, 0.98)";
         drawCtx.fillText(getTrajectoryTargetLabel(target.id), target.end.x + 8, target.end.y);
       }
     });
@@ -6418,10 +6423,7 @@
     }
     previewStart = 0;
     updatePreviewTimer(0, cloneState());
-    if (impactSoundTimer !== null) {
-      window.clearTimeout(impactSoundTimer);
-      impactSoundTimer = null;
-    }
+    clearImpactSoundTimers();
   }
 
   function getPreviewFrameTime(elapsed, state) {
@@ -6494,14 +6496,13 @@
       if (audioContext && audioContext.state === "suspended") {
         audioContext.resume().catch(() => {});
       }
-      const geometry = getGeometry(state, getMainLaneY(state));
-      const impactTime = getPreBallBlinkMs(state) + geometry.stopTime;
-      if (impactTime < state.durationMs) {
-        impactSoundTimer = window.setTimeout(() => {
+      getImpactSoundEvents(state).forEach((soundEvent) => {
+        const timer = window.setTimeout(() => {
           playImpactSound(state);
-          impactSoundTimer = null;
-        }, Math.max(0, impactTime));
-      }
+          impactSoundTimers = impactSoundTimers.filter((candidate) => candidate !== timer);
+        }, Math.max(0, soundEvent.timeMs));
+        impactSoundTimers.push(timer);
+      });
     }
     previewStart = 0;
     previewHandle = requestAnimationFrame(tickPreview);
@@ -6924,6 +6925,174 @@
     return getPreBallBlinkMs(state) + geometry.targetStartTime;
   }
 
+  function makeSoundCueEvent(label, timeMs, scope) {
+    const safeTimeMs = Number.isFinite(Number(timeMs)) ? Number(timeMs) : 0;
+    return {
+      label,
+      scope,
+      timeMs: Number(safeTimeMs.toFixed(3)),
+      timeSec: Number((safeTimeMs / 1000).toFixed(3))
+    };
+  }
+
+  function getBilliardWallSoundEventsForBody(body, state, baseMovieTimeMs, elapsedLimitMs, label, scope) {
+    const events = [];
+    let x = body.x;
+    let y = body.y;
+    let vx = Number(body.vx) || 0;
+    let vy = Number(body.vy) || 0;
+    let remainingSec = Math.max(0, Number(elapsedLimitMs) || 0) / 1000;
+    let elapsedSec = 0;
+    const radius = Math.max(1, Number(body.radius) || 1);
+    const friction = clamp(Number(state.billiardFriction) || 0, 0, 900);
+    const wallRestitution = clamp(Number(state.billiardWallRestitution) || presentationDefaults.billiardWallRestitution, 0.4, 1);
+    const stopSpeed = clamp(Number(state.billiardStopSpeed) || 0, 0, 120);
+    let speed = Math.hypot(vx, vy);
+    let bounceCount = 0;
+
+    while (remainingSec > 0.0001 && speed > stopSpeed && bounceCount < 20) {
+      const unitX = vx / speed;
+      const unitY = vy / speed;
+      const possibleDistance = billiardDistanceAt(remainingSec, speed, friction);
+      const wallDistance = getParkDistanceToStageEdge(x, y, unitX, unitY, radius);
+
+      if (!Number.isFinite(wallDistance) || possibleDistance < wallDistance - 0.001) {
+        break;
+      }
+
+      const timeToWall = clamp(billiardTimeForDistance(wallDistance, speed, friction), 0, remainingSec);
+      elapsedSec += timeToWall;
+      x += unitX * wallDistance;
+      y += unitY * wallDistance;
+      speed = Math.max(0, speed - friction * timeToWall) * wallRestitution;
+      remainingSec -= timeToWall;
+
+      if (timeToWall > 0.001) {
+        events.push(makeSoundCueEvent(label, baseMovieTimeMs + elapsedSec * 1000, scope));
+      }
+
+      if (speed <= stopSpeed) {
+        break;
+      }
+
+      const nearLeft = x <= radius + 0.5 && unitX < 0;
+      const nearRight = x >= STAGE_WIDTH - radius - 0.5 && unitX > 0;
+      const nearTop = y <= radius + 0.5 && unitY < 0;
+      const nearBottom = y >= STAGE_HEIGHT - radius - 0.5 && unitY > 0;
+      vx = nearLeft || nearRight ? -unitX * speed : unitX * speed;
+      vy = nearTop || nearBottom ? -unitY * speed : unitY * speed;
+      x = clamp(x, radius, STAGE_WIDTH - radius);
+      y = clamp(y, radius, STAGE_HEIGHT - radius);
+      bounceCount += 1;
+    }
+
+    return events;
+  }
+
+  function getBilliardWallSoundEvents(eventState, geometry, state, baseMovieTimeMs, labelPrefix, scopePrefix) {
+    if (!eventState.physicsEngineEnabled || baseMovieTimeMs >= state.durationMs) {
+      return [];
+    }
+
+    const movieRemainingMs = Math.max(0, state.durationMs - baseMovieTimeMs);
+    const launcherElapsedLimitMs = Math.min(
+      movieRemainingMs,
+      Math.max(0, Number(eventState.launcherVisibleMs) - geometry.targetStartTime)
+    );
+    const targetElapsedLimitMs = Math.min(movieRemainingMs, Math.max(0, Number(eventState.targetVisibleMs)));
+    return [
+      ...getBilliardWallSoundEventsForBody(
+        {
+          x: geometry.launcherStopX,
+          y: geometry.launcherStopY,
+          vx: geometry.approachUnitX * geometry.launcherPostSpeed,
+          vy: geometry.approachUnitY * geometry.launcherPostSpeed,
+          radius: geometry.radius
+        },
+        eventState,
+        baseMovieTimeMs,
+        launcherElapsedLimitMs,
+        `${labelPrefix} O1 rail collision`,
+        `${scopePrefix}LauncherRail`
+      ),
+      ...getBilliardWallSoundEventsForBody(
+        {
+          x: geometry.targetBaseX,
+          y: geometry.targetBaseY,
+          vx: geometry.targetUnitX * geometry.targetSpeed,
+          vy: geometry.targetUnitY * geometry.targetSpeed,
+          radius: geometry.radius
+        },
+        eventState,
+        baseMovieTimeMs,
+        targetElapsedLimitMs,
+        `${labelPrefix} O2 rail collision`,
+        `${scopePrefix}TargetRail`
+      )
+    ];
+  }
+
+  function getImpactSoundEvents(state) {
+    if (!state.soundEnabled || state.soundVolume <= 0) {
+      return [];
+    }
+
+    const blinkMs = getPreBallBlinkMs(state);
+    const mainLaneY = getMainLaneY(state);
+    const mainGeometry = getGeometry(state, mainLaneY, { scope: "original", directionSign: 1 });
+    const originalCollisionTimeMs = blinkMs + mainGeometry.stopTime;
+    const events = [makeSoundCueEvent("Original pair collision", originalCollisionTimeMs, "original")];
+    events.push(...getBilliardWallSoundEvents(state, mainGeometry, state, originalCollisionTimeMs, "Original pair", "original"));
+
+    if (state.contextMode === "launch") {
+      const pairCount = getContextPairCount(state);
+      const directionSign = mainGeometry.contextDirectionSign;
+      const contextState = getContextMotionState(state);
+      const snapshots = state.contextPairSnapshots || [];
+
+      for (let pairIndex = 0; pairIndex < pairCount; pairIndex += 1) {
+        const snapshot = pairIndex > 0 ? snapshots[pairIndex - 1] || makeContextPairSnapshotFromOriginal(state, pairIndex) : null;
+        const laneY = getContextLaneY(state, mainGeometry.laneY, pairIndex, snapshot);
+        const eventState =
+          pairIndex === 0
+            ? contextState
+            : getContextPairSnapshotState(snapshot, state, laneY, directionSign);
+        const trajectoryScope = pairIndex === 0 ? "context" : `context${pairIndex + 1}`;
+        const contextGeometry = getGeometry(eventState, laneY, {
+          scope: pairIndex === 0 ? "context" : "original",
+          directionSign,
+          trajectoryScope
+        });
+        const stimulusTime = state.contextOffsetMs + contextGeometry.stopTime;
+        if (isContextEventVisible(state, stimulusTime, mainGeometry)) {
+          const contextCollisionTimeMs = blinkMs + stimulusTime;
+          events.push(
+            makeSoundCueEvent(`Context ${pairIndex + 1} collision`, contextCollisionTimeMs, trajectoryScope)
+          );
+          events.push(
+            ...getBilliardWallSoundEvents(
+              eventState,
+              contextGeometry,
+              state,
+              contextCollisionTimeMs,
+              `Context ${pairIndex + 1}`,
+              trajectoryScope
+            )
+          );
+        }
+      }
+    }
+
+    return events
+      .filter((event) => event.timeMs >= 0 && event.timeMs < state.durationMs)
+      .sort((a, b) => a.timeMs - b.timeMs || a.label.localeCompare(b.label));
+  }
+
+  function clearImpactSoundTimers() {
+    impactSoundTimers.forEach((timer) => window.clearTimeout(timer));
+    impactSoundTimers = [];
+  }
+
   const MAX_CACHED_EXPORT_FRAMES = 720;
   const MAX_CACHED_EXPORT_PIXELS = 520_000_000;
 
@@ -6972,7 +7141,7 @@
   }
 
   function hasScheduledImpactSound(state) {
-    return Boolean(state.soundEnabled && state.soundVolume > 0 && getImpactMovieTimeMs(state) < state.durationMs);
+    return getImpactSoundEvents(state).length > 0;
   }
 
   function getConditionName() {
@@ -7004,6 +7173,7 @@
     const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(state));
     const durationSec = getExportDurationSec(state);
     const movieFile = getPsychopyMoviePath(filename);
+    const soundCueEvents = getImpactSoundEvents(state);
 
     return {
       movieFile,
@@ -7040,6 +7210,7 @@
         intendedDurationSec: getIntendedDurationSec(state),
         impactSec: Number((standards.impactMs / 1000).toFixed(3)),
         targetOnsetSec: Number((standards.targetOnsetMs / 1000).toFixed(3)),
+        soundCueTimesSec: soundCueEvents.map((event) => event.timeSec),
         targetTravelAfterCollisionSec: Number((state.targetTravelMs / 1000).toFixed(3)),
         contextTargetTravelAfterCollisionSec: Number((state.contextTargetTravelMs / 1000).toFixed(3)),
         objectVisibleSec: {
@@ -7055,6 +7226,12 @@
         heightPx: encoded.height
       },
       stageColor: state.stageColor,
+      sound: {
+        enabled: state.soundEnabled,
+        type: state.soundType,
+        volume: state.soundVolume,
+        cueEvents: soundCueEvents
+      },
       billiard: {
         enabled: state.physicsEngineEnabled,
         frictionPxPerSec2: state.physicsEngineEnabled ? state.billiardFriction : "",
@@ -7084,6 +7261,7 @@
   function buildPsychopyCsv(state, filename, exportDetails = {}) {
     const standards = getStandards(state);
     const encoded = getEncodedDimensions(exportDetails.width ? exportDetails : getExportCanvasSize(state));
+    const soundCueEvents = getImpactSoundEvents(state);
     const row = {
       movieFile: getPsychopyMoviePath(filename),
       conditionName: getConditionName(),
@@ -7102,6 +7280,8 @@
       forceEndRoutine: "true",
       loopPlayback: "false",
       noAudio: String(!hasScheduledImpactSound(state)),
+      soundCueTimesMs: soundCueEvents.map((event) => Math.round(event.timeMs)).join("|"),
+      soundCueEvents: soundCueEvents.map((event) => `${event.label}:${Math.round(event.timeMs)}ms`).join("|"),
       durationMs: state.durationMs,
       leadInMs: state.leadInMs,
       launcherSpeedPxPerSec: state.launcherSpeed,
@@ -8464,7 +8644,7 @@
     const stream = exportCanvas.captureStream(state.fps);
     let exportAudioContext = null;
     let exportAudioDestination = null;
-    let pendingImpactSoundMs = null;
+    let pendingImpactSoundEvents = [];
 
     if (state.soundEnabled) {
       const AudioContextClass = getAudioContextClass();
@@ -8477,11 +8657,7 @@
         exportAudioDestination.stream.getAudioTracks().forEach((track) => {
           stream.addTrack(track);
         });
-        const geometry = getGeometry(state, getMainLaneY(state));
-        const impactTime = getPreBallBlinkMs(state) + geometry.stopTime;
-        if (impactTime < state.durationMs) {
-          pendingImpactSoundMs = impactTime;
-        }
+        pendingImpactSoundEvents = getImpactSoundEvents(state);
       } else {
         statusText.textContent = "AudioContext is unavailable; exporting silent video.";
       }
@@ -8524,13 +8700,15 @@
     });
 
     recorder.start();
-    if (exportAudioContext && exportAudioDestination && pendingImpactSoundMs !== null) {
-      scheduleImpactSound(
-        exportAudioContext,
-        state,
-        exportAudioDestination,
-        exportAudioContext.currentTime + pendingImpactSoundMs / 1000
-      );
+    if (exportAudioContext && exportAudioDestination && pendingImpactSoundEvents.length > 0) {
+      pendingImpactSoundEvents.forEach((soundEvent) => {
+        scheduleImpactSound(
+          exportAudioContext,
+          state,
+          exportAudioDestination,
+          exportAudioContext.currentTime + soundEvent.timeMs / 1000
+        );
+      });
     }
 
     const exportStartTime = performance.now();
@@ -8820,11 +8998,21 @@
       if (id === "trajectoryEditEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
+          const billiardWasOn = Boolean(control.checked && controls.physicsEngineEnabled.checked);
+          if (billiardWasOn) {
+            controls.physicsEngineEnabled.checked = false;
+            syncBilliardControlVisibility();
+          }
           syncTrajectoryControlVisibility();
           syncSpecialDragUi();
           updateOutputs();
           refreshText();
-          statusText.textContent = control.checked ? "Move a trajectory vector in the preview." : READY_STATUS;
+          updateCompatibilityNotice(cloneState());
+          statusText.textContent = control.checked
+            ? billiardWasOn
+              ? "Individual trajectories on; Billiard turned off."
+              : "Move a trajectory vector in the preview."
+            : READY_STATUS;
           drawIdlePreview();
         });
         return;

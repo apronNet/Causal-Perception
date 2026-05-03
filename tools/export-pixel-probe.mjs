@@ -176,6 +176,31 @@ const browserProbe = String.raw`
     };
   };
 
+  const countColorPixels = (imageData, rgb, threshold = 55) => {
+    const { data, width, height } = imageData;
+    let count = 0;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4;
+        if (colorDistance(data, index, rgb) <= threshold) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  };
+
+  const previewImageData = () => {
+    const canvas = document.getElementById("stage");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  };
+
+  const isControlVisible = (id) => {
+    const control = document.getElementById(id);
+    return Boolean(control && control.offsetParent !== null);
+  };
+
   const sampleVideo = async (video, timeSec) => {
     await new Promise((resolve) => {
       const done = () => {
@@ -237,6 +262,9 @@ const browserProbe = String.raw`
     setControl("exportHeightPx", 360);
     setControl("fps", 30);
     setControl("videoBitrate", 4);
+    setControl("contextMode", "none");
+    setControl("contextPairCount", 1);
+    setControl("trajectoryEditEnabled", false);
     setControl("soundEnabled", false);
     setControl("crosshairEnabled", false);
     setControl("physicsEngineEnabled", false);
@@ -337,6 +365,38 @@ const browserProbe = String.raw`
   const billiardTarget = componentBox(billiardFrame, hexToRgb(billiardExport.metadata.parameters.targetColor));
   const rightRailCenterX = billiardFrame.width - billiardTarget.radius;
 
+  commonControls();
+  setControl("durationMs", 1200);
+  setControl("physicsEngineEnabled", true);
+  setControl("trajectoryEditEnabled", true);
+  await wait(() => isControlVisible("selectedTrajectoryAngle"), 15000, "trajectory controls visible");
+  const trajectoryFrame = previewImageData();
+  const trajectoryHighlightPixels = countColorPixels(trajectoryFrame, [232, 197, 116], 65);
+  const trajectoryStatus = document.getElementById("statusText").textContent.trim();
+  const billiardOffAfterTrajectoryToggle = !document.getElementById("physicsEngineEnabled").checked;
+  const selectedTrajectoryAngleVisible = isControlVisible("selectedTrajectoryAngle");
+
+  commonControls();
+  setControl("durationMs", 1800);
+  setControl("contextMode", "launch");
+  setControl("contextPairCount", 3);
+  setControl("soundEnabled", true);
+  setControl("fileLabel", "probe-context-sound");
+  const contextSoundExport = await exportAndRead();
+  const contextSoundEvents = contextSoundExport.metadata.sound?.cueEvents || [];
+  const contextSoundLabels = contextSoundEvents.map((event) => event.label);
+
+  commonControls();
+  setControl("durationMs", 2400);
+  setControl("physicsEngineEnabled", true);
+  setControl("billiardFriction", 0);
+  setControl("billiardWallRestitution", 0.8);
+  setControl("soundEnabled", true);
+  setControl("fileLabel", "probe-billiard-sound");
+  const billiardSoundExport = await exportAndRead();
+  const billiardSoundEvents = billiardSoundExport.metadata.sound?.cueEvents || [];
+  const billiardSoundLabels = billiardSoundEvents.map((event) => event.label);
+
   return {
     contact: {
       expectedImpactSec: Number(contactTime.toFixed(3)),
@@ -368,6 +428,31 @@ const browserProbe = String.raw`
       targetCenterX: billiardTarget.centerX === null ? null : Number(billiardTarget.centerX.toFixed(2)),
       rightRailCenterX: Number(rightRailCenterX.toFixed(2)),
       stoppedBeforeRightRail: billiardTarget.centerX !== null && billiardTarget.centerX < rightRailCenterX - 8
+    },
+    trajectoryOverlay: {
+      billiardOffAfterTrajectoryToggle,
+      selectedAngleVisible: selectedTrajectoryAngleVisible,
+      highlightPixels: trajectoryHighlightPixels,
+      overlayVisible: trajectoryHighlightPixels > 250,
+      status: trajectoryStatus
+    },
+    soundCues: {
+      contextLaunch: {
+        eventCount: contextSoundEvents.length,
+        timesMs: contextSoundEvents.map((event) => Math.round(event.timeMs)),
+        labels: contextSoundLabels,
+        hasOriginalCollision: contextSoundLabels.includes("Original pair collision"),
+        hasContext1Collision: contextSoundLabels.includes("Context 1 collision"),
+        hasContext2Collision: contextSoundLabels.includes("Context 2 collision"),
+        hasContext3Collision: contextSoundLabels.includes("Context 3 collision")
+      },
+      billiard: {
+        eventCount: billiardSoundEvents.length,
+        timesMs: billiardSoundEvents.map((event) => Math.round(event.timeMs)),
+        labels: billiardSoundLabels,
+        hasOriginalCollision: billiardSoundLabels.includes("Original pair collision"),
+        hasRailCollision: billiardSoundLabels.some((label) => label.includes("rail collision"))
+      }
     }
   };
 })()

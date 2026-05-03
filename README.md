@@ -46,7 +46,7 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 - **Rail** adds one or more movable line segments. Use this for alignment or path-cue manipulations.
 - **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
 - **Billiard** uses ball size to estimate mass, solves a simple collision, then lets balls slow and bank off the field edges. Table friction controls whether a ball reaches a rail; weak shots stop before the wall. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
-- **Impact sound** adds a contact sound. If sound is not a condition, leave it off.
+- **Impact sound** adds a short cue at each visible collision event, including context-pair collisions. If sound is not a condition, leave it off.
 
 ## Perceptual Grouping
 
