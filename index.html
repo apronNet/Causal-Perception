@@ -51,7 +51,7 @@
               <button id="deletePresetButton" class="secondary-button" type="button">Remove</button>
               <button id="exportPresetButton" class="secondary-button" type="button">Export JSON</button>
               <a id="presetJsonLink" class="download-link hidden" download>Download JSON</a>
-              <p class="microcopy preset-storage-note">Shared: shared-presets.json. Local: this browser.</p>
+              <p class="microcopy preset-storage-note">Local saves stay in this browser. Export JSON to share.</p>
               <p id="presetSummary" class="microcopy hidden"></p>
             </div>
           </details>
@@ -60,7 +60,7 @@
             <div class="context-head-row">
               <h2>02 Context</h2>
               <label class="field context-toggle-field context-toggle-inline">
-                <span>context (add another set of balls)</span>
+                <span>Context (add another set of balls)</span>
                 <input id="contextMode" type="hidden" value="none" />
                 <span class="choice-row context-choice-row" role="group" aria-label="Context type">
                   <button class="choice-button" data-context-mode="none" type="button">None</button>
@@ -94,7 +94,7 @@
                 </span>
               </label>
               <p class="context-copy-note context-dependent-control">
-                New pairs copy the original pair when added. High counts auto-shrink all pairs to fit.
+                New pairs start from the original pair. Up to 10 rows fit automatically.
               </p>
               <!-- JSON for Context 2+ parameter snapshots; Context 1 uses the visible controls above. -->
               <input id="contextPairSnapshots" type="hidden" />
@@ -449,12 +449,12 @@
                       <output data-for="billiardWallRestitution"></output>
                     </label>
                     <label class="field billiard-dependent-control billiard-manual-control is-retracted">
-                      <span>Stop below</span>
+                      <span>Stop speed</span>
                       <input id="billiardStopSpeed" data-format="speedOnly" min="0" max="120" step="5" type="range" />
                       <output data-for="billiardStopSpeed"></output>
                     </label>
                     <p class="microcopy wide-copy billiard-dependent-control is-retracted">
-                      Realism uses a quicker initial shot, then adds cut, spin, rail scatter, and possible recollisions. Turn it off to edit manual bounce values.
+                      Realism adds cut, spin, rail scatter, and possible recollisions.
                     </p>
                   </div>
                 </div>
@@ -661,11 +661,11 @@
               <label class="field">
                 <span>Format</span>
                 <select id="outputFormat">
-                  <option value="lab">PsychoPy MP4 if possible</option>
+                  <option value="lab">Auto (MP4 when available)</option>
                   <option value="mp4">Prefer MP4 / H.264</option>
                   <option value="webm-vp9">WebM / VP9</option>
                   <option value="webm-vp8">WebM / VP8</option>
-                  <option value="webm">WebM default</option>
+                  <option value="webm">WebM auto</option>
                 </select>
               </label>
               <label class="field">
@@ -804,7 +804,7 @@
 
           <section class="video-panel hidden" id="videoPanel">
             <div class="section-heading">
-              <h2>Export preview</h2>
+              <h2>Exported video</h2>
               <span id="exportMeta" class="microcopy"></span>
             </div>
             <div id="artifactChecklist" class="artifact-card hidden">
@@ -836,6 +836,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-travel-auto"></script>
+    <script src="app.js?v=20260503-fork-guide"></script>
   </body>
 </html>

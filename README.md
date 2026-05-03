@@ -125,6 +125,10 @@ node tools/export-pixel-probe.mjs
 
 The probe opens the local app in headless Chrome, exports real WebM videos, decodes them back into a canvas, and reports pixel measurements for contact and O2 visibility. It does not need `ffmpeg`.
 
+## Forking The Code
+
+Labs adapting the app for a new experiment should start with [FORKING_GUIDE.md](FORKING_GUIDE.md). It maps the control, state, motion, rendering, export, context-pair, and condition-set paths with Mermaid diagrams.
+
 ## Maintainer Note
 
 When a new feature is implemented, update this README at the same time. Add a small guide image when the feature is easier to understand visually.

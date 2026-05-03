@@ -275,7 +275,7 @@
   // User-facing tooltip copy. Keep it plain: what changes, not implementation detail.
   const parameterHelp = {
     presetSelect: "Changes: loads a prepared case or saved preset. Use for: starting from a known condition instead of rebuilding settings by hand.",
-    presetNameInput: "Changes: the name used when saving the current settings. Browser saves are local; shared presets must be added to shared-presets.json.",
+    presetNameInput: "Changes: the name used when saving the current settings. Use Export JSON when another lab should reuse the preset.",
     durationMs: "Changes: total video duration for preview and export. Increase it to let moving balls travel completely offscreen.",
     leadInMs: "Changes: still time before O1 moves. Use for: giving viewers a stable start frame before motion begins.",
     launcherSpeed: "Changes: speed of O1 before contact. Use for: making the approach slower, sharper, or more forceful-looking.",
@@ -322,7 +322,7 @@
     contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
     contextTargetTravelMs:
-      "Changes: how long context O2 keeps moving after it starts at context collision. To let it move offscreen, keep Video duration and context O2 on-screen long enough too.",
+      "Changes: how long context O2 keeps moving after it starts at context collision. Raising this can extend Video duration so the motion is visible.",
     contextLauncherVisibleMs:
       "Changes: how long context O1 stays visible after context O2 starts moving. Context O1 stays visible before contact.",
     contextTargetVisibleMs:
@@ -334,7 +334,7 @@
     groupingEnabled:
       "Changes: turns visible grouping boxes on. The app automatically boxes the original pair and Context 1 if context is shown.",
     groupingMode:
-      "Changes: internal grouping state kept for saved presets. New UI uses a simple on/off grouping toggle.",
+      "Changes: saved grouping pattern for presets. The main control is the grouping on/off toggle.",
     manualGroupingRects:
       "Changes: extra grouping rectangles drawn in preview and export. Use Add rectangle, then move borders or resize from corners in the preview.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
@@ -349,7 +349,7 @@
     billiardStopSpeed: "Changes: the speed below which billiard balls are treated as stopped.",
     fractureEnabled:
       "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
-    contextFractureEnabled: "Legacy Context 1 O2 fracture value, kept for older presets and exported records.",
+    contextFractureEnabled: "Changes: fracture cue for Context 1 O2 when a saved preset includes it.",
     crosshairEnabled: "Changes: adds a movable crosshair to the stimulus. Move the crosshair center in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
     railEnabled: "Changes: adds one or more movable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
@@ -395,10 +395,10 @@
       "Changes: exported movie frame shape. The stimulus is centered without stretching the balls; non-16:9 exports add background padding.",
     exportHeightPx:
       "Changes: exported movie height in pixels. Width is calculated from Aspect ratio, so 16:9 at 1080 px becomes 1920 x 1080.",
-    fps: "Changes: the frame rate written into the exported movie and the saved PsychoPy CSV. The browser preview is close, but the exported file is the source of truth for timing checks.",
+    fps: "Changes: the frame rate written into the exported movie and the saved PsychoPy CSV. Use the exported file for final timing checks.",
     videoBitrate: "Changes: compression quality for the exported movie. Higher values preserve cleaner disc edges and grouping lines, at the cost of larger stimulus files.",
-    fileLabel: "Changes: the base filename. Exports add timing, speed, gap, context, and month/day tags automatically.",
-    conditionSetSelect: "Changes: which multi-condition manifest is exported for later batch stimulus generation and PsychoPy condition-table setup."
+    fileLabel: "Changes: the base filename used for the exported movie, PsychoPy CSV, and metadata JSON.",
+    conditionSetSelect: "Changes: which multi-condition table is exported for later batch stimulus planning and PsychoPy setup."
   };
 
   /*
@@ -1717,7 +1717,7 @@
       field.classList.add("help-field");
       field.dataset.helpBound = "true";
       const helpText = field.closest(".psychopy-panel")
-        ? `${formatParameterTooltipText(text)} See GitHub README for PsychoPy details.`
+        ? `${formatParameterTooltipText(text)} Use the exported CSV as the PsychoPy loop table.`
         : text;
       field.dataset.helpText = helpText;
       label.addEventListener("pointerenter", () => showParameterTooltip(label, helpText));
@@ -3276,8 +3276,8 @@
     return {
       key,
       label: rawPreset.label,
-      summary: rawPreset.summary || "Shared preset loaded with the web app.",
-      note: rawPreset.note || "Loaded from shared-presets.json for every visitor.",
+      summary: rawPreset.summary || "Shared preset.",
+      note: rawPreset.note || "Loaded with the web app for every visitor.",
       literature: rawPreset.literature || "Shared lab preset.",
       values: rawPreset.values
     };
@@ -3316,7 +3316,7 @@
       key: existingKey,
       label,
       summary: "Saved local preset.",
-      note: "Saved in this browser. Export preset JSON to add it to shared-presets.json.",
+      note: "Saved in this browser. Export preset JSON to share it with other users.",
       literature: "Custom preset saved from the current controls.",
       values: state
     };
@@ -3353,7 +3353,7 @@
       key: sanitizeLabel(label),
       label,
       summary: "Shared preset.",
-      note: "Add this object to shared-presets.json to make it visible for every visitor.",
+      note: "Add this preset to shared presets to make it visible for every visitor.",
       literature: "Shared lab preset exported from the current controls.",
       values: state
     };
@@ -3397,7 +3397,7 @@
     }
 
     if (!isCustomPresetKey(selectedPresetKey)) {
-      statusText.textContent = isSharedPresetKey(selectedPresetKey) ? "Shared presets live in shared-presets.json." : "Preset unavailable.";
+      statusText.textContent = isSharedPresetKey(selectedPresetKey) ? "Shared presets cannot be removed here." : "Preset unavailable.";
       return;
     }
 
@@ -6863,7 +6863,7 @@
   function playImpactSound(state) {
     const audioContext = getPreviewAudioContext();
     if (!audioContext) {
-      statusText.textContent = "AudioContext is unavailable; preview is silent.";
+      statusText.textContent = "Audio preview is unavailable here.";
       return;
     }
 
@@ -7213,10 +7213,10 @@
   function getBrowserExportIssues(state = cloneState()) {
     const issues = [];
     if (!hasMediaRecorderSupport()) {
-      issues.push("Video export needs MediaRecorder. Preview and CSV/JSON still work in this browser.");
+      issues.push("Video export is not available in this browser. Preview and CSV/JSON still work.");
     }
     if (!hasCanvasCaptureStream()) {
-      issues.push("Video export needs canvas recording. Preview and CSV/JSON still work in this browser.");
+      issues.push("This browser cannot record the video. Preview and CSV/JSON still work.");
     }
     if (state.outputFormat === "mp4" && hasMediaRecorderSupport() && typeof MediaRecorder.isTypeSupported === "function") {
       const supportsMp4 = getMimeCandidates({ ...state, outputFormat: "mp4" }).some(
@@ -8442,7 +8442,7 @@
     const manifest = buildConditionManifest(conditionSetSelect.value, state, exportFormat);
     setConditionJsonDownload(manifest, `${sanitizeLabel(manifest.family)}-condition-set.json`);
     setConditionCsvDownload(buildConditionSetCsv(manifest), manifest.psychopyCsv);
-    statusText.textContent = `${manifest.conditions.length} condition records ready.`;
+    statusText.textContent = `${manifest.conditions.length} condition rows ready.`;
   }
 
   function exportConditionSetCsv() {
@@ -9188,7 +9188,8 @@
     const frameDuration = 1000 / state.fps;
     const totalFrames = getExportFrameCount(state);
     const cachedFrames = await buildExportFrameCache(state, exportCanvas, aspectScratchCanvas, (frame, count) => {
-      statusText.textContent = `Rendering frame ${frame} of ${count}…`;
+      const percent = Math.max(1, Math.round((frame / Math.max(1, count)) * 100));
+      statusText.textContent = `Preparing video ${percent}%…`;
     });
     const stream = exportCanvas.captureStream(state.fps);
     let exportAudioContext = null;
@@ -9208,7 +9209,7 @@
         });
         pendingImpactSoundEvents = getImpactSoundEvents(state);
       } else {
-        statusText.textContent = "AudioContext is unavailable; exporting silent video.";
+        statusText.textContent = "Audio export is unavailable here; exporting a silent video.";
       }
     }
 
@@ -9216,7 +9217,7 @@
     exportFormat.width = exportCanvas.width;
     exportFormat.height = exportCanvas.height;
     if (exportFormat.usedFallback) {
-      statusText.textContent = "Requested format unsupported; using browser fallback.";
+      statusText.textContent = "Requested format unavailable here; using an available browser format.";
     }
 
     const recorderResult = createMediaRecorderWithFallback(stream, state, exportFormat);
@@ -9225,7 +9226,7 @@
       if (exportAudioContext) {
         await exportAudioContext.close().catch(() => {});
       }
-      statusText.textContent = "Video encoder unavailable in this browser.";
+      statusText.textContent = "Video encoding is unavailable in this browser.";
       exportButton.disabled = false;
       isExporting = false;
       updateCompatibilityNotice(state);
@@ -9268,7 +9269,7 @@
       } else {
         drawExportFrame(state, time, exportCtx, exportCanvas, aspectScratchCanvas);
       }
-      statusText.textContent = `Exporting frame ${frame + 1} of ${totalFrames}…`;
+      statusText.textContent = `Writing video ${Math.round(((frame + 1) / totalFrames) * 100)}%…`;
       const nextFrameTime = exportStartTime + (frame + 1) * frameDuration;
       await new Promise((resolve) => window.setTimeout(resolve, Math.max(0, nextFrameTime - performance.now())));
     }
@@ -9311,9 +9312,7 @@
     videoPanel.classList.remove("hidden");
     exportMeta.textContent = `${Math.round(getExportDurationSec(state) * 1000)} ms - ${state.fps} fps - ${
       exportFormat.width
-    }x${exportFormat.height} - ${
-      exportFormat.extension.toUpperCase()
-    } - ${mimeType}`;
+    }x${exportFormat.height} - ${exportFormat.extension.toUpperCase()}`;
     statusText.textContent = "Export ready.";
 
     const autoDownload = document.createElement("a");

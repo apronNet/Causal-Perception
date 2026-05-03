@@ -7,6 +7,7 @@ This is a browser-only, single-page stimulus generator. There is no build step.
 - `app.js` holds presets, parameter defaults, state, rendering, preview playback, PsychoPy export, and condition-set export.
 - `shared-presets.json` is the committed source for presets that should load for everyone.
 - `UTILITY_BENCHMARKS.md` records the current utility-site benchmarks used for interface decisions.
+- `FORKING_GUIDE.md` is the code-orientation guide for labs adapting the app for a new experiment.
 
 ## Main Code Path
 
@@ -16,6 +17,8 @@ This is a browser-only, single-page stimulus generator. There is no build step.
 4. `getGeometry()` turns that state into contact time, object positions, and launch direction.
 5. `drawFrame()` renders both preview and exported frames.
 6. `exportVideo()` writes the movie and prepares PsychoPy CSV plus metadata JSON sidecars.
+
+For a diagrammed version of this pipeline, including context-pair state and condition-set export, see `FORKING_GUIDE.md`.
 
 ## Add A New Adjustable Parameter
 
