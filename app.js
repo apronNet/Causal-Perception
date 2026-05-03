@@ -44,6 +44,8 @@
     stepSec: 1 / 120,
     maxSteps: 1800
   };
+  const BILLIARD_PAIR_EVENT_COOLDOWN_MS = 65;
+  const BILLIARD_RESTING_CONTACT_SPEED = 0.35;
   const TUNNEL_BASE_RADIUS = 28;
   const TUNNEL_HEIGHT_RATIO = 3.8;
   const TUNNEL_ROW_CLEARANCE = 8;
@@ -4635,6 +4637,19 @@
     clampBilliardBodyToBounds(target, bounds);
   }
 
+  function applyBilliardNormalImpulse(launcher, target, nx, ny, velocityAlongNormal, restitution) {
+    const impulse =
+      (-(1 + restitution) * velocityAlongNormal) / (1 / launcher.mass + 1 / target.mass);
+    if (impulse <= 0.0001) {
+      return 0;
+    }
+    launcher.vx -= (impulse / launcher.mass) * nx;
+    launcher.vy -= (impulse / launcher.mass) * ny;
+    target.vx += (impulse / target.mass) * nx;
+    target.vy += (impulse / target.mass) * ny;
+    return impulse;
+  }
+
   function applyRealisticRailBounce(body, state, seed, elapsedMs, events, bounds = getBilliardBounds(state, null)) {
     const radius = body.radius;
     const wallRestitution = getBilliardWallRestitution(state);
@@ -4708,9 +4723,6 @@
     const relativeVy = target.vy - launcher.vy;
     const velocityAlongNormal = relativeVx * nx + relativeVy * ny;
     const overlap = Math.max(0, minDistance - distance);
-    if (velocityAlongNormal >= 0 && overlap <= 0.1) {
-      return lastCollisionElapsedMs;
-    }
 
     if (overlap > 0) {
       const correction = overlap / 2 + 0.01;
@@ -4720,13 +4732,20 @@
       target.y += ny * correction;
     }
 
-    const restitution = getBilliardRestitution(state);
-    const impulse =
-      (-(1 + restitution) * Math.min(velocityAlongNormal, 0)) / (1 / launcher.mass + 1 / target.mass);
-    launcher.vx -= (impulse / launcher.mass) * nx;
-    launcher.vy -= (impulse / launcher.mass) * ny;
-    target.vx += (impulse / target.mass) * nx;
-    target.vy += (impulse / target.mass) * ny;
+    if (velocityAlongNormal >= -BILLIARD_RESTING_CONTACT_SPEED) {
+      return lastCollisionElapsedMs;
+    }
+
+    const recentCollision = elapsedMs - lastCollisionElapsedMs < BILLIARD_PAIR_EVENT_COOLDOWN_MS;
+    const restitution = recentCollision ? 0 : getBilliardRestitution(state);
+    const impulse = applyBilliardNormalImpulse(launcher, target, nx, ny, velocityAlongNormal, restitution);
+    if (impulse <= 0.0001) {
+      return lastCollisionElapsedMs;
+    }
+
+    if (recentCollision) {
+      return lastCollisionElapsedMs;
+    }
 
     if (options.scatter !== false) {
       const scatter = getRealismScatterRadians(seed, `recollision-${Math.round(elapsedMs)}`, BILLIARD_REALISM.recollisionScatterDeg);
@@ -4737,11 +4756,8 @@
       target.vx = targetVelocity.x;
       target.vy = targetVelocity.y;
     }
-    if (elapsedMs - lastCollisionElapsedMs >= 65) {
-      events?.push({ type: "recollision", body: "pair", elapsedMs });
-      return elapsedMs;
-    }
-    return lastCollisionElapsedMs;
+    events?.push({ type: "recollision", body: "pair", elapsedMs });
+    return elapsedMs;
   }
 
   function advanceRealisticBilliardPair(geometry, elapsedMs, state, options = {}) {

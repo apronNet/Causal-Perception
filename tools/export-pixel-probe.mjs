@@ -384,6 +384,71 @@ const browserProbe = String.raw`
     return best;
   };
 
+  const getMotionStabilityAudit = (rows, eventName = "original pair", role = "O2", windowMs = 260) => {
+    const samples = rows
+      .filter((row) => row.event === eventName && row.role === role && row.visible === "true")
+      .map((row) => ({
+        frame: Number(row.frame),
+        timeMs: Number(row.movieTimeMs),
+        x: Number(row.xPx),
+        y: Number(row.yPx)
+      }))
+      .filter((sample) => Number.isFinite(sample.x) && Number.isFinite(sample.y))
+      .sort((a, b) => a.frame - b.frame);
+    if (samples.length < 4) {
+      return { sampleCount: samples.length, stable: false };
+    }
+    const origin = samples[0];
+    const motionStartIndex = Math.max(
+      1,
+      samples.findIndex((sample) => Math.hypot(sample.x - origin.x, sample.y - origin.y) > 0.2)
+    );
+    const motionStart = samples[motionStartIndex] || samples[1];
+    const windowSamples = samples.filter(
+      (sample) => sample.frame >= motionStart.frame && sample.timeMs <= motionStart.timeMs + windowMs
+    );
+    let directionFlipCount = 0;
+    let maxBacktrackPx = 0;
+    let previousVector = null;
+    let previousProjection = null;
+    let direction = null;
+    for (let index = 1; index < windowSamples.length; index += 1) {
+      const previous = windowSamples[index - 1];
+      const current = windowSamples[index];
+      const vector = {
+        x: current.x - previous.x,
+        y: current.y - previous.y
+      };
+      const step = Math.hypot(vector.x, vector.y);
+      if (step <= 0.05) {
+        continue;
+      }
+      if (!direction) {
+        direction = { x: vector.x / step, y: vector.y / step };
+      }
+      if (previousVector) {
+        const dot = vector.x * previousVector.x + vector.y * previousVector.y;
+        if (dot < -0.05) {
+          directionFlipCount += 1;
+        }
+      }
+      const projection = (current.x - motionStart.x) * direction.x + (current.y - motionStart.y) * direction.y;
+      if (previousProjection !== null && projection < previousProjection) {
+        maxBacktrackPx = Math.max(maxBacktrackPx, previousProjection - projection);
+      }
+      previousProjection = projection;
+      previousVector = vector;
+    }
+    return {
+      sampleCount: windowSamples.length,
+      startFrame: motionStart.frame,
+      windowMs,
+      directionFlipCount,
+      maxBacktrackPx: Number(maxBacktrackPx.toFixed(3)),
+      stable: directionFlipCount === 0 && maxBacktrackPx < 0.2
+    };
+  };
+
   await wait(() => window.launchingVideoMakerReady && document.getElementById("outputFormat"), 15000, "app ready");
 
   const commonControls = () => {
@@ -535,7 +600,7 @@ const browserProbe = String.raw`
   const solidAudit = async (realismEnabled) => {
     commonControls();
     setControl("durationMs", 2800);
-    setControl("fps", 144);
+    setControl("fps", 60);
     setControl("launcherSpeed", 6500);
     setControl("launcherVisibleMs", 2800);
     setControl("targetVisibleMs", 2800);
@@ -560,6 +625,32 @@ const browserProbe = String.raw`
   };
   const solidManualAudit = await solidAudit(false);
   const solidRealismAudit = await solidAudit(true);
+
+  const smoothHitAudit = async (realismEnabled) => {
+    commonControls();
+    setControl("durationMs", 2200);
+    setControl("fps", 60);
+    setControl("leadInMs", 200);
+    setControl("launcherSpeed", 876);
+    setControl("launcherAccel", 0);
+    setControl("gapPx", 0);
+    setControl("delayMs", 0);
+    setControl("launcherVisibleMs", 2200);
+    setControl("targetVisibleMs", 2200);
+    setControl("targetTravelMs", 2200);
+    setControl("physicsEngineEnabled", true);
+    setControl("billiardRealismEnabled", realismEnabled);
+    if (!realismEnabled) {
+      setControl("billiardFriction", 180);
+      setControl("billiardRestitution", 0.92);
+      setControl("billiardWallRestitution", 0.82);
+      setControl("billiardStopSpeed", 20);
+    }
+    setControl("fileLabel", realismEnabled ? "probe-smooth-realism" : "probe-smooth-manual");
+    return getMotionStabilityAudit(await exportFrameLogRows());
+  };
+  const smoothManualAudit = await smoothHitAudit(false);
+  const smoothRealismAudit = await smoothHitAudit(true);
 
   commonControls();
   setControl("durationMs", 3600);
@@ -770,6 +861,10 @@ const browserProbe = String.raw`
     billiardSolidPairs: {
       manual: solidManualAudit,
       realism: solidRealismAudit
+    },
+    billiardSmoothHit: {
+      manual: smoothManualAudit,
+      realism: smoothRealismAudit
     },
     singleContextBilliard: {
       sampledSec: 3.25,
