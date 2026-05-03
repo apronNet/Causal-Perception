@@ -1,18 +1,18 @@
 :root {
   color-scheme: light;
-  --bg: #e9dfd0;
-  --paper: #fff8ea;
-  --paper-soft: #f3ead8;
-  --ink: #211d18;
-  --muted: #746a5e;
-  --line: #27221c;
-  --line-soft: rgba(39, 34, 28, 0.17);
-  --accent: #c45f45;
-  --accent-dark: #884231;
-  --deep: #211d18;
-  --deep-soft: #ded4c3;
-  --blue: #3f746f;
-  --gold: #c0953f;
+  --bg: #ece4d7;
+  --paper: #fffaf0;
+  --paper-soft: #f3ebdf;
+  --ink: #201b17;
+  --muted: #756b60;
+  --line: #29231d;
+  --line-soft: rgba(41, 35, 29, 0.16);
+  --accent: #e86546;
+  --accent-dark: #9a3f2f;
+  --deep: #201b17;
+  --deep-soft: #ddd3c5;
+  --blue: #4d8f8a;
+  --gold: #d7a437;
   --shadow: none;
   --radius-lg: 0;
   --radius-md: 0;
@@ -961,7 +961,7 @@ button:disabled {
 .validation-list li {
   border-left: 4px solid var(--accent);
   padding: 5px 7px;
-  background: #f1e3cf;
+  background: #f6e7d8;
   color: var(--accent-dark);
   font-size: 0.7rem;
   font-weight: 800;
@@ -1069,7 +1069,7 @@ canvas.trajectory-edit-enabled:active {
   margin: 0 0 8px;
   padding: 6px 8px;
   border-left: 4px solid var(--accent);
-  background: #f1e3cf;
+  background: #f6e7d8;
   color: var(--accent-dark);
   font-size: 0.68rem;
   font-weight: 800;
