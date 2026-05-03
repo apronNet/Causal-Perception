@@ -59,7 +59,7 @@ Main-event motion is computed by `getMainEventState()`. Context-event motion is 
 
 `targetTravelMs` controls how long O2 keeps moving after collision. `targetVisibleMs` is separate: it controls whether O2 disappears while still on screen.
 
-Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table friction, and reflects balls off stage bounds. Clean head-on hits should stay straight: do not add synthetic cut, spin, or bank steering unless the visible setup actually creates that geometry. If table friction stops a ball before the next wall, the ball stops there; do not force a wall contact.
+Billiard mode keeps the normal contact geometry up to impact. After impact, it uses ball size as mass, applies table friction, and reflects balls off stage bounds. Realism intentionally reads more like a quick break shot: higher initial speed, visible rolling slowdown, lively cushion rebound, and small deterministic scatter after rails or recollisions. Clean head-on hits should stay basically straight before a rail or recollision changes the geometry. If table friction stops a ball before the next wall, the ball stops there; do not force a wall contact.
 
 ## PsychoPy Export
 

@@ -30,19 +30,23 @@
     stopThreshold: 0.075
   };
   const BILLIARD_REALISM = {
-    friction: 72,
-    restitution: 0.94,
-    wallRestitution: 0.88,
-    stopSpeed: 8,
-    velocityScale: 1,
-    railScatterDeg: 1.5,
-    bankReturnDeg: 0,
-    recollisionScatterDeg: 0,
-    stepSec: 1 / 120,
-    maxSteps: 1800
+    friction: 180,
+    restitution: 0.97,
+    wallRestitution: 0.92,
+    stopSpeed: 15,
+    velocityScale: 1.35,
+    railScatterDeg: 2.2,
+    bankReturnDeg: 3.5,
+    recollisionScatterDeg: 4,
+    stepSec: 1 / 150,
+    minStepSec: 1 / 480,
+    maxSteps: 3000
   };
-  const BILLIARD_PAIR_EVENT_COOLDOWN_MS = 65;
-  const BILLIARD_RESTING_CONTACT_SPEED = 0.35;
+  const BILLIARD_PAIR_EVENT_COOLDOWN_MS = 95;
+  const BILLIARD_RESTING_CONTACT_SPEED = 6;
+  const BILLIARD_CONTACT_SKIN_PX = 0.75;
+  const BILLIARD_SEPARATION_EPSILON_PX = 0.04;
+  const BILLIARD_RAIL_INSET_PX = 0.5;
   const TUNNEL_BASE_RADIUS = 28;
   const TUNNEL_HEIGHT_RATIO = 3.8;
   const TUNNEL_ROW_CLEARANCE = 8;
@@ -349,7 +353,7 @@
     physicsEngineEnabled:
       "Changes: turns Billiard on. It uses ball size to estimate mass, solves a simple collision, and then lets balls slow and bounce off table rails.",
     billiardRealismEnabled:
-      "Changes: uses a fixed table model with clean straight head-on hits, friction, rail bounce, and recollisions only when the motion produces them. Turn off to edit manual friction and bounce controls.",
+      "Changes: uses a fixed table model with a faster break-like launch, table slowdown, cushion rebound, and recollisions only when the motion produces them. Turn off to edit manual friction and bounce controls.",
     billiardFriction:
       "Changes: table friction after impact. Higher values make balls lose speed sooner, so weak shots stop before reaching a rail.",
     billiardRestitution: "Changes: ball-to-ball bounce. Higher values keep more speed after impact.",
@@ -3803,7 +3807,7 @@
       return {
         label: "Billiard display",
         summary: state.billiardRealismEnabled
-          ? "Realism keeps clean head-on hits straight, then applies table friction, rail bounce, and real recollisions."
+          ? "Realism uses a faster break-like launch, table slowdown, cushion rebound, and real recollisions."
           : "Ball size sets mass; table friction and rail bounce control post-impact motion.",
         note: "Billiard turns off delay, gaps, tunnels, markers, sudden color changes, and manual trajectories.",
         literature:
@@ -4706,7 +4710,7 @@
     if (maxSpeed <= 0.001) {
       return Math.min(BILLIARD_REALISM.stepSec, remainingSec);
     }
-    const solidStep = clamp((minRadius * 0.45) / maxSpeed, 1 / 300, BILLIARD_REALISM.stepSec);
+    const solidStep = clamp((minRadius * 0.32) / maxSpeed, BILLIARD_REALISM.minStepSec, BILLIARD_REALISM.stepSec);
     return Math.min(solidStep, remainingSec);
   }
 
@@ -4822,8 +4826,13 @@
   }
 
   function clampBilliardBodyToBounds(body, bounds) {
-    body.x = clamp(body.x, bounds.left + body.radius, bounds.right - body.radius);
-    body.y = clamp(body.y, bounds.top + body.radius, bounds.bottom - body.radius);
+    const inset = Math.min(
+      BILLIARD_RAIL_INSET_PX,
+      Math.max(0, (bounds.right - bounds.left) / 2 - body.radius),
+      Math.max(0, (bounds.bottom - bounds.top) / 2 - body.radius)
+    );
+    body.x = clamp(body.x, bounds.left + body.radius + inset, bounds.right - body.radius - inset);
+    body.y = clamp(body.y, bounds.top + body.radius + inset, bounds.bottom - body.radius - inset);
   }
 
   function separateBilliardPairWithinBounds(launcher, target, bounds) {
@@ -4835,13 +4844,50 @@
       return;
     }
     const normal = getSolidPairNormal(launcher, target, dx, dy, distance);
-    const correction = (minDistance - distance) / 2 + 0.01;
-    launcher.x -= normal.x * correction;
-    launcher.y -= normal.y * correction;
-    target.x += normal.x * correction;
-    target.y += normal.y * correction;
+    const correction = minDistance - distance + BILLIARD_SEPARATION_EPSILON_PX;
+    const launcherInvMass = 1 / Math.max(0.001, launcher.mass || 1);
+    const targetInvMass = 1 / Math.max(0.001, target.mass || 1);
+    const invMassSum = launcherInvMass + targetInvMass;
+    const launcherShare = launcherInvMass / invMassSum;
+    const targetShare = targetInvMass / invMassSum;
+    launcher.x -= normal.x * correction * launcherShare;
+    launcher.y -= normal.y * correction * launcherShare;
+    target.x += normal.x * correction * targetShare;
+    target.y += normal.y * correction * targetShare;
     clampBilliardBodyToBounds(launcher, bounds);
     clampBilliardBodyToBounds(target, bounds);
+  }
+
+  function getSweptBilliardPairContact(previous, launcher, target, minDistance) {
+    if (!previous?.launcher || !previous?.target) {
+      return null;
+    }
+    const r0x = previous.target.x - previous.launcher.x;
+    const r0y = previous.target.y - previous.launcher.y;
+    const r1x = target.x - launcher.x;
+    const r1y = target.y - launcher.y;
+    const vx = r1x - r0x;
+    const vy = r1y - r0y;
+    const travelSq = vx * vx + vy * vy;
+    if (travelSq <= 0.000001 || r0x * vx + r0y * vy >= 0) {
+      return null;
+    }
+    const t = clamp(-((r0x * vx + r0y * vy) / travelSq), 0, 1);
+    const closestX = r0x + vx * t;
+    const closestY = r0y + vy * t;
+    const closestDistance = Math.hypot(closestX, closestY);
+    if (closestDistance > minDistance + BILLIARD_CONTACT_SKIN_PX) {
+      return null;
+    }
+    return { t, closestDistance };
+  }
+
+  function moveBodiesToSweptContact(previous, launcher, target, contact) {
+    const t = clamp(Number(contact?.t) || 0, 0, 1);
+    launcher.x = previous.launcher.x + (launcher.x - previous.launcher.x) * t;
+    launcher.y = previous.launcher.y + (launcher.y - previous.launcher.y) * t;
+    target.x = previous.target.x + (target.x - previous.target.x) * t;
+    target.y = previous.target.y + (target.y - previous.target.y) * t;
   }
 
   function applyBilliardNormalImpulse(launcher, target, nx, ny, velocityAlongNormal, restitution) {
@@ -4862,10 +4908,15 @@
     const wallRestitution = getBilliardWallRestitution(state);
     let hitX = 0;
     let hitY = 0;
-    const left = bounds.left + radius;
-    const right = bounds.right - radius;
-    const top = bounds.top + radius;
-    const bottom = bounds.bottom - radius;
+    const inset = Math.min(
+      BILLIARD_RAIL_INSET_PX,
+      Math.max(0, (bounds.right - bounds.left) / 2 - radius),
+      Math.max(0, (bounds.bottom - bounds.top) / 2 - radius)
+    );
+    const left = bounds.left + radius + inset;
+    const right = bounds.right - radius - inset;
+    const top = bounds.top + radius + inset;
+    const bottom = bounds.bottom - radius - inset;
     if (body.x < left) {
       body.x = left;
       body.vx = Math.abs(body.vx) * wallRestitution;
@@ -4916,12 +4967,19 @@
     lastCollisionElapsedMs,
     options = {}
   ) {
-    const dx = target.x - launcher.x;
-    const dy = target.y - launcher.y;
-    const distance = Math.hypot(dx, dy);
+    let dx = target.x - launcher.x;
+    let dy = target.y - launcher.y;
+    let distance = Math.hypot(dx, dy);
     const minDistance = launcher.radius + target.radius;
-    if (distance > minDistance + 0.35) {
-      return lastCollisionElapsedMs;
+    if (distance > minDistance + BILLIARD_CONTACT_SKIN_PX) {
+      const sweptContact = getSweptBilliardPairContact(options.previous, launcher, target, minDistance);
+      if (!sweptContact) {
+        return lastCollisionElapsedMs;
+      }
+      moveBodiesToSweptContact(options.previous, launcher, target, sweptContact);
+      dx = target.x - launcher.x;
+      dy = target.y - launcher.y;
+      distance = Math.hypot(dx, dy);
     }
     const normal = getSolidPairNormal(launcher, target, dx, dy, distance);
     const nx = normal.x;
@@ -4932,11 +4990,14 @@
     const overlap = Math.max(0, minDistance - distance);
 
     if (overlap > 0) {
-      const correction = overlap / 2 + 0.01;
-      launcher.x -= nx * correction;
-      launcher.y -= ny * correction;
-      target.x += nx * correction;
-      target.y += ny * correction;
+      const correction = overlap + BILLIARD_SEPARATION_EPSILON_PX;
+      const launcherInvMass = 1 / Math.max(0.001, launcher.mass || 1);
+      const targetInvMass = 1 / Math.max(0.001, target.mass || 1);
+      const invMassSum = launcherInvMass + targetInvMass;
+      launcher.x -= nx * correction * (launcherInvMass / invMassSum);
+      launcher.y -= ny * correction * (launcherInvMass / invMassSum);
+      target.x += nx * correction * (targetInvMass / invMassSum);
+      target.y += ny * correction * (targetInvMass / invMassSum);
     }
 
     if (velocityAlongNormal >= -BILLIARD_RESTING_CONTACT_SPEED) {
@@ -4944,6 +5005,9 @@
     }
 
     const recentCollision = elapsedMs - lastCollisionElapsedMs < BILLIARD_PAIR_EVENT_COOLDOWN_MS;
+    if (recentCollision && -velocityAlongNormal < getBilliardStopSpeed(state) * 1.35) {
+      return lastCollisionElapsedMs;
+    }
     const restitution = recentCollision ? 0 : getBilliardRestitution(state);
     const impulse = applyBilliardNormalImpulse(launcher, target, nx, ny, velocityAlongNormal, restitution);
     if (impulse <= 0.0001) {
@@ -4985,6 +5049,10 @@
     while (elapsedSec * 1000 < maxElapsedMs - 0.001 && stepCount < maxStepCount) {
       const remainingSec = maxElapsedMs / 1000 - elapsedSec;
       const stepSec = getAdaptiveBilliardStepSec(bodies, remainingSec);
+      const previous = {
+        launcher: { x: bodies.launcher.x, y: bodies.launcher.y },
+        target: { x: bodies.target.x, y: bodies.target.y }
+      };
       elapsedSec += stepSec;
       const eventElapsedMs = elapsedSec * 1000;
       advanceRealisticBodyPosition(bodies.launcher, stepSec, friction, stopSpeed);
@@ -5019,8 +5087,11 @@
         eventElapsedMs,
         options.collectEvents ? events : null,
         lastPairCollisionElapsedMs,
-        { scatter: useRealism }
+        { scatter: useRealism, previous }
       );
+      clampBilliardBodyToBounds(bodies.launcher, bounds);
+      clampBilliardBodyToBounds(bodies.target, bounds);
+      separateBilliardPairWithinBounds(bodies.launcher, bodies.target, bounds);
       stepCount += 1;
 
       if (

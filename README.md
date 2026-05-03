@@ -50,7 +50,7 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 - **Blink before launch** shows only the crosshair before the balls appear. The crosshair disappears after the blink by default; use **After blink: Stay** if it should remain during the launch. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
 - **Rail** adds one or more movable line segments. Use this for alignment or path-cue manipulations.
 - **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
-- **Billiard** uses ball size to estimate mass and solves a simple collision. Realism is on by default: clean head-on hits stay straight, while table friction, rail bounce, and real recollisions still apply. Turn Realism off to edit manual friction and bounce values. With context pairs, each row acts as its own table lane so balls do not cross through other rows. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
+- **Billiard** uses ball size to estimate mass and solves a simple collision. Realism is on by default: clean head-on hits stay straight, with a faster break-like launch, visible table slowdown, cushion rebound, and real recollisions. Turn Realism off to edit manual friction and bounce values. With context pairs, each row acts as its own table lane so balls do not cross through other rows. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
 - **Impact sound** adds a short cue at each visible collision event, including context-pair collisions. If sound is not a condition, leave it off.
 
 ## Perceptual Grouping
