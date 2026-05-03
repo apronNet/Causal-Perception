@@ -2422,7 +2422,6 @@
         <div class="control-subgroup context-pair-editor">
           <h3 class="subgroup-title">Context ${pairNumber} position</h3>
           <div class="control-subgrid">
-            ${renderContextRange(pairNumber, "Position", "yOffset", "Vertical distance", snapshot, "signedPx", -480, 480, 1)}
             ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
             ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
             ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
