@@ -283,10 +283,8 @@
     targetAccel: "Changes: whether O2 speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
     launcherBehavior: "Changes: what O1 does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
     targetAngle: "Changes: direction of O2 motion after contact. Use for: straight launch versus angled launch.",
-    targetTravelMode:
-      "Legacy saved value from the old two-choice travel control. New stimuli use Travel after collision instead.",
     targetTravelMs:
-      "Changes: how long O2 keeps moving after it starts at collision. After this time, O2 stops in place if it is still visible.",
+      "Changes: how long O2 keeps moving after it starts at collision. To let O2 move offscreen, keep Video duration and O2 on-screen long enough too.",
     launcherVisibleMs:
       "Changes: how long O1 stays visible after the video starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that time.",
     targetVisibleMs:
@@ -322,10 +320,8 @@
     contextTargetSpeedRatio: "Changes: context O2 speed as a multiple of context O1 impact speed. Use for: matching the original pair launch or making the context faster/slower.",
     contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
-    contextTargetTravelMode:
-      "Legacy saved value from the old context travel control. New stimuli use Travel after collision instead.",
     contextTargetTravelMs:
-      "Changes: how long context O2 keeps moving after it starts at context collision. After this time, it stops in place if still visible.",
+      "Changes: how long context O2 keeps moving after it starts at context collision. To let it move offscreen, keep Video duration and context O2 on-screen long enough too.",
     contextLauncherVisibleMs:
       "Changes: how long context O1 stays visible after the context event starts. Longer than Video duration means it stays visible until the clip ends or moves offscreen. Shorter than Video duration makes it disappear on screen at that context time.",
     contextTargetVisibleMs:
@@ -1705,6 +1701,9 @@
   function bindParameterHelp() {
     Object.entries(parameterHelp).forEach(([id, text]) => {
       const control = document.getElementById(id);
+      if (control?.type === "hidden") {
+        return;
+      }
       const field = control?.closest(".field");
       if (!field || field.dataset.helpBound === "true") {
         return;
@@ -2581,9 +2580,9 @@
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "O2 speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
             ${renderContextRange(pairNumber, "Movement", "targetAccel", "O2 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
-            ${renderContextRange(pairNumber, "Movement", "targetTravelMs", "Travel after collision", snapshot, "ms", 0, 12000, 50)}
-            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 100, 12000, 50)}
-            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 100, 12000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "targetTravelMs", "Travel after collision", snapshot, "ms", 0, 60000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
           </div>
         </div>`);
 

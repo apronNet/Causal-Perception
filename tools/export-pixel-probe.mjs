@@ -277,6 +277,14 @@ const browserProbe = String.raw`
     setControl("targetTravelMs", 9000);
   };
 
+  const rangeCaps = {
+    durationMaxMs: Number(document.getElementById("durationMs").max),
+    targetTravelMaxMs: Number(document.getElementById("targetTravelMs").max),
+    targetVisibleMaxMs: Number(document.getElementById("targetVisibleMs").max),
+    contextTargetTravelMaxMs: Number(document.getElementById("contextTargetTravelMs").max),
+    contextTargetVisibleMaxMs: Number(document.getElementById("contextTargetVisibleMs").max)
+  };
+
   commonControls();
   setControl("durationMs", 900);
   setControl("gapPx", 0);
@@ -452,6 +460,7 @@ const browserProbe = String.raw`
       samples: visibilitySamples
     },
     travelTime: {
+      rangeCaps,
       targetOnsetSec: travelOnsetSec,
       targetTravelAfterCollisionMs: travelExport.metadata.parameters.targetTravelMs,
       metadataTravelAfterCollisionSec: travelExport.metadata.timing.targetTravelAfterCollisionSec,

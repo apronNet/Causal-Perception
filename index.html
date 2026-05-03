@@ -164,17 +164,17 @@
                   <label class="field">
                     <span>Travel after collision</span>
                     <input id="targetTravelMode" type="hidden" value="continue" />
-                    <input id="targetTravelMs" data-format="ms" min="0" max="12000" step="50" type="range" />
+                    <input id="targetTravelMs" data-format="ms" min="0" max="60000" step="50" type="range" />
                     <output data-for="targetTravelMs"></output>
                   </label>
                   <label class="field">
                     <span>O1 on-screen</span>
-                    <input id="launcherVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
+                    <input id="launcherVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
                     <output data-for="launcherVisibleMs"></output>
                   </label>
                   <label class="field">
                     <span>O2 on-screen</span>
-                    <input id="targetVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
+                    <input id="targetVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
                     <output data-for="targetVisibleMs"></output>
                   </label>
                 </div>
@@ -237,17 +237,17 @@
                   <label class="field">
                     <span>Travel after collision</span>
                     <input id="contextTargetTravelMode" type="hidden" value="continue" />
-                    <input id="contextTargetTravelMs" data-format="ms" min="0" max="12000" step="50" type="range" />
+                    <input id="contextTargetTravelMs" data-format="ms" min="0" max="60000" step="50" type="range" />
                     <output data-for="contextTargetTravelMs"></output>
                   </label>
                   <label class="field">
                     <span>O1 on-screen</span>
-                    <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
+                    <input id="contextLauncherVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
                     <output data-for="contextLauncherVisibleMs"></output>
                   </label>
                   <label class="field">
                     <span>O2 on-screen</span>
-                    <input id="contextTargetVisibleMs" data-format="visibilityMs" min="100" max="12000" step="50" type="range" />
+                    <input id="contextTargetVisibleMs" data-format="visibilityMs" min="100" max="60000" step="50" type="range" />
                     <output data-for="contextTargetVisibleMs"></output>
                   </label>
                 </div>
@@ -655,7 +655,7 @@
             <div class="control-grid">
               <label class="field">
                 <span>Video duration</span>
-                <input id="durationMs" data-format="int" min="200" max="20000" step="50" type="range" />
+                <input id="durationMs" data-format="int" min="200" max="60000" step="50" type="range" />
                 <output data-for="durationMs"></output>
               </label>
               <label class="field">
@@ -836,6 +836,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-travel-time"></script>
+    <script src="app.js?v=20260503-travel-range"></script>
   </body>
 </html>
