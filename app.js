@@ -352,7 +352,7 @@
       "Changes: extra grouping rectangles drawn in preview and export. Use Add rectangle, then move borders or resize from corners in the preview.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
     physicsEngineEnabled:
-      "Changes: turns Billiard on. It uses ball size to estimate mass, solves a simple collision, and then lets balls slow and bounce off table rails.",
+      "Experimental: turns Billiard on. It may break or produce unstable motion, so check exported videos before using it in a study.",
     billiardRealismEnabled:
       "Changes: uses a fixed table model with a faster break-like launch, table slowdown, cushion rebound, and recollisions only when the motion produces them. Turn off to edit manual friction and bounce controls.",
     billiardFriction:
@@ -2257,7 +2257,9 @@
 
     activePresetKey = null;
     setControls(physicsValues);
-    statusText.textContent = manualEditingWasOn ? "Billiard on; manual editing turned off." : "Billiard on.";
+    statusText.textContent = manualEditingWasOn
+      ? "Experimental Billiard on; manual editing turned off."
+      : "Experimental Billiard on.";
   }
 
   function getBlinkMsControlValue() {
@@ -3840,11 +3842,12 @@
   function getDynamicCopy(state) {
     if (state.physicsEngineEnabled) {
       return {
-        label: "Billiard display",
+        label: "Experimental Billiard display",
         summary: state.billiardRealismEnabled
           ? "Realism uses a faster break-like launch, table slowdown, cushion rebound, and real recollisions."
           : "Ball size sets mass; table friction and rail bounce control post-impact motion.",
-        note: "Billiard turns off delay, gaps, tunnels, markers, sudden color changes, and manual trajectories.",
+        note:
+          "Billiard is experimental and may break. It turns off delay, gaps, tunnels, markers, sudden color changes, and manual trajectories.",
         literature:
           "Use this for a physically constrained comparison condition rather than a pure Michotte-style parameter manipulation."
       };
@@ -10604,8 +10607,8 @@
           refreshText();
           updateCompatibilityNotice(cloneState());
           statusText.textContent = control.checked
-            ? "Billiard realism on."
-            : "Billiard manual controls enabled.";
+            ? "Experimental Billiard realism on."
+            : "Experimental Billiard manual controls enabled.";
           drawIdlePreview();
         });
         return;

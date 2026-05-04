@@ -48,7 +48,7 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 - **Blink before launch** shows only the crosshair before the balls appear. The crosshair disappears after the blink by default; use **After blink: Stay** if it should remain during the launch. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
 - **Rail** adds one or more movable line segments. Use this for alignment or path-cue manipulations.
 - **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
-- **Billiard** uses ball size to estimate mass and solves a simple collision. Realism is on by default: clean head-on hits stay straight, with a faster break-like launch, visible table slowdown, cushion rebound, and real recollisions. Turn Realism off to edit manual friction and bounce values. With context pairs, each row acts as its own table lane so balls do not cross through other rows. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
+- **Billiard** is experimental. It may break or produce unstable motion, so check exported videos before using it in a study. It uses ball size to estimate mass and solves a simple collision. Realism is on by default: clean head-on hits stay straight, with a faster break-like launch, visible table slowdown, cushion rebound, and real recollisions. Turn Realism off to edit manual friction and bounce values. With context pairs, each row acts as its own table lane so balls do not cross through other rows. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
 - **Impact sound** adds a short cue at each visible collision event, including context-pair collisions. If sound is not a condition, leave it off.
 
 ## Perceptual Grouping
@@ -121,22 +121,8 @@ The PsychoPy CSV and metadata JSON include event-frame records for contact and O
 
 If you publish stimuli, keep the movie, PsychoPy CSV, metadata JSON, and any frame log CSV together.
 
-## Export Checks
-
-Run this after changing timing, visibility, contact geometry, or Billiard behavior:
-
-```bash
-node tools/export-pixel-probe.mjs
-```
-
-The probe opens the local app in headless Chrome, exports real WebM videos, decodes them back into a canvas, and reports pixel measurements for contact and O2 visibility. It does not need `ffmpeg`.
-
 ## Forking The Code
 
 Labs adapting the app for a new experiment should start with [FORKING_GUIDE.md](FORKING_GUIDE.md). It explains why the app is safe to fork as a static browser tool, then maps the control, state, motion, rendering, export, context-pair, and condition-set paths with Mermaid diagrams.
 
 The short version: visible controls are registered in `controlIds`, read into the canonical state by `cloneState()`, turned into motion by `getGeometry()` and event-state helpers, drawn by `drawFrame()`, and recorded through movie, PsychoPy CSV, metadata JSON, and frame-log exports. Preview is for editing; exported files are the lab record.
-
-## Maintainer Note
-
-When a new feature is implemented, update this README at the same time. Add a small guide image when the feature is easier to understand visually.
