@@ -8,14 +8,7 @@ This is a tool made by Runkun with brilliant help from Codex 5.5, for a project 
 
 ## Basic Workflow
 
-1. Choose a preset, usually **Clear launch (0% overlap)**.
-2. Adjust the core event: movement, position, color, background, and optional context pairs.
-3. Use **Play preview** for editing only.
-4. Use **Export video** for the stimulus file shown to participants.
-5. Use **Export PsychoPy CSV** or **Condition set** if the video will be used in PsychoPy.
-6. Use **Export frame log CSV** when you need frame-by-frame object coordinates for checking a stimulus.
-
-The exported video is the timing reference. The browser preview is useful for editing, but final FPS, sound, aspect ratio, and resolution should be checked from the exported file.
+ The browser preview is useful for editing, but final FPS, sound, aspect ratio, and resolution should be checked from the exported file.
 
 The app shows stimulus checks only when a parameter combination is likely to need review, for example large overlaps, contact outside the clip, or O2 disappearing while it is still supposed to travel.
 
