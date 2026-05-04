@@ -5244,20 +5244,142 @@
     drawCtx.stroke();
   }
 
-  function shouldDrawFracture(state, eventState, targetKey) {
-    return Boolean(isFractureTargetEnabled(state, targetKey) && eventState?.time >= eventState?.geometry?.targetStartTime);
+  function getFractureCue(state, eventState, targetKey, role = "target") {
+    const impactTime = eventState?.geometry?.targetStartTime;
+    const eventTime = Number(eventState?.time);
+    if (
+      !isFractureTargetEnabled(state, targetKey) ||
+      !Number.isFinite(impactTime) ||
+      !Number.isFinite(eventTime) ||
+      eventTime < impactTime
+    ) {
+      return null;
+    }
+
+    const approachUnit = normalizeVector(eventState.geometry.approachUnitX, eventState.geometry.approachUnitY) || {
+      x: 1,
+      y: 0
+    };
+    const originSign = role === "target" ? -1 : 1;
+    return {
+      elapsedMs: Math.max(0, eventTime - impactTime),
+      originUnitX: approachUnit.x * originSign,
+      originUnitY: approachUnit.y * originSign,
+      seed: targetKey
+    };
   }
 
-  function drawFracture(drawCtx, state, x, y, radius) {
+  function getFallbackFractureCue() {
+    return {
+      elapsedMs: 220,
+      originUnitX: -1,
+      originUnitY: 0,
+      seed: "fracture"
+    };
+  }
+
+  function getFractureJitter(seed, salt, amount) {
+    return signedDeterministicUnit(seed, salt) * amount;
+  }
+
+  function getFracturePathPoint(radius, origin, inward, tangent, point, seed, pointIndex) {
+    const inwardDistance = (point[0] + getFractureJitter(seed, `i${pointIndex}`, 0.03)) * radius;
+    const tangentDistance = (point[1] + getFractureJitter(seed, `t${pointIndex}`, 0.035)) * radius;
+    return {
+      x: origin.x + inward.x * inwardDistance + tangent.x * tangentDistance,
+      y: origin.y + inward.y * inwardDistance + tangent.y * tangentDistance
+    };
+  }
+
+  function drawFractureProgressPath(drawCtx, points, progress) {
+    if (points.length < 2 || progress <= 0) {
+      return;
+    }
+
+    const segmentLengths = [];
+    let totalLength = 0;
+    for (let index = 1; index < points.length; index += 1) {
+      const segmentLength = Math.hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y);
+      segmentLengths.push(segmentLength);
+      totalLength += segmentLength;
+    }
+
+    if (totalLength < 0.001) {
+      return;
+    }
+
+    let remainingLength = totalLength * clamp(progress, 0, 1);
+    drawCtx.beginPath();
+    drawCtx.moveTo(points[0].x, points[0].y);
+    for (let index = 1; index < points.length; index += 1) {
+      const segmentLength = segmentLengths[index - 1];
+      if (remainingLength >= segmentLength) {
+        drawCtx.lineTo(points[index].x, points[index].y);
+        remainingLength -= segmentLength;
+        continue;
+      }
+
+      const segmentProgress = segmentLength > 0 ? remainingLength / segmentLength : 0;
+      drawCtx.lineTo(
+        points[index - 1].x + (points[index].x - points[index - 1].x) * segmentProgress,
+        points[index - 1].y + (points[index].y - points[index - 1].y) * segmentProgress
+      );
+      break;
+    }
+    drawCtx.stroke();
+  }
+
+  function drawFractureImpactPit(drawCtx, radius, origin, seed, progress) {
+    const chipRadius = Math.max(2.2, radius * (0.1 + progress * 0.035));
+    const points = 7;
+    drawCtx.beginPath();
+    for (let index = 0; index < points; index += 1) {
+      const angle = (index / points) * Math.PI * 2;
+      const pointRadius = chipRadius * (0.72 + hashStringToUnit(`${seed}:pit:${index}`) * 0.52);
+      const px = origin.x + Math.cos(angle) * pointRadius;
+      const py = origin.y + Math.sin(angle) * pointRadius;
+      if (index === 0) {
+        drawCtx.moveTo(px, py);
+      } else {
+        drawCtx.lineTo(px, py);
+      }
+    }
+    drawCtx.closePath();
+    drawCtx.fill();
+    drawCtx.stroke();
+  }
+
+  function drawFracture(drawCtx, state, x, y, radius, cue = null) {
+    const fractureCue = cue || getFallbackFractureCue();
+    const originUnit = normalizeVector(fractureCue.originUnitX, fractureCue.originUnitY) || { x: -1, y: 0 };
+    const inwardUnit = { x: -originUnit.x, y: -originUnit.y };
+    const tangentUnit = { x: -originUnit.y, y: originUnit.x };
+    const growth = clamp((fractureCue.elapsedMs + 45) / 230, 0.18, 1);
+    const seed = fractureCue.seed || "fracture";
+    const origin = {
+      x: x + originUnit.x * radius * 0.78,
+      y: y + originUnit.y * radius * 0.78
+    };
     const crackColor = state.stageTheme === "light" ? "rgba(31, 28, 24, 0.82)" : "rgba(255, 248, 234, 0.84)";
     const shadowColor = state.stageTheme === "light" ? "rgba(255, 248, 234, 0.42)" : "rgba(7, 15, 14, 0.64)";
     const hairlineColor = state.stageTheme === "light" ? "rgba(12, 10, 8, 0.28)" : "rgba(255, 248, 234, 0.28)";
-    const cracks = [
-      [[0.75, -0.68], [0.43, -0.38], [0.2, -0.14], [0.02, 0.06], [-0.15, 0.4], [-0.3, 0.92]],
-      [[0.02, 0.06], [-0.27, -0.08], [-0.63, -0.25]],
-      [[0.02, 0.06], [0.32, 0.2], [0.74, 0.4]],
-      [[0.2, -0.14], [0.39, 0.02], [0.5, 0.24]]
+    const chipFill = state.stageTheme === "light" ? "rgba(17, 14, 10, 0.34)" : "rgba(255, 248, 234, 0.22)";
+    const crackPaths = [
+      { delay: 0, points: [[0, 0], [0.18, -0.03], [0.38, 0.04], [0.64, -0.06], [0.96, 0.04], [1.34, 0.09], [1.68, -0.05]] },
+      { delay: 0.15, points: [[0.26, 0.01], [0.44, 0.18], [0.66, 0.36], [0.94, 0.52], [1.28, 0.67]] },
+      { delay: 0.18, points: [[0.3, -0.01], [0.5, -0.22], [0.78, -0.42], [1.1, -0.58], [1.42, -0.7]] },
+      { delay: 0.34, points: [[0.12, 0.01], [0.22, 0.17], [0.35, 0.31]] },
+      { delay: 0.38, points: [[0.16, -0.02], [0.28, -0.18], [0.42, -0.33]] },
+      { delay: 0.45, points: [[0.55, 0.02], [0.74, 0.18], [0.98, 0.29]] },
+      { delay: 0.48, points: [[0.62, -0.02], [0.84, -0.18], [1.1, -0.26]] },
+      { delay: 0.58, points: [[0.86, 0.04], [1.04, 0.22], [1.28, 0.35]] }
     ];
+    const renderedPaths = crackPaths.map((path, pathIndex) => ({
+      delay: path.delay,
+      points: path.points.map((point, pointIndex) =>
+        getFracturePathPoint(radius, origin, inwardUnit, tangentUnit, point, `${seed}:${pathIndex}`, pointIndex)
+      )
+    }));
 
     drawCtx.save();
     drawCtx.beginPath();
@@ -5272,27 +5394,23 @@
       drawCtx.lineWidth = lineWidth;
       drawCtx.lineCap = "round";
       drawCtx.lineJoin = "round";
-      cracks.forEach((crack) => {
-        drawCtx.beginPath();
-        crack.forEach(([px, py], pointIndex) => {
-          const pointX = x + px * radius;
-          const pointY = y + py * radius;
-          if (pointIndex === 0) {
-            drawCtx.moveTo(pointX, pointY);
-          } else {
-            drawCtx.lineTo(pointX, pointY);
-          }
-        });
-        drawCtx.stroke();
+      renderedPaths.forEach((path) => {
+        const pathProgress = clamp((growth - path.delay) / Math.max(0.2, 1 - path.delay), 0, 1);
+        drawFractureProgressPath(drawCtx, path.points, pathProgress);
       });
     });
+
+    drawCtx.fillStyle = chipFill;
+    drawCtx.strokeStyle = crackColor;
+    drawCtx.lineWidth = Math.max(0.8, radius * 0.025);
+    drawFractureImpactPit(drawCtx, radius, origin, seed, growth);
     drawCtx.restore();
   }
 
   function drawRenderedObject(drawCtx, state, object, radius) {
     drawObject(drawCtx, state, object.x, object.y, radius, object.fill, object.outline);
-    if (object.cracked) {
-      drawFracture(drawCtx, state, object.x, object.y, radius);
+    if (object.fracture || object.cracked) {
+      drawFracture(drawCtx, state, object.x, object.y, radius, object.fracture);
     }
   }
 
@@ -6286,7 +6404,12 @@
             y: singleEvent.singleY,
             fill: singlePalette.fill,
             outline: singlePalette.outline,
-            cracked: shouldDrawFracture(state, singleEvent, `${trajectoryScope === "context" ? "context1" : trajectoryScope}Launcher`)
+            fracture: getFractureCue(
+              state,
+              singleEvent,
+              `${trajectoryScope === "context" ? "context1" : trajectoryScope}Launcher`,
+              "launcher"
+            )
           },
           radius
         );
@@ -6302,7 +6425,7 @@
       fill: colors.launcher.fill,
       outline: colors.launcher.outline,
       visible: isLauncherVisibleAt(t, contextEvent.geometry, eventState.launcherVisibleMs),
-      cracked: shouldDrawFracture(state, contextEvent, `${pairKey}Launcher`)
+      fracture: getFractureCue(state, contextEvent, `${pairKey}Launcher`, "launcher")
     };
     const target = {
       x: contextEvent.targetX,
@@ -6310,7 +6433,7 @@
       fill: colors.target.fill,
       outline: colors.target.outline,
       visible: isTargetVisibleAt(t, contextEvent.geometry, eventState.targetVisibleMs),
-      cracked: shouldDrawFracture(state, contextEvent, `${pairKey}Target`)
+      fracture: getFractureCue(state, contextEvent, `${pairKey}Target`, "target")
     };
     const contextOccluderBounds = drawTunnelOccluder(
       drawCtx,
@@ -6503,7 +6626,7 @@
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
       visible: isLauncherVisibleAt(eventState.time, eventState.geometry, state.launcherVisibleMs),
-      cracked: shouldDrawFracture(state, eventState, "originalLauncher")
+      fracture: getFractureCue(state, eventState, "originalLauncher", "launcher")
     };
     const target = {
       x: eventState.targetX,
@@ -6511,7 +6634,7 @@
       fill: palette.target.fill,
       outline: palette.target.outline,
       visible: isTargetVisibleAt(eventState.time, eventState.geometry, state.targetVisibleMs),
-      cracked: shouldDrawFracture(state, eventState, "originalTarget")
+      fracture: getFractureCue(state, eventState, "originalTarget", "target")
     };
     drawObjectPair(drawCtx, state, eventState, launcher, target, radius, state.contactOcclusionMode);
   }
@@ -6525,7 +6648,7 @@
       fill: palette.launcher.fill,
       outline: palette.launcher.outline,
       visible: isLauncherVisibleAt(eventState.time, eventState.geometry, state.launcherVisibleMs),
-      cracked: shouldDrawFracture(state, eventState, "originalLauncher")
+      fracture: getFractureCue(state, eventState, "originalLauncher", "launcher")
     };
     const target = {
       x: eventState.targetX,
@@ -6533,7 +6656,7 @@
       fill: palette.target.fill,
       outline: palette.target.outline,
       visible: isTargetVisibleAt(eventState.time, eventState.geometry, state.targetVisibleMs),
-      cracked: shouldDrawFracture(state, eventState, "originalTarget")
+      fracture: getFractureCue(state, eventState, "originalTarget", "target")
     };
     drawOccludedObjectPair(drawCtx, state, launcher, target, radius, occluderBounds);
   }
