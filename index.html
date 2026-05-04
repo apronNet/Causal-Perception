@@ -125,16 +125,20 @@
             <div class="control-grid">
               <div class="control-subgroup">
                 <h3 class="subgroup-title original-pair-context-label">Original pair</h3>
-                <div class="control-subgrid">
+                <div class="control-subgrid pair-control-subgrid">
                   <label class="field">
                     <span>Radius</span>
                     <input id="ballRadius" data-format="intPx" min="8" max="60" step="1" type="range" />
                     <output data-for="ballRadius"></output>
                   </label>
-                  <label class="field">
-                    <span>Overlap / gap</span>
-                    <input id="gapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
-                    <output data-for="gapPx"></output>
+                  <label class="field behavior-choice-field">
+                    <span>After contact</span>
+                    <input id="launcherBehavior" type="hidden" value="stop" />
+                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="After contact">
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="stop" type="button">Stop</button>
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="continue" type="button">Pass</button>
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Together</button>
+                    </span>
                   </label>
                   <label class="field checkbox-field tunnel-checkbox-field">
                     <input id="occluderEnabled" type="checkbox" />
@@ -159,15 +163,6 @@
                     <span>O1 accel.</span>
                     <input id="launcherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="launcherAccel"></output>
-                  </label>
-                  <label class="field behavior-choice-field">
-                    <span>After contact</span>
-                    <input id="launcherBehavior" type="hidden" value="stop" />
-                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="After contact">
-                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="stop" type="button">Stop</button>
-                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="continue" type="button">Pass</button>
-                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Together</button>
-                    </span>
                   </label>
                   <label class="field wide-choice-field">
                     <span>Front object</span>
@@ -213,21 +208,30 @@
                     <input id="targetVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="targetVisibleMs"></output>
                   </label>
+                  <label class="field">
+                    <span>Contact spacing</span>
+                    <input id="gapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
+                    <output data-for="gapPx"></output>
+                  </label>
                 </div>
               </div>
               <details class="control-subgroup collapsible-subgroup context-dependent-control context-pair-editor">
                 <summary><h3 class="subgroup-title">Context 1</h3></summary>
-                <div class="control-subgrid">
+                <div class="control-subgrid pair-control-subgrid">
                   <input id="contextYOffset" type="hidden" />
                   <label class="field">
                     <span>Radius</span>
                     <input id="contextBallRadius" data-format="intPx" min="8" max="60" step="1" type="range" />
                     <output data-for="contextBallRadius"></output>
                   </label>
-                  <label class="field">
-                    <span>Overlap / gap</span>
-                    <input id="contextGapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
-                    <output data-for="contextGapPx"></output>
+                  <label class="field behavior-choice-field context-pair-only-control">
+                    <span>After contact</span>
+                    <input id="contextLauncherBehavior" type="hidden" value="stop" />
+                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="Context after contact">
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="stop" type="button">Stop</button>
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="continue" type="button">Pass</button>
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Together</button>
+                    </span>
                   </label>
                   <label class="field checkbox-field tunnel-checkbox-field">
                     <input id="contextOccluderEnabled" type="checkbox" />
@@ -252,15 +256,6 @@
                     <span>O1 accel.</span>
                     <input id="contextLauncherAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
                     <output data-for="contextLauncherAccel"></output>
-                  </label>
-                  <label class="field behavior-choice-field context-pair-only-control">
-                    <span>After contact</span>
-                    <input id="contextLauncherBehavior" type="hidden" value="stop" />
-                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="Context after contact">
-                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="stop" type="button">Stop</button>
-                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="continue" type="button">Pass</button>
-                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Together</button>
-                    </span>
                   </label>
                   <label class="field wide-choice-field context-pair-only-control">
                     <span>Front object</span>
@@ -305,6 +300,11 @@
                     <span>O2 on-screen</span>
                     <input id="contextTargetVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="contextTargetVisibleMs"></output>
+                  </label>
+                  <label class="field">
+                    <span>Contact spacing</span>
+                    <input id="contextGapPx" data-format="overlap" min="-120" max="160" step="1" type="range" />
+                    <output data-for="contextGapPx"></output>
                   </label>
                 </div>
               </details>
@@ -757,7 +757,7 @@
               <span><b>Case</b><em id="summaryPreset">Clear launch</em></span>
               <span><b>Category</b><em id="summaryCategory">launching</em></span>
               <span><b>Contact</b><em id="summaryRelation">contact</em></span>
-              <span><b>Overlap / gap</b><em id="summaryOverlap">0% overlap</em></span>
+              <span><b>Contact spacing</b><em id="summaryOverlap">touching</em></span>
               <span><b>Duration</b><em id="summaryDuration">1200 ms</em></span>
               <span><b>FPS</b><em id="summaryFps">60</em></span>
               <span><b>Lead-in</b><em id="summaryLeadIn">200 ms</em></span>
@@ -838,6 +838,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-physics-experimental"></script>
+    <script src="app.js?v=20260504-four-row-movement"></script>
   </body>
 </html>

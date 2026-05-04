@@ -304,9 +304,9 @@
     targetVisibleMs:
       "Changes: how long O2 stays visible after O2 starts moving. O2 is still visible before contact. Longer than the remaining clip means it stays visible until the clip ends or moves offscreen.",
     delayMs: "Changes: time between contact and O2 motion. Short delays look more directly causal; long delays look less like immediate launching.",
-    gapPx: "Changes: center spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
+    gapPx: "Changes: contact spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
-      "Changes: optional cue drawn only when Overlap / Gap is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
+      "Changes: optional cue drawn only when Contact spacing is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
     ballRadius: "Changes: object size. When many context pairs are shown, all pairs auto-shrink so the rows fit vertically.",
     contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
@@ -326,7 +326,7 @@
     contextLauncherAccel: "Changes: whether context O1 speeds up or slows down before contact.",
     contextLauncherBehavior: "Changes: what context O1 does after contact. Stop is launch-like; continue is pass-like; entrain makes both context objects move together.",
     contextDelayMs: "Changes: delay between context contact and context O2 motion. Use for: strong immediate context versus weaker delayed context.",
-    contextGapPx: "Changes: context-row spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
+    contextGapPx: "Changes: context-row contact spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. O2 puts the second context object on top; O1 puts the first context object on top.",
     contextOccluderEnabled: "Changes: adds a tunnel over the context row only. Use for: hidden-contact context displays without hiding the original pair event.",
     contextOccluderWidth:
@@ -1666,7 +1666,7 @@
         if (number > 0) {
           return `gap ${Math.round(number)} px`;
         }
-        return "0% overlap";
+        return "touching";
       }
       case "intPx":
         return `${Math.round(number)} px`;
@@ -2870,19 +2870,18 @@
       pairCards.push(`
         <details class="control-subgroup collapsible-subgroup context-pair-editor">
           <summary><h3 class="subgroup-title">Context ${pairNumber}</h3></summary>
-          <div class="control-subgrid">
+          <div class="control-subgrid pair-control-subgrid">
             ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
-            ${renderContextRange(pairNumber, "Position", "gapPx", "Overlap / gap", snapshot, "overlap", -120, 160, 1)}
-            ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
-            ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
-            ${renderContextRange(pairNumber, "Movement", "leadInMs", "Lead-in", snapshot, "int", 0, 1800, 10)}
-            ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "O1 speed", snapshot, "float1", 80, 6500, 1)}
-            ${renderContextRange(pairNumber, "Movement", "launcherAccel", "O1 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "After contact", snapshot, [
               ["stop", "Stop"],
               ["continue", "Pass"],
               ["entrain", "Together"]
             ])}
+            ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
+            ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
+            ${renderContextRange(pairNumber, "Movement", "leadInMs", "Lead-in", snapshot, "int", 0, 1800, 10)}
+            ${renderContextRange(pairNumber, "Movement", "launcherSpeed", "O1 speed", snapshot, "float1", 80, 6500, 1)}
+            ${renderContextRange(pairNumber, "Movement", "launcherAccel", "O1 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextSelect(pairNumber, "Movement", "contactOcclusionMode", "Front object", snapshot, [
               ["target-front", "O2"],
               ["launcher-front", "O1"]
@@ -2894,6 +2893,7 @@
             ${renderContextRange(pairNumber, "Movement", "targetTravelMs", "Travel after collision", snapshot, "ms", 0, 60000, 50)}
             ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
+            ${renderContextRange(pairNumber, "Position", "gapPx", "Contact spacing", snapshot, "overlap", -120, 160, 1)}
           </div>
         </details>`);
 
@@ -3932,7 +3932,7 @@
         ? `gap ${Math.round(gapMagnitude)} px`
         : overlapPercent > 0
           ? `${Math.round(overlapPercent)}% overlap`
-          : "0% overlap contact";
+          : "touching contact";
 
     let category = "launching";
     if (state.physicsEngineEnabled) {
@@ -4237,7 +4237,9 @@
       summaryOverlap.textContent =
         state.gapPx > 0
           ? `${Math.round(state.gapPx)} px gap, ${standards.gapDva} deg`
-          : `${standards.overlapPercent}% overlap`;
+          : state.gapPx < 0
+            ? `${standards.overlapPercent}% overlap`
+            : "touching";
     }
     if (summarySpeed) {
       summarySpeed.textContent = `${Math.round(state.launcherSpeed)} px/s`;

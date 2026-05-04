@@ -408,6 +408,14 @@ h3 {
   grid-column: span 2;
 }
 
+.pair-control-subgrid > .wide-choice-field {
+  grid-column: span 1;
+}
+
+.pair-control-subgrid > .behavior-choice-field {
+  grid-column: span 2;
+}
+
 .triad-choice-field {
   grid-column: span 2;
 }
@@ -509,6 +517,15 @@ h3 {
 .behavior-choice-row .choice-button {
   min-height: var(--choice-height);
   padding-inline: 5px;
+}
+
+.pair-control-subgrid .behavior-choice-row .choice-button {
+  padding-inline: 3px;
+  font-size: 0.58rem;
+}
+
+.pair-control-subgrid .wide-choice-field .choice-button {
+  font-size: 0.62rem;
 }
 
 .choice-button.is-active {
@@ -1508,18 +1525,25 @@ canvas.trajectory-edit-enabled:active {
 
   button,
   .download-link {
-    min-height: 2.5rem;
+    min-height: 44px;
   }
 
   .checkbox-field {
-    min-height: 2.5rem;
+    min-height: 44px;
   }
 
+  .choice-button,
   .compact-choice-row .choice-button,
   .wide-choice-field .choice-button,
   .behavior-choice-row .choice-button,
+  .preview-button,
+  .summary-compose-button,
+  .summary-export-button,
+  .summary-reset-button,
+  .preset-compact-grid .secondary-button,
+  .preset-compact-grid .download-link,
   .movement-header-controls .checkbox-field {
-    min-height: 2.5rem;
+    min-height: 44px;
   }
 
   .control-grid,
@@ -1528,6 +1552,10 @@ canvas.trajectory-edit-enabled:active {
   .button-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
+  }
+
+  .pair-control-subgrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .context-toggle-field,
@@ -1542,6 +1570,15 @@ canvas.trajectory-edit-enabled:active {
 
   .range-pair {
     grid-template-columns: minmax(0, 1fr) clamp(3.8rem, 30%, 4.55rem);
+  }
+
+  .pair-control-subgrid .range-pair {
+    grid-template-columns: minmax(0, 1fr) clamp(3.65rem, 32%, 3.9rem);
+  }
+
+  .pair-control-subgrid .fine-input {
+    padding-inline: 3px;
+    font-size: 0.7rem;
   }
 
   .summary-strip {
@@ -1563,7 +1600,7 @@ canvas.trajectory-edit-enabled:active {
 
   .summary-export-button,
   .summary-download-link {
-    min-height: 2.5rem;
+    min-height: 44px;
   }
 }
 
@@ -1651,6 +1688,11 @@ canvas.trajectory-edit-enabled:active {
     grid-column: 1 / -1;
   }
 
+  .pair-control-subgrid > .wide-choice-field,
+  .pair-control-subgrid > .behavior-choice-field {
+    grid-column: 1 / -1;
+  }
+
   .billiard-subgroup .control-subgrid {
     grid-template-columns: 1fr;
   }
@@ -1677,6 +1719,10 @@ canvas.trajectory-edit-enabled:active {
   }
 
   .movement-header-controls .checkbox-field {
+    min-height: 44px;
+  }
+
+  .summary-reset-button {
     min-height: 44px;
   }
 

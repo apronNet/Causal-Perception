@@ -27,7 +27,7 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 ## Core Controls
 
-**Starting Position and Movement** controls where the objects begin and how they move. Important settings are radius, overlap/gap, tunnel occluders, lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, travel time after collision, and what O1 does after contact. Travel time controls how long O2 keeps moving after contact; O2 on-screen time controls when O2 disappears. `Overlap / gap = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap.
+**Starting Position and Movement** controls where the objects begin and how they move. Important settings are radius, after-contact behavior, tunnel occluders, lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, travel time after collision, visibility timing, and contact spacing. Travel time controls how long O2 keeps moving after contact; O2 on-screen time controls when O2 disappears. `Contact spacing = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap.
 
 **Manually adjust starting positions and trajectories** shows editable start-point handles and trajectory vectors in the preview.
 

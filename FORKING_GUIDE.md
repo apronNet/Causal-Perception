@@ -102,7 +102,7 @@ Keep controls near the conceptual feature they change.
 
 | Section | Owns | Does not own |
 | --- | --- | --- |
-| Starting Position and Movement | Radius, overlap/gap, tunnels, manual start points, trajectory vectors, lead-in, speed, acceleration, delay, O2 angle, travel time, visibility timing, and after-contact behavior. | Hidden whole-stimulus x/y offsets; keep those internal unless a specific experiment needs them exposed. |
+| Starting Position and Movement | Radius, contact spacing, tunnels, manual start points, trajectory vectors, lead-in, speed, acceleration, delay, O2 angle, travel time, visibility timing, and after-contact behavior. | Hidden whole-stimulus x/y offsets; keep those internal unless a specific experiment needs them exposed. |
 | Context | Number of added pairs, context timing, context direction, and copied context-pair state. | Global export behavior. |
 | Special features | Participant-visible cues such as grouping, marker, contact guide, fracture, Billiard, crosshair, blink, rail, text, and sound. | Ordinary motion parameters that define the base launch. |
 | PsychoPy / Export | File format, FPS, aspect ratio, bitrate, Add clip, CSV, JSON, frame log, and condition sets. | Participant-visible stimulus design. |
