@@ -132,12 +132,19 @@
                     <output data-for="ballRadius"></output>
                   </label>
                   <label class="field behavior-choice-field">
-                    <span>After contact</span>
+                    <span>O1 after contact</span>
                     <input id="launcherBehavior" type="hidden" value="stop" />
-                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="After contact">
+                    <span class="choice-row two-choice-row behavior-choice-row" role="group" aria-label="O1 after contact">
                       <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="stop" type="button">Stop</button>
-                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="continue" type="button">Pass</button>
-                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="entrain" type="button">Together</button>
+                      <button class="choice-button" data-choice-for="launcherBehavior" data-choice-value="continue" type="button">Continue</button>
+                    </span>
+                  </label>
+                  <label class="field behavior-choice-field">
+                    <span>O2 after contact</span>
+                    <input id="targetBehavior" type="hidden" value="continue" />
+                    <span class="choice-row two-choice-row behavior-choice-row" role="group" aria-label="O2 after contact">
+                      <button class="choice-button" data-choice-for="targetBehavior" data-choice-value="stop" type="button">Stop</button>
+                      <button class="choice-button" data-choice-for="targetBehavior" data-choice-value="continue" type="button">Continue</button>
                     </span>
                   </label>
                   <label class="field checkbox-field tunnel-checkbox-field">
@@ -193,7 +200,7 @@
                     <output data-for="targetAngle"></output>
                   </label>
                   <label class="field">
-                    <span>Travel after collision</span>
+                    <span>O2 travel time</span>
                     <input id="targetTravelMode" type="hidden" value="continue" />
                     <input id="targetTravelMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="targetTravelMs"></output>
@@ -225,12 +232,19 @@
                     <output data-for="contextBallRadius"></output>
                   </label>
                   <label class="field behavior-choice-field context-pair-only-control">
-                    <span>After contact</span>
+                    <span>O1 after contact</span>
                     <input id="contextLauncherBehavior" type="hidden" value="stop" />
-                    <span class="choice-row three-choice-row behavior-choice-row" role="group" aria-label="Context after contact">
+                    <span class="choice-row two-choice-row behavior-choice-row" role="group" aria-label="Context O1 after contact">
                       <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="stop" type="button">Stop</button>
-                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="continue" type="button">Pass</button>
-                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="entrain" type="button">Together</button>
+                      <button class="choice-button" data-choice-for="contextLauncherBehavior" data-choice-value="continue" type="button">Continue</button>
+                    </span>
+                  </label>
+                  <label class="field behavior-choice-field context-pair-only-control">
+                    <span>O2 after contact</span>
+                    <input id="contextTargetBehavior" type="hidden" value="continue" />
+                    <span class="choice-row two-choice-row behavior-choice-row" role="group" aria-label="Context O2 after contact">
+                      <button class="choice-button" data-choice-for="contextTargetBehavior" data-choice-value="stop" type="button">Stop</button>
+                      <button class="choice-button" data-choice-for="contextTargetBehavior" data-choice-value="continue" type="button">Continue</button>
                     </span>
                   </label>
                   <label class="field checkbox-field tunnel-checkbox-field">
@@ -286,7 +300,7 @@
                     <output data-for="contextTargetAngle"></output>
                   </label>
                   <label class="field context-pair-only-control">
-                    <span>Travel after collision</span>
+                    <span>O2 travel time</span>
                     <input id="contextTargetTravelMode" type="hidden" value="continue" />
                     <input id="contextTargetTravelMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
                     <output data-for="contextTargetTravelMs"></output>
@@ -770,7 +784,8 @@
               <span><b>O2 accel.</b><em id="summaryTargetAccel">0 px/s^2</em></span>
               <span><b>O2 angle</b><em id="summaryTargetAngle">0 deg</em></span>
               <span><b>Radius</b><em id="summaryRadius">28 px</em></span>
-              <span><b>After contact</b><em id="summaryAfter">stops</em></span>
+              <span><b>O1 after contact</b><em id="summaryAfter">stops</em></span>
+              <span><b>O2 after contact</b><em id="summaryTargetAfter">continues</em></span>
               <span><b>O2 travel</b><em id="summaryTargetTravel">1200 ms</em></span>
               <span><b>O1 visible</b><em id="summaryLauncherVisible">1200 ms</em></span>
               <span><b>O2 visible</b><em id="summaryTargetVisible">1200 ms</em></span>

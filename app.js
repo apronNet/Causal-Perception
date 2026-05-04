@@ -122,6 +122,7 @@
   const summaryTargetAngle = document.getElementById("summaryTargetAngle");
   const summaryRadius = document.getElementById("summaryRadius");
   const summaryAfter = document.getElementById("summaryAfter");
+  const summaryTargetAfter = document.getElementById("summaryTargetAfter");
   const summaryTargetTravel = document.getElementById("summaryTargetTravel");
   const summaryLauncherVisible = document.getElementById("summaryLauncherVisible");
   const summaryTargetVisible = document.getElementById("summaryTargetVisible");
@@ -174,6 +175,7 @@
     "targetSpeedRatio",
     "targetAccel",
     "launcherBehavior",
+    "targetBehavior",
     "targetAngle",
     "targetTravelMode",
     "targetTravelMs",
@@ -198,6 +200,7 @@
     "contextLauncherSpeed",
     "contextLauncherAccel",
     "contextLauncherBehavior",
+    "contextTargetBehavior",
     "contextDelayMs",
     "contextGapPx",
     "contextContactOcclusionMode",
@@ -295,10 +298,11 @@
     launcherAccel: "Changes: whether O1 speeds up or slows down before contact. Positive means speeding up; negative means slowing down.",
     targetSpeedRatio: "Changes: O2 outgoing speed as a multiple of O1 impact speed. Use for: 1.00 matched launch, below 1.00 slower launch, above 1.00 trigger-like motion.",
     targetAccel: "Changes: whether O2 speeds up or slows down after it starts moving. Use for: testing post-contact motion dynamics.",
-    launcherBehavior: "Changes: what O1 does after contact. Stop gives classic launching; continue gives pass/slip; entrain makes both objects move together.",
+    launcherBehavior: "Changes: whether O1 stops at contact or continues moving after contact.",
+    targetBehavior: "Changes: whether O2 stays at the contact point or starts moving after contact.",
     targetAngle: "Changes: direction of O2 motion after contact. Use for: straight launch versus angled launch.",
     targetTravelMs:
-      "Changes: how long O2 keeps moving after it starts at collision. Raising this can extend Video duration so the motion is visible.",
+      "Changes: how long O2 keeps moving when O2 after contact is Continue. Raising this can extend Video duration so the motion is visible.",
     launcherVisibleMs:
       "Changes: how long O1 stays visible after O2 starts moving. O1 stays visible before contact so the event is inspectable.",
     targetVisibleMs:
@@ -314,7 +318,7 @@
       "Changes: tunnel width. The rendered tunnel scales with ball size and shrinks further when rows are close, preventing tunnel overlap.",
     contactOcclusionMode: "Changes: which object is painted on top during overlap. O2 puts O2 on top; O1 puts O1 on top.",
     contextMode:
-      "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with After contact = Continues.",
+      "Changes: whether added context pairs are shown. Nearby launch uses two objects; Single object uses one moving object. Pass-like context can be made with O1 Continue and O2 Stop.",
     contextPairCount:
       "Changes: how many context pairs are drawn, up to 10. New pairs copy the original pair when added; high counts shrink and space all pairs to fit vertically.",
     contextDurationMs: "Changes: how long the context event is visible. Use for: showing the full context event, or only a short duration around impact.",
@@ -324,7 +328,8 @@
     contextLeadInMs: "Changes: still time before the context object moves. Use for: shifting context approach timing without changing the original pair event.",
     contextLauncherSpeed: "Changes: speed of context O1. Use for: matching the original pair event or making the context more/less forceful.",
     contextLauncherAccel: "Changes: whether context O1 speeds up or slows down before contact.",
-    contextLauncherBehavior: "Changes: what context O1 does after contact. Stop is launch-like; continue is pass-like; entrain makes both context objects move together.",
+    contextLauncherBehavior: "Changes: whether context O1 stops at contact or continues moving after contact.",
+    contextTargetBehavior: "Changes: whether context O2 stays at the contact point or starts moving after contact.",
     contextDelayMs: "Changes: delay between context contact and context O2 motion. Use for: strong immediate context versus weaker delayed context.",
     contextGapPx: "Changes: context-row contact spacing at closest approach. Negative means overlap; 0 means the context borders just touch; positive leaves a context gap.",
     contextContactOcclusionMode: "Changes: which context-row object is painted on top during overlap. O2 puts the second context object on top; O1 puts the first context object on top.",
@@ -335,7 +340,7 @@
     contextTargetAccel: "Changes: whether context O2 speeds up or slows down after it starts moving.",
     contextTargetAngle: "Changes: direction of context O2 motion. Use for: matching or mismatching the original pair event direction.",
     contextTargetTravelMs:
-      "Changes: how long context O2 keeps moving after it starts at context collision. Raising this can extend Video duration so the motion is visible.",
+      "Changes: how long context O2 keeps moving when context O2 after contact is Continue. Raising this can extend Video duration so the motion is visible.",
     contextLauncherVisibleMs:
       "Changes: how long context O1 stays visible after context O2 starts moving. Context O1 stays visible before contact.",
     contextTargetVisibleMs:
@@ -950,6 +955,7 @@
     targetAccel: 0,
     launcherVisibleMs: controlDefaults.durationMs,
     targetVisibleMs: controlDefaults.durationMs,
+    targetBehavior: "continue",
     targetTravelMode: "continue",
     targetTravelMs: controlDefaults.durationMs,
     contextPairCount: 1,
@@ -960,6 +966,7 @@
     contextLauncherSpeed: controlDefaults.launcherSpeed,
     contextLauncherAccel: 0,
     contextLauncherBehavior: controlDefaults.launcherBehavior,
+    contextTargetBehavior: "continue",
     contextDelayMs: controlDefaults.delayMs,
     contextGapPx: controlDefaults.gapPx,
     contextContactOcclusionMode: "target-front",
@@ -1141,6 +1148,32 @@
 
   function normalizeTargetTravelMode(value) {
     return value === "park" ? "park" : "continue";
+  }
+
+  function normalizePostContactBehavior(value, fallback = "continue") {
+    if (value === "stop" || value === "continue") {
+      return value;
+    }
+    return fallback === "stop" ? "stop" : "continue";
+  }
+
+  function deriveTargetBehaviorFromLegacyLauncher(value) {
+    return value === "continue" ? "stop" : "continue";
+  }
+
+  function normalizePostContactControlValues(values, launcherKey, targetKey) {
+    const hasLauncher = Object.prototype.hasOwnProperty.call(values, launcherKey);
+    const hasTarget = Object.prototype.hasOwnProperty.call(values, targetKey);
+    const rawLauncher = values[launcherKey];
+    if (!hasTarget && hasLauncher) {
+      values[targetKey] = deriveTargetBehaviorFromLegacyLauncher(rawLauncher);
+    }
+    if (hasLauncher) {
+      values[launcherKey] = normalizePostContactBehavior(rawLauncher, rawLauncher === "entrain" ? "continue" : "stop");
+    }
+    if (Object.prototype.hasOwnProperty.call(values, targetKey)) {
+      values[targetKey] = normalizePostContactBehavior(values[targetKey], "continue");
+    }
   }
 
   function normalizeGroupingMode(value) {
@@ -1333,6 +1366,9 @@
 
     return snapshots.map((snapshot, index) => {
       const normalized = normalizeContextPairSnapshot(snapshot, state, index + 1);
+      const snapshotTargetBehavior = Object.prototype.hasOwnProperty.call(normalized, "targetBehavior")
+        ? normalized.targetBehavior
+        : deriveTargetBehaviorFromLegacyLauncher(normalized.launcherBehavior);
       return {
         ...normalized,
         yOffset: normalizeSnapshotNumber(normalized.yOffset, getDefaultContextPairOffset(state, index + 1)),
@@ -1340,9 +1376,11 @@
         leadInMs: Math.max(0, normalizeSnapshotNumber(normalized.leadInMs, state.contextLeadInMs)),
         launcherSpeed: Math.max(0, normalizeSnapshotNumber(normalized.launcherSpeed, state.contextLauncherSpeed)),
         launcherAccel: normalizeSnapshotNumber(normalized.launcherAccel, state.contextLauncherAccel),
-        launcherBehavior: ["stop", "continue", "entrain"].includes(normalized.launcherBehavior)
-          ? normalized.launcherBehavior
-          : state.contextLauncherBehavior,
+        launcherBehavior: normalizePostContactBehavior(
+          normalized.launcherBehavior,
+          normalized.launcherBehavior === "entrain" ? "continue" : state.contextLauncherBehavior
+        ),
+        targetBehavior: normalizePostContactBehavior(snapshotTargetBehavior, state.contextTargetBehavior),
         delayMs: Math.max(0, normalizeSnapshotNumber(normalized.delayMs, state.contextDelayMs)),
         gapPx: normalizeSnapshotNumber(normalized.gapPx, state.contextGapPx),
         contactOcclusionMode: normalizeOcclusionMode(normalized.contactOcclusionMode),
@@ -1371,7 +1409,8 @@
       launcherAccel: Number(controls.launcherAccel.value),
       targetSpeedRatio: Number(controls.targetSpeedRatio.value),
       targetAccel: Number(controls.targetAccel.value),
-      launcherBehavior: controls.launcherBehavior.value,
+      launcherBehavior: normalizePostContactBehavior(controls.launcherBehavior.value, "stop"),
+      targetBehavior: normalizePostContactBehavior(controls.targetBehavior.value, "continue"),
       targetAngle: Number(controls.targetAngle.value),
       targetTravelMode: normalizeTargetTravelMode(controls.targetTravelMode.value),
       targetTravelMs: Number(controls.targetTravelMs.value),
@@ -1395,7 +1434,8 @@
       contextLeadInMs: Number(controls.contextLeadInMs.value),
       contextLauncherSpeed: Number(controls.contextLauncherSpeed.value),
       contextLauncherAccel: Number(controls.contextLauncherAccel.value),
-      contextLauncherBehavior: controls.contextLauncherBehavior.value,
+      contextLauncherBehavior: normalizePostContactBehavior(controls.contextLauncherBehavior.value, "stop"),
+      contextTargetBehavior: normalizePostContactBehavior(controls.contextTargetBehavior.value, "continue"),
       contextDelayMs: Number(controls.contextDelayMs.value),
       contextGapPx: Number(controls.contextGapPx.value),
       contextContactOcclusionMode: normalizeOcclusionMode(controls.contextContactOcclusionMode.value),
@@ -2006,6 +2046,7 @@
       ["contextLauncherSpeed", "launcherSpeed"],
       ["contextLauncherAccel", "launcherAccel"],
       ["contextLauncherBehavior", "launcherBehavior"],
+      ["contextTargetBehavior", "targetBehavior"],
       ["contextDelayMs", "delayMs"],
       ["contextGapPx", "gapPx"],
       ["contextContactOcclusionMode", "contactOcclusionMode"],
@@ -2117,6 +2158,7 @@
       targetSpeedRatio: Number(collision.targetSpeedRatio.toFixed(3)),
       targetAccel: collision.targetAccel,
       launcherBehavior: Math.abs(collision.launcherPostSpeedRatio) <= PHYSICS_ENGINE.stopThreshold ? "stop" : "continue",
+      targetBehavior: "continue",
       targetAngle: 0,
       targetTravelMode: "continue",
       targetTravelMs: Math.max(Number(state?.durationMs) || stimulusDefaults.targetTravelMs, 1800),
@@ -2143,6 +2185,7 @@
       targetTravelMode: physics.targetTravelMode,
       targetTravelMs: physics.targetTravelMs,
       launcherBehavior: physics.launcherBehavior,
+      targetBehavior: physics.targetBehavior,
       targetAngle: physics.targetAngle,
       delayMs: physics.delayMs,
       gapPx: physics.gapPx,
@@ -2171,6 +2214,7 @@
       targetTravelMode: originalPhysics.targetTravelMode,
       targetTravelMs: originalPhysics.targetTravelMs,
       launcherBehavior: originalPhysics.launcherBehavior,
+      targetBehavior: originalPhysics.targetBehavior,
       targetAngle: originalPhysics.targetAngle,
       delayMs: originalPhysics.delayMs,
       gapPx: originalPhysics.gapPx,
@@ -2184,6 +2228,7 @@
       contextTargetTravelMode: contextPhysics.targetTravelMode,
       contextTargetTravelMs: contextPhysics.targetTravelMs,
       contextLauncherBehavior: contextPhysics.launcherBehavior,
+      contextTargetBehavior: contextPhysics.targetBehavior,
       contextTargetAngle: contextPhysics.targetAngle,
       contextDelayMs: contextPhysics.delayMs,
       contextGapPx: contextPhysics.gapPx,
@@ -2221,6 +2266,7 @@
       targetTravelMode: originalPhysics.targetTravelMode,
       targetTravelMs: originalPhysics.targetTravelMs,
       launcherBehavior: originalPhysics.launcherBehavior,
+      targetBehavior: originalPhysics.targetBehavior,
       targetAngle: originalPhysics.targetAngle,
       delayMs: originalPhysics.delayMs,
       gapPx: originalPhysics.gapPx,
@@ -2236,6 +2282,7 @@
       contextTargetTravelMode: contextPhysics.targetTravelMode,
       contextTargetTravelMs: contextPhysics.targetTravelMs,
       contextLauncherBehavior: contextPhysics.launcherBehavior,
+      contextTargetBehavior: contextPhysics.targetBehavior,
       contextTargetAngle: contextPhysics.targetAngle,
       contextDelayMs: contextPhysics.delayMs,
       contextGapPx: contextPhysics.gapPx,
@@ -2335,6 +2382,7 @@
       targetSpeedRatio: controlDefaults.targetSpeedRatio,
       targetAccel: stimulusDefaults.targetAccel,
       launcherBehavior: controlDefaults.launcherBehavior,
+      targetBehavior: stimulusDefaults.targetBehavior,
       targetAngle: controlDefaults.targetAngle,
       delayMs: controlDefaults.delayMs,
       gapPx: controlDefaults.gapPx,
@@ -2357,6 +2405,7 @@
       contextLauncherSpeed: controlDefaults.launcherSpeed,
       contextLauncherAccel: stimulusDefaults.contextLauncherAccel,
       contextLauncherBehavior: controlDefaults.launcherBehavior,
+      contextTargetBehavior: stimulusDefaults.contextTargetBehavior,
       contextDelayMs: controlDefaults.delayMs,
       contextGapPx: controlDefaults.gapPx,
       contextContactOcclusionMode: stimulusDefaults.contextContactOcclusionMode,
@@ -2643,6 +2692,7 @@
       launcherSpeed: state.launcherSpeed,
       launcherAccel: state.launcherAccel,
       launcherBehavior: state.launcherBehavior,
+      targetBehavior: state.targetBehavior,
       delayMs: state.delayMs,
       gapPx: state.gapPx,
       contactOcclusionMode: state.contactOcclusionMode,
@@ -2785,6 +2835,7 @@
       group === "Movement" &&
       [
         "launcherBehavior",
+        "targetBehavior",
         "contactOcclusionMode",
         "delayMs",
         "targetSpeedRatio",
@@ -2828,11 +2879,11 @@
       const fieldClass =
         field === "contactOcclusionMode"
           ? "field wide-choice-field"
-          : field === "launcherBehavior"
+          : field === "launcherBehavior" || field === "targetBehavior"
             ? "field behavior-choice-field"
             : "field";
       const rowClass = `${options.length === 2 ? "two-choice-row" : "three-choice-row"}${
-        field === "launcherBehavior" ? " behavior-choice-row" : ""
+        field === "launcherBehavior" || field === "targetBehavior" ? " behavior-choice-row" : ""
       }`;
       return `<label class="${getContextPairFieldClass(group, field, fieldClass)}"><span>${label}</span><input id="${id}" data-pair-index="${pairNumber - 2}" data-pair-field="${field}" type="hidden" value="${snapshot[field]}" /><span class="choice-row ${rowClass}" role="group" aria-label="Context ${pairNumber} ${label}">${renderedButtons}</span></label>`;
     }
@@ -2883,10 +2934,13 @@
           <summary><h3 class="subgroup-title">Context ${pairNumber}</h3></summary>
           <div class="control-subgrid pair-control-subgrid">
             ${renderContextRange(pairNumber, "Position", "ballRadius", "Radius", snapshot, "intPx", 8, 60, 1)}
-            ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "After contact", snapshot, [
+            ${renderContextSelect(pairNumber, "Movement", "launcherBehavior", "O1 after contact", snapshot, [
               ["stop", "Stop"],
-              ["continue", "Pass"],
-              ["entrain", "Together"]
+              ["continue", "Continue"]
+            ])}
+            ${renderContextSelect(pairNumber, "Movement", "targetBehavior", "O2 after contact", snapshot, [
+              ["stop", "Stop"],
+              ["continue", "Continue"]
             ])}
             ${renderContextCheckbox(pairNumber, "Position", "occluderEnabled", "Tunnel occluder", snapshot)}
             ${renderContextRange(pairNumber, "Position", "occluderWidth", "Tunnel width", snapshot, "intPx", 40, 360, 5)}
@@ -2901,7 +2955,7 @@
             ${renderContextRange(pairNumber, "Movement", "targetSpeedRatio", "O2 speed ratio", snapshot, "float3", 0.2, 2.5, 0.001)}
             ${renderContextRange(pairNumber, "Movement", "targetAccel", "O2 accel.", snapshot, "accel", -1500, 3000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetAngle", "O2 angle", snapshot, "degrees", -90, 90, 1)}
-            ${renderContextRange(pairNumber, "Movement", "targetTravelMs", "Travel after collision", snapshot, "ms", 0, 60000, 50)}
+            ${renderContextRange(pairNumber, "Movement", "targetTravelMs", "O2 travel time", snapshot, "ms", 0, 60000, 50)}
             ${renderContextRange(pairNumber, "Movement", "launcherVisibleMs", "O1 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
             ${renderContextRange(pairNumber, "Movement", "targetVisibleMs", "O2 on-screen", snapshot, "visibilityMs", 100, 60000, 50)}
             ${renderContextRange(pairNumber, "Position", "gapPx", "Contact spacing", snapshot, "overlap", -120, 160, 1)}
@@ -3005,7 +3059,9 @@
           ? normalizeOcclusionMode(value)
           : field === "targetTravelMode"
             ? normalizeTargetTravelMode(value)
-            : value
+            : field === "launcherBehavior" || field === "targetBehavior"
+              ? normalizePostContactBehavior(value, field === "launcherBehavior" ? "stop" : "continue")
+              : value
     };
     controls.contextPairSnapshots.value = serializeContextPairSnapshots(snapshots);
     activePresetKey = null;
@@ -3743,7 +3799,10 @@
     if (normalizedValues.contextMode === "pass") {
       normalizedValues.contextMode = "launch";
       normalizedValues.contextLauncherBehavior = "continue";
+      normalizedValues.contextTargetBehavior = "stop";
     }
+    normalizePostContactControlValues(normalizedValues, "launcherBehavior", "targetBehavior");
+    normalizePostContactControlValues(normalizedValues, "contextLauncherBehavior", "contextTargetBehavior");
 
     delete controls.ballRadius?.dataset.autoFitRequestedRadius;
     delete controls.contextBallRadius?.dataset.autoFitRequestedRadius;
@@ -3758,7 +3817,11 @@
           ? normalizeOcclusionMode(value)
           : key === "targetTravelMode" || key === "contextTargetTravelMode"
             ? normalizeTargetTravelMode(value)
-            : getHiddenJsonControlValue(key, value);
+            : key === "launcherBehavior" || key === "contextLauncherBehavior"
+              ? normalizePostContactBehavior(value, "stop")
+              : key === "targetBehavior" || key === "contextTargetBehavior"
+                ? normalizePostContactBehavior(value, "continue")
+                : getHiddenJsonControlValue(key, value);
       const normalizedControlValue = key === "renderMode" ? normalizeRenderMode(normalizedValue) : normalizedValue;
       if (control.type === "checkbox") {
         control.checked = Boolean(normalizedControlValue);
@@ -3801,8 +3864,19 @@
     const targetTravelMs = values.targetTravelMs ?? durationMs;
     const launcherVisibleMs = values.launcherVisibleMs ?? durationMs;
     const targetVisibleMs = values.targetVisibleMs ?? durationMs;
+    const targetBehavior =
+      values.targetBehavior ?? deriveTargetBehaviorFromLegacyLauncher(values.launcherBehavior ?? controlDefaults.launcherBehavior);
+    const contextTargetBehavior =
+      values.contextTargetBehavior ??
+      values.targetBehavior ??
+      deriveTargetBehaviorFromLegacyLauncher(values.contextLauncherBehavior ?? values.launcherBehavior ?? controlDefaults.launcherBehavior);
+    const launcherBehavior = values.launcherBehavior === "entrain" ? "continue" : values.launcherBehavior;
+    const contextLauncherBehavior =
+      values.contextLauncherBehavior === "entrain" ? "continue" : (values.contextLauncherBehavior ?? launcherBehavior);
     return {
       ...values,
+      launcherBehavior: normalizePostContactBehavior(launcherBehavior, controlDefaults.launcherBehavior),
+      targetBehavior: normalizePostContactBehavior(targetBehavior, stimulusDefaults.targetBehavior),
       targetTravelMs,
       launcherVisibleMs,
       targetVisibleMs,
@@ -3810,7 +3884,8 @@
       contextBallRadius: values.contextBallRadius ?? values.ballRadius ?? stimulusDefaults.contextBallRadius,
       contextLauncherSpeed: values.contextLauncherSpeed ?? values.launcherSpeed ?? stimulusDefaults.contextLauncherSpeed,
       contextLauncherAccel: values.contextLauncherAccel ?? values.launcherAccel ?? stimulusDefaults.contextLauncherAccel,
-      contextLauncherBehavior: values.contextLauncherBehavior ?? stimulusDefaults.contextLauncherBehavior,
+      contextLauncherBehavior: normalizePostContactBehavior(contextLauncherBehavior, stimulusDefaults.contextLauncherBehavior),
+      contextTargetBehavior: normalizePostContactBehavior(contextTargetBehavior, stimulusDefaults.contextTargetBehavior),
       contextDelayMs: values.contextDelayMs ?? stimulusDefaults.contextDelayMs,
       contextGapPx: values.contextGapPx ?? stimulusDefaults.contextGapPx,
       contextContactOcclusionMode:
@@ -3870,17 +3945,37 @@
       };
     }
 
-    if (state.launcherBehavior === "entrain") {
+    if (state.launcherBehavior === "continue" && state.targetBehavior === "continue") {
       return {
-        label: "Custom entraining display",
-        summary: "O1 continues with O2 after contact.",
-        note: "This is now an entraining event, not a standard launch.",
+        label: "Custom dual-continuation display",
+        summary: "O1 and O2 both continue after contact.",
+        note: "This is not a standard launch unless this paired continuation is intended.",
         literature:
-          "Entraining matters because adaptation studies distinguish it from launching-like causal perception."
+          "Use this when the condition needs both objects to move after contact rather than a classic launch or pass."
       };
     }
 
-    if (state.targetSpeedRatio >= 1.25 && state.launcherBehavior === "stop") {
+    if (state.launcherBehavior === "continue" && state.targetBehavior === "stop") {
+      return {
+        label: "Custom pass/slip display",
+        summary: "O1 continues while O2 stays at the contact point.",
+        note: "This is a pass-like event, not a standard launch.",
+        literature:
+          "Pass controls are useful when the contact geometry is similar but the causal launch relation is removed."
+      };
+    }
+
+    if (state.launcherBehavior === "stop" && state.targetBehavior === "stop") {
+      return {
+        label: "Custom contact-stop display",
+        summary: "Both objects stop at contact.",
+        note: "This removes the launched motion from the event.",
+        literature:
+          "Use this as a non-launching contact control when post-contact motion should be absent."
+      };
+    }
+
+    if (state.targetSpeedRatio >= 1.25 && state.launcherBehavior === "stop" && state.targetBehavior === "continue") {
       return {
         label: "Custom triggering display",
         summary: "O2 leaves faster than O1 arrived.",
@@ -3954,10 +4049,12 @@
     let category = "launching";
     if (state.physicsEngineEnabled) {
       category = "billiard";
-    } else if (state.launcherBehavior === "entrain") {
-      category = "entraining";
+    } else if (state.launcherBehavior === "continue" && state.targetBehavior === "continue") {
+      category = "dual continuation";
     } else if (state.launcherBehavior === "continue") {
       category = "pass/slip";
+    } else if (state.targetBehavior === "stop") {
+      category = "contact stop";
     } else if (state.targetSpeedRatio >= 1.25) {
       category = "triggering-like";
     } else if (overlapPercent >= 85) {
@@ -4071,8 +4168,15 @@
   function describeLauncherBehavior(value) {
     const labels = {
       stop: "stops",
-      continue: "passes",
-      entrain: "entrains"
+      continue: "continues"
+    };
+    return labels[value] || value;
+  }
+
+  function describeTargetBehavior(value) {
+    const labels = {
+      stop: "stops",
+      continue: "continues"
     };
     return labels[value] || value;
   }
@@ -4158,7 +4262,7 @@
         warnings.push("Sound is enabled, but contact occurs outside the video or volume is zero. Export will be silent.");
       }
     }
-    if (!state.physicsEngineEnabled && state.targetSpeedRatio > 1) {
+    if (!state.physicsEngineEnabled && state.targetBehavior === "continue" && state.targetSpeedRatio > 1) {
       warnings.push("O2 speed ratio is above 1. Treat this as a triggering cue, not a physically conservative collision.");
     }
     if (contactDistance <= 0) {
@@ -4169,18 +4273,18 @@
     if (!state.physicsEngineEnabled && state.launcherAccel < 0 && geometry.launcherImpactSpeed <= 21) {
       warnings.push("Strong negative O1 acceleration reaches the slow-motion floor before contact.");
     }
-    if (!state.physicsEngineEnabled && state.targetTravelMs <= 0 && state.targetVisibleMs > 250) {
-      warnings.push("Travel after collision is 0 ms, so O2 remains at the contact point while visible.");
+    if (!state.physicsEngineEnabled && state.targetBehavior === "continue" && state.targetTravelMs <= 0 && state.targetVisibleMs > 250) {
+      warnings.push("O2 travel time is 0 ms, so O2 remains at the contact point while visible.");
     }
     if (getPreBallBlinkMs(state) >= state.durationMs) {
       warnings.push("Blink time is at least as long as the video. Increase Video duration if the balls should appear.");
     }
     if (impactMovieTimeMs >= state.durationMs) {
       warnings.push("Contact occurs after the video ends. Increase Video duration if the launch should be visible.");
-    } else if (targetMovieOnsetMs >= state.durationMs) {
+    } else if (state.targetBehavior === "continue" && targetMovieOnsetMs >= state.durationMs) {
       warnings.push("O2 starts after the video ends. Increase Video duration if the launched motion should be visible.");
     }
-    if (targetVisibleEndMs < targetMotionEndMs - 0.5) {
+    if (state.targetBehavior === "continue" && targetVisibleEndMs < targetMotionEndMs - 0.5) {
       warnings.push("O2 on-screen time ends before travel after collision finishes; O2 disappears while still moving.");
     }
     if (state.contextMode !== "none") {
@@ -4281,6 +4385,9 @@
     }
     if (summaryAfter) {
       summaryAfter.textContent = state.physicsEngineEnabled ? "billiard" : describeLauncherBehavior(state.launcherBehavior);
+    }
+    if (summaryTargetAfter) {
+      summaryTargetAfter.textContent = state.physicsEngineEnabled ? "billiard" : describeTargetBehavior(state.targetBehavior);
     }
     if (summaryTargetTravel) {
       summaryTargetTravel.textContent = formatValue("ms", state.targetTravelMs);
@@ -4561,6 +4668,9 @@
   }
 
   function getTargetMoveDistance(state, geometry, elapsedMs) {
+    if (state.targetBehavior === "stop") {
+      return 0;
+    }
     const travelLimitMs = Math.max(0, Number(state.targetTravelMs) || 0);
     const activeElapsedMs = Math.min(Math.max(0, Number(elapsedMs) || 0), travelLimitMs);
     return displacementAt(activeElapsedMs, geometry.targetSpeed, geometry.targetAccel);
@@ -5903,7 +6013,7 @@
       launcherY = launcherBody.y;
       targetX = targetBody.x;
       targetY = targetBody.y;
-    } else if (state.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
+    } else if (state.targetBehavior === "continue" && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
       const moveDistance = getTargetMoveDistance(state, geometry, targetElapsed);
       targetX += geometry.targetUnitX * moveDistance;
@@ -5941,6 +6051,7 @@
       launcherSpeed: state.contextLauncherSpeed,
       launcherAccel: state.contextLauncherAccel,
       launcherBehavior: state.contextLauncherBehavior,
+      targetBehavior: state.contextTargetBehavior,
       delayMs: state.contextDelayMs,
       gapPx: state.contextGapPx,
       occluderEnabled: state.contextOccluderEnabled,
@@ -5980,7 +6091,7 @@
       launcherY = launcherBody.y;
       targetX = targetBody.x;
       targetY = targetBody.y;
-    } else if (eventState.launcherBehavior !== "continue" && t >= geometry.targetStartTime) {
+    } else if (eventState.targetBehavior === "continue" && t >= geometry.targetStartTime) {
       const targetElapsed = t - geometry.targetStartTime;
       const moveDistance = getTargetMoveDistance(eventState, geometry, targetElapsed);
       targetX += geometry.targetUnitX * moveDistance;
@@ -6057,7 +6168,13 @@
       leadInMs: Number(snapshot.leadInMs) || 0,
       launcherSpeed: Number(snapshot.launcherSpeed) || baseState.launcherSpeed,
       launcherAccel: Number(snapshot.launcherAccel) || 0,
-      launcherBehavior: snapshot.launcherBehavior || baseState.launcherBehavior,
+      launcherBehavior: normalizePostContactBehavior(snapshot.launcherBehavior, baseState.launcherBehavior),
+      targetBehavior: normalizePostContactBehavior(
+        Object.prototype.hasOwnProperty.call(snapshot, "targetBehavior")
+          ? snapshot.targetBehavior
+          : deriveTargetBehaviorFromLegacyLauncher(snapshot.launcherBehavior),
+        baseState.targetBehavior
+      ),
       delayMs: Number(snapshot.delayMs) || 0,
       gapPx: Number(snapshot.gapPx) || 0,
       contactOcclusionMode: normalizeOcclusionMode(snapshot.contactOcclusionMode),
@@ -7758,7 +7875,8 @@
       getGapFilenamePart(state),
       `r${compactNumber(state.ballRadius)}px`,
       `ratio${compactNumber(state.targetSpeedRatio * 100)}pct`,
-      `after${sanitizeLabel(state.launcherBehavior)}`
+      `o1${sanitizeLabel(state.launcherBehavior)}`,
+      `o2${sanitizeLabel(state.targetBehavior)}`
     ];
     if (state.targetTravelMs < state.durationMs) {
       parts.push(`o2travel${compactNumber(state.targetTravelMs)}ms`);
@@ -8686,6 +8804,7 @@
       launcherSpeedPxPerSec: state.launcherSpeed,
       launcherAccelerationPxPerSec2: state.launcherAccel,
       launcherBehavior: state.launcherBehavior,
+      targetBehavior: state.targetBehavior,
       targetSpeedRatio: state.targetSpeedRatio,
       targetAccelerationPxPerSec2: state.targetAccel,
       physicsEngineEnabled: state.physicsEngineEnabled,
@@ -8727,6 +8846,7 @@
       contextLauncherSpeedPxPerSec: state.contextLauncherSpeed,
       contextLauncherAccelerationPxPerSec2: state.contextLauncherAccel,
       contextLauncherBehavior: state.contextLauncherBehavior,
+      contextTargetBehavior: state.contextTargetBehavior,
       contextDelayMs: state.contextDelayMs,
       contextGapPx: state.contextGapPx,
       contextContactOcclusionMode: state.contextContactOcclusionMode,
@@ -9276,7 +9396,14 @@
         "billiardStopBelowPxPerSec",
         baseState.billiardStopSpeed
       ),
-      launcherBehavior: readConditionParameter(parameters, "launcherBehavior", baseState.launcherBehavior),
+      launcherBehavior: normalizePostContactBehavior(
+        readConditionParameter(parameters, "launcherBehavior", baseState.launcherBehavior),
+        baseState.launcherBehavior
+      ),
+      targetBehavior: normalizePostContactBehavior(
+        readConditionParameter(parameters, "targetBehavior", baseState.targetBehavior),
+        baseState.targetBehavior
+      ),
       targetAngle: readConditionParameter(parameters, "targetAngleDegrees", baseState.targetAngle),
       targetTravelMode: normalizeTargetTravelMode(
         readConditionParameter(parameters, "targetTravelMode", baseState.targetTravelMode)
@@ -9314,7 +9441,14 @@
         "contextLauncherAccelerationPxPerSec2",
         baseState.contextLauncherAccel
       ),
-      contextLauncherBehavior: readConditionParameter(parameters, "contextLauncherBehavior", baseState.contextLauncherBehavior),
+      contextLauncherBehavior: normalizePostContactBehavior(
+        readConditionParameter(parameters, "contextLauncherBehavior", baseState.contextLauncherBehavior),
+        baseState.contextLauncherBehavior
+      ),
+      contextTargetBehavior: normalizePostContactBehavior(
+        readConditionParameter(parameters, "contextTargetBehavior", baseState.contextTargetBehavior),
+        baseState.contextTargetBehavior
+      ),
       contextDelayMs: readConditionParameter(parameters, "contextDelayMs", baseState.contextDelayMs),
       contextGapPx: readConditionParameter(parameters, "contextGapPx", baseState.contextGapPx),
       contextContactOcclusionMode: readConditionParameter(
@@ -9507,6 +9641,7 @@
       launcherSpeedPxPerSec: condition.parameters.launcherSpeedPxPerSec,
       launcherAccelerationPxPerSec2: condition.parameters.launcherAccelerationPxPerSec2,
       launcherBehavior: condition.parameters.launcherBehavior,
+      targetBehavior: condition.parameters.targetBehavior,
       targetSpeedRatio: condition.parameters.targetSpeedRatio,
       targetAccelerationPxPerSec2: condition.parameters.targetAccelerationPxPerSec2,
       physicsEngineEnabled: condition.parameters.physicsEngineEnabled,
@@ -9546,6 +9681,7 @@
       contextLauncherSpeedPxPerSec: condition.parameters.contextLauncherSpeedPxPerSec,
       contextLauncherAccelerationPxPerSec2: condition.parameters.contextLauncherAccelerationPxPerSec2,
       contextLauncherBehavior: condition.parameters.contextLauncherBehavior,
+      contextTargetBehavior: condition.parameters.contextTargetBehavior,
       contextDelayMs: condition.parameters.contextDelayMs,
       contextGapPx: condition.parameters.contextGapPx,
       contextContactOcclusionMode: condition.parameters.contextContactOcclusionMode,
@@ -9705,6 +9841,33 @@
       ...baseState,
       ...overrides
     };
+    if (Object.prototype.hasOwnProperty.call(overrides, "launcherBehavior")) {
+      condition.targetBehavior = Object.prototype.hasOwnProperty.call(overrides, "targetBehavior")
+        ? normalizePostContactBehavior(overrides.targetBehavior, baseState.targetBehavior)
+        : deriveTargetBehaviorFromLegacyLauncher(overrides.launcherBehavior);
+      condition.launcherBehavior = normalizePostContactBehavior(
+        overrides.launcherBehavior,
+        overrides.launcherBehavior === "entrain" ? "continue" : baseState.launcherBehavior
+      );
+    } else {
+      condition.launcherBehavior = normalizePostContactBehavior(condition.launcherBehavior, baseState.launcherBehavior);
+      condition.targetBehavior = normalizePostContactBehavior(condition.targetBehavior, baseState.targetBehavior);
+    }
+    if (Object.prototype.hasOwnProperty.call(overrides, "contextLauncherBehavior")) {
+      condition.contextTargetBehavior = Object.prototype.hasOwnProperty.call(overrides, "contextTargetBehavior")
+        ? normalizePostContactBehavior(overrides.contextTargetBehavior, baseState.contextTargetBehavior)
+        : deriveTargetBehaviorFromLegacyLauncher(overrides.contextLauncherBehavior);
+      condition.contextLauncherBehavior = normalizePostContactBehavior(
+        overrides.contextLauncherBehavior,
+        overrides.contextLauncherBehavior === "entrain" ? "continue" : baseState.contextLauncherBehavior
+      );
+    } else {
+      condition.contextLauncherBehavior = normalizePostContactBehavior(
+        condition.contextLauncherBehavior,
+        baseState.contextLauncherBehavior
+      );
+      condition.contextTargetBehavior = normalizePostContactBehavior(condition.contextTargetBehavior, baseState.contextTargetBehavior);
+    }
     const standards = getStandards(condition);
     return {
       label: overrides.label,
@@ -9735,6 +9898,7 @@
           : "",
         physicsRestitution: condition.physicsEngineEnabled ? condition.billiardRestitution : "",
         launcherBehavior: condition.launcherBehavior,
+        targetBehavior: condition.targetBehavior,
         targetAngleDegrees: condition.targetAngle,
         targetTravelMode: condition.targetTravelMode,
         targetTravelAfterCollisionMs: condition.targetTravelMs,
@@ -9759,6 +9923,7 @@
         contextLauncherSpeedPxPerSec: condition.contextLauncherSpeed,
         contextLauncherAccelerationPxPerSec2: condition.contextLauncherAccel,
         contextLauncherBehavior: condition.contextLauncherBehavior,
+        contextTargetBehavior: condition.contextTargetBehavior,
         contextDelayMs: condition.contextDelayMs,
         contextGapPx: condition.contextGapPx,
         contextContactOcclusionMode: condition.contextContactOcclusionMode,
