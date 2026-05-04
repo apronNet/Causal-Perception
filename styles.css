@@ -263,6 +263,18 @@ h3 {
   content: "-";
 }
 
+.preset-panel > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.summary-reset-button {
+  min-height: 1.55rem;
+  padding: 4px 8px;
+  font-size: 0.58rem;
+  line-height: 1.1;
+}
+
 .psychopy-panel > summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.55fr) auto auto auto auto;
@@ -330,15 +342,12 @@ h3 {
 }
 
 .preset-compact-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: end;
   gap: 6px;
 }
 
-.preset-name-field {
-  grid-column: span 3;
-}
-
+.preset-name-field,
 .preset-scenario-field {
   grid-column: span 2;
 }

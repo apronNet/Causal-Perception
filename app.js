@@ -10784,7 +10784,11 @@
       applyPreset(presetSelect.value);
       statusText.textContent = READY_STATUS;
     });
-    resetDefaultButton?.addEventListener("click", resetToDefaultSettings);
+    resetDefaultButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      resetToDefaultSettings();
+    });
 
     previewButton.addEventListener("click", playPreview);
     physicsModeButton?.addEventListener("click", applyPhysicsMode);
