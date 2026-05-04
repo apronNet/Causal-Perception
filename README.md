@@ -4,7 +4,7 @@
 
 No installation is needed. The app runs in the browser and exports participant-ready launching videos for causal perception experiments.
 
-The default case is the canonical Michotte launch: O1 contacts O2 with no gap, O1 stops, and O2 immediately moves in the same direction at about 0.29 of O1 speed. Added context pairs copy that same clear-launch relation when they are created.
+This is a tool made by Runkun with brilliant help from Codex 5.5, for a project on causal perception by the lab at UIUC under the direction of Dr. Livengood, Dr. Heaton, and Dr. Hummel. You are welcome to repurpose the code for your own lab projects; simple credit is fine.
 
 ## Basic Workflow
 
