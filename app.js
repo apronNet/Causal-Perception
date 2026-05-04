@@ -3116,7 +3116,7 @@
   }
 
   function syncStartDragUi() {
-    const enabled = Boolean(controls.customStartEnabled.checked);
+    const enabled = Boolean(controls.trajectoryEditEnabled.checked && controls.customStartEnabled.checked);
     canvas.classList.toggle("start-drag-enabled", enabled);
     customStartDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
@@ -3128,17 +3128,20 @@
   }
 
   function syncManualStartTrajectoryControls() {
-    const enabled = Boolean(controls.trajectoryEditEnabled.checked || controls.customStartEnabled.checked);
-    controls.trajectoryEditEnabled.checked = enabled;
-    controls.customStartEnabled.checked = enabled;
-    return enabled;
+    const editingVisible = Boolean(controls.trajectoryEditEnabled.checked);
+    if (editingVisible && !controls.customStartEnabled.checked) {
+      controls.customStartEnabled.checked = true;
+    }
+    return Boolean(controls.customStartEnabled.checked);
   }
 
   function applyManualStartTrajectoryEditing(enabled) {
     activePresetKey = null;
     const isEnabled = Boolean(enabled);
     controls.trajectoryEditEnabled.checked = isEnabled;
-    controls.customStartEnabled.checked = isEnabled;
+    if (isEnabled) {
+      controls.customStartEnabled.checked = true;
+    }
     const billiardWasOn = Boolean(isEnabled && controls.physicsEngineEnabled.checked);
     if (billiardWasOn) {
       controls.physicsEngineEnabled.checked = false;
@@ -3150,7 +3153,8 @@
       initializeCustomStartPositions();
       enforceCustomStartConstraints();
     } else {
-      resetCustomStartPositionsToAutomatic();
+      trajectoryDragTarget = null;
+      startDragTarget = null;
     }
     syncTrajectoryControlVisibility();
     syncStartDragUi();
@@ -3162,7 +3166,9 @@
       ? billiardWasOn
         ? "Manual editing on; Billiard turned off."
         : "Move start points or trajectory vectors in the preview."
-      : READY_STATUS;
+      : controls.customStartEnabled.checked
+        ? "Manual settings kept; editing handles hidden."
+        : READY_STATUS;
     drawIdlePreview();
   }
 
@@ -6706,7 +6712,7 @@
 
   function getIdlePreviewTime(state = cloneState()) {
     const blinkMs = getPreBallBlinkMs(state);
-    const needsVisibleEditHandles = Boolean(state.railEnabled || state.trajectoryEditEnabled || state.customStartEnabled);
+    const needsVisibleEditHandles = Boolean(state.railEnabled || state.trajectoryEditEnabled);
     return blinkMs > 0 && needsVisibleEditHandles ? blinkMs + 1 : 0;
   }
 
@@ -7059,7 +7065,7 @@
   }
 
   function drawStartDragHandles(drawCtx, state) {
-    if (!state.customStartEnabled) {
+    if (!state.trajectoryEditEnabled || !state.customStartEnabled) {
       return;
     }
 
@@ -7162,7 +7168,7 @@
       const state = cloneState();
       const point = getStagePoint(event);
 
-      if (state.customStartEnabled) {
+      if (state.trajectoryEditEnabled && state.customStartEnabled) {
         initializeCustomStartPositions();
         const handle = findStartDragHandle(cloneState(), point);
         if (handle) {
