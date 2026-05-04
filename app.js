@@ -2177,7 +2177,12 @@
       contextGapPx: contextPhysics.gapPx,
       contextOccluderEnabled: false,
       contextContactOcclusionMode: contextPhysics.contactOcclusionMode,
+      customStartEnabled: false,
+      customStartKeepRowsHorizontal: false,
+      customStartAlignStartsVertical: false,
       trajectoryEditEnabled: false,
+      selectedTrajectoryBall: stimulusDefaults.selectedTrajectoryBall,
+      selectedTrajectoryAngle: stimulusDefaults.selectedTrajectoryAngle,
       trajectoryOverrides: {},
       colorChangeMode: "none",
       contextPairSnapshots: state.contextPairSnapshots.map((snapshot) => applyPhysicsToContextSnapshot(snapshot, state, 0, 0))
@@ -2185,6 +2190,7 @@
   }
 
   function applyPhysicsMode() {
+    const manualEditingWasOn = Boolean(controls.trajectoryEditEnabled.checked || controls.customStartEnabled.checked);
     const state = cloneState();
     const durationMs = Math.max(state.durationMs, state.billiardRealismEnabled ? 3200 : 1800);
     const physicsState = { ...state, durationMs };
@@ -2226,7 +2232,20 @@
       contextLauncherVisibleMs: contextVisibleMs,
       contextTargetVisibleMs: contextVisibleMs,
       contextFractureEnabled: false,
+      customStartEnabled: false,
+      customStartKeepRowsHorizontal: false,
+      customStartAlignStartsVertical: false,
+      originalLauncherStartX: presentationDefaults.originalLauncherStartX,
+      originalLauncherStartY: presentationDefaults.originalLauncherStartY,
+      originalTargetStartX: presentationDefaults.originalTargetStartX,
+      originalTargetStartY: presentationDefaults.originalTargetStartY,
+      contextLauncherStartX: presentationDefaults.contextLauncherStartX,
+      contextLauncherStartY: presentationDefaults.contextLauncherStartY,
+      contextTargetStartX: presentationDefaults.contextTargetStartX,
+      contextTargetStartY: presentationDefaults.contextTargetStartY,
       trajectoryEditEnabled: false,
+      selectedTrajectoryBall: stimulusDefaults.selectedTrajectoryBall,
+      selectedTrajectoryAngle: stimulusDefaults.selectedTrajectoryAngle,
       trajectoryOverrides: "{}",
       colorChangeMode: "none",
       contactGuideMode: "none",
@@ -2237,7 +2256,7 @@
 
     activePresetKey = null;
     setControls(physicsValues);
-    statusText.textContent = "Billiard on.";
+    statusText.textContent = manualEditingWasOn ? "Billiard on; manual editing turned off." : "Billiard on.";
   }
 
   function getBlinkMsControlValue() {
