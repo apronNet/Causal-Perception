@@ -1578,6 +1578,18 @@
     activeSequenceIndex = 0;
   }
 
+  function makeDefaultSequenceClipState(outputState = cloneState()) {
+    const defaultState = {
+      ...stimulusDefaults,
+      ...presentationDefaults,
+      ...withContextMotionDefaults(presets.canonical.values)
+    };
+    if (!Object.prototype.hasOwnProperty.call(presets.canonical.values, "stageColor")) {
+      defaultState.stageColor = BACKGROUND_THEME_COLORS[defaultState.stageTheme] || CLASSIC_BACKGROUND_COLOR;
+    }
+    return cloneSequenceState(copySequenceOutputFields(outputState, defaultState));
+  }
+
   function applySequenceClip(index) {
     const nextIndex = clamp(Math.round(Number(index) || 0), 0, sequenceClips.length - 1);
     const clip = sequenceClips[nextIndex];
@@ -1596,16 +1608,15 @@
     stopPreview();
     syncActiveSequenceClipFromControls();
     ensureSequenceFromCurrentClip();
-    const previousIndex = activeSequenceIndex;
-    const baseClip = sequenceClips[activeSequenceIndex] || sequenceClips[sequenceClips.length - 1];
+    const outputState = cloneState();
     const nextClip = {
       id: `clip-${Date.now()}-${sequenceClips.length + 1}`,
-      state: cloneSequenceState(baseClip.state)
+      state: makeDefaultSequenceClipState(outputState)
     };
     sequenceClips = [...sequenceClips, nextClip];
     previewScopeMode = "sequence";
     applySequenceClip(sequenceClips.length - 1);
-    statusText.textContent = `${getSequenceClipLabel(activeSequenceIndex)} started from ${getSequenceClipLabel(previousIndex)}.`;
+    statusText.textContent = `${getSequenceClipLabel(activeSequenceIndex)} started from default settings.`;
   }
 
   function activateSequenceClip(index) {
