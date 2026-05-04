@@ -74,6 +74,7 @@
 
   const presetSelect = document.getElementById("presetSelect");
   const applyPresetButton = document.getElementById("applyPresetButton");
+  const resetDefaultButton = document.getElementById("resetDefaultButton");
   const presetNameInput = document.getElementById("presetNameInput");
   const savePresetButton = document.getElementById("savePresetButton");
   const deletePresetButton = document.getElementById("deletePresetButton");
@@ -3819,6 +3820,21 @@
       nextValues.stageColor = BACKGROUND_THEME_COLORS[nextValues.stageTheme] || CLASSIC_BACKGROUND_COLOR;
     }
     setControls(nextValues);
+  }
+
+  function resetToDefaultSettings() {
+    stopPreview();
+    sequenceClips = [];
+    activeSequenceIndex = 0;
+    previewScopeMode = "clip";
+    applyPreset("canonical");
+    updateSequenceUi();
+    if (presetJsonLink) {
+      presetJsonLink.classList.add("hidden");
+      presetJsonLink.removeAttribute("href");
+      presetJsonLink.removeAttribute("download");
+    }
+    statusText.textContent = "Default settings restored.";
   }
 
   function getDynamicCopy(state) {
@@ -10768,6 +10784,7 @@
       applyPreset(presetSelect.value);
       statusText.textContent = READY_STATUS;
     });
+    resetDefaultButton?.addEventListener("click", resetToDefaultSettings);
 
     previewButton.addEventListener("click", playPreview);
     physicsModeButton?.addEventListener("click", applyPhysicsMode);

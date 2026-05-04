@@ -47,6 +47,14 @@
                 <input id="presetNameInput" maxlength="48" placeholder="Preset name" type="text" />
               </label>
               <button id="applyPresetButton" class="secondary-button" type="button">Apply</button>
+              <button
+                id="resetDefaultButton"
+                class="secondary-button preset-default-button"
+                type="button"
+                title="Restore the built-in default launch and clear any composed clips."
+              >
+                Reset default
+              </button>
               <button id="savePresetButton" class="secondary-button" type="button">Save local</button>
               <button id="deletePresetButton" class="secondary-button" type="button">Remove</button>
               <button id="exportPresetButton" class="secondary-button" type="button">Export JSON</button>
@@ -825,6 +833,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20260503-billiard-manual-edit"></script>
+    <script src="app.js?v=20260503-reset-default"></script>
   </body>
 </html>
