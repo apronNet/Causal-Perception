@@ -3215,8 +3215,6 @@
       syncBilliardControlVisibility();
     }
     if (isEnabled) {
-      controls.customStartKeepRowsHorizontal.checked = true;
-      controls.customStartAlignStartsVertical.checked = true;
       initializeCustomStartPositions();
       enforceCustomStartConstraints();
     } else {

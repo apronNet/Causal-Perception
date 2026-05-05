@@ -645,6 +645,10 @@ h3 {
   gap: 4px;
 }
 
+.pair-control-subgrid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .wide-copy {
   grid-column: span 3;
   align-self: center;
@@ -1555,7 +1559,7 @@ canvas.trajectory-edit-enabled:active {
   }
 
   .pair-control-subgrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .context-toggle-field,
