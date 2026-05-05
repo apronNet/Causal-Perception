@@ -3322,9 +3322,22 @@
 
   function writeContextPairSnapshotStart(handle, point, state) {
     const snapshotX = handle.directionSign === -1 ? STAGE_WIDTH - point.x : point.x;
+    const snapshots = state.contextPairSnapshots || [];
+    const currentSnapshot = normalizeContextPairSnapshot(snapshots[handle.snapshotIndex], state, handle.snapshotIndex + 1);
+    const sourceLaneY = Number(currentSnapshot.laneY) || handle.laneY;
+    const yShift = handle.laneY - sourceLaneY;
+    const readSnapshotY = (value) => {
+      const number = Number(value);
+      return Number.isFinite(number) ? number : sourceLaneY;
+    };
+    const preservePeerY =
+      handle.yField === "launcherStartY"
+        ? { targetStartY: Number(clamp(readSnapshotY(currentSnapshot.targetStartY) + yShift, 0, STAGE_HEIGHT).toFixed(1)) }
+        : { launcherStartY: Number(clamp(readSnapshotY(currentSnapshot.launcherStartY) + yShift, 0, STAGE_HEIGHT).toFixed(1)) };
     writeContextPairSnapshotFields(
       handle.snapshotIndex,
       {
+        ...preservePeerY,
         laneY: handle.laneY,
         [handle.xField]: Number(clamp(snapshotX, 0, STAGE_WIDTH).toFixed(1)),
         [handle.yField]: Number(clamp(point.y, 0, STAGE_HEIGHT).toFixed(1))
@@ -7938,6 +7951,10 @@
     controls.manualGroupingRects.value = serializeManualGroupingRects(rects);
   }
 
+  function getVisibleManualGroupingRects(state) {
+    return state.groupingMode === "none" ? [] : state.manualGroupingRects || [];
+  }
+
   function addManualGroupingRect() {
     const state = cloneState();
     const rects = state.manualGroupingRects || [];
@@ -8079,32 +8096,7 @@
     drawIdlePreview();
   }
 
-  function findSpecialDragTarget(state, point) {
-    if (state.crosshairEnabled) {
-      const arm = getCrosshairSize(state) / 2;
-      const resizeHitRadius = Math.max(13, arm * 0.18);
-      const crosshairPoints = getCrosshairPoints(state);
-      for (let crosshairIndex = crosshairPoints.length - 1; crosshairIndex >= 0; crosshairIndex -= 1) {
-        const crosshair = crosshairPoints[crosshairIndex];
-        const resizeHandles = [
-          { x: crosshair.x + arm, y: crosshair.y },
-          { x: crosshair.x - arm, y: crosshair.y },
-          { x: crosshair.x, y: crosshair.y + arm },
-          { x: crosshair.x, y: crosshair.y - arm }
-        ];
-        if (resizeHandles.some((handle) => Math.hypot(point.x - handle.x, point.y - handle.y) <= resizeHitRadius)) {
-          return { type: "crosshairResize", crosshairIndex };
-        }
-        if (Math.hypot(point.x - crosshair.x, point.y - crosshair.y) <= Math.max(22, arm * 0.55)) {
-          return {
-            type: "crosshairMove",
-            crosshairIndex,
-            offset: { x: crosshair.x - point.x, y: crosshair.y - point.y }
-          };
-        }
-      }
-    }
-
+  function findTextBoxResizeTarget(state, point) {
     if (state.textBoxEnabled) {
       const bounds = getTextBoxBounds(ctx, state);
       if (bounds) {
@@ -8119,6 +8111,15 @@
             originY: bounds.boxY
           };
         }
+      }
+    }
+    return null;
+  }
+
+  function findTextBoxMoveTarget(state, point) {
+    if (state.textBoxEnabled) {
+      const bounds = getTextBoxBounds(ctx, state);
+      if (bounds) {
         const insideX = point.x >= bounds.boxX && point.x <= bounds.boxX + bounds.boxWidth;
         const insideY = point.y >= bounds.boxY && point.y <= bounds.boxY + bounds.boxHeight;
         if (insideX && insideY) {
@@ -8130,10 +8131,13 @@
         }
       }
     }
+    return null;
+  }
 
+  function findRailEndpointTarget(state, point) {
     if (state.railEnabled) {
       const railSegments = getRailSegments(state);
-      for (let railIndex = 0; railIndex < railSegments.length; railIndex += 1) {
+      for (let railIndex = railSegments.length - 1; railIndex >= 0; railIndex -= 1) {
         const segment = railSegments[railIndex];
         const start = { x: segment.startX, y: segment.startY };
         const end = { x: segment.endX, y: segment.endY };
@@ -8143,6 +8147,18 @@
         if (Math.hypot(point.x - end.x, point.y - end.y) <= 18) {
           return { type: "railEnd", railIndex };
         }
+      }
+    }
+    return null;
+  }
+
+  function findRailLineTarget(state, point) {
+    if (state.railEnabled) {
+      const railSegments = getRailSegments(state);
+      for (let railIndex = railSegments.length - 1; railIndex >= 0; railIndex -= 1) {
+        const segment = railSegments[railIndex];
+        const start = { x: segment.startX, y: segment.startY };
+        const end = { x: segment.endX, y: segment.endY };
         if (distanceToSegment(point, start, end) <= 12) {
           return {
             type: "railLine",
@@ -8153,8 +8169,71 @@
         }
       }
     }
-
     return null;
+  }
+
+  function findCrosshairTarget(state, point) {
+    if (!state.crosshairEnabled) {
+      return null;
+    }
+
+    const arm = getCrosshairSize(state) / 2;
+    const resizeHitRadius = Math.max(13, arm * 0.18);
+    const moveHitRadius = Math.max(22, arm * 0.55);
+    const crosshairPoints = getCrosshairPoints(state);
+    let resizeCandidate = null;
+    let moveCandidate = null;
+
+    crosshairPoints.forEach((crosshair, crosshairIndex) => {
+      const resizeHandles = [
+        { x: crosshair.x + arm, y: crosshair.y },
+        { x: crosshair.x - arm, y: crosshair.y },
+        { x: crosshair.x, y: crosshair.y + arm },
+        { x: crosshair.x, y: crosshair.y - arm }
+      ];
+      const resizeDistance = Math.min(...resizeHandles.map((handle) => Math.hypot(point.x - handle.x, point.y - handle.y)));
+      if (
+        resizeDistance <= resizeHitRadius &&
+        (!resizeCandidate || resizeDistance < resizeCandidate.distance || (resizeDistance === resizeCandidate.distance && crosshairIndex > resizeCandidate.crosshairIndex))
+      ) {
+        resizeCandidate = { type: "crosshairResize", crosshairIndex, distance: resizeDistance };
+      }
+
+      const moveDistance = Math.hypot(point.x - crosshair.x, point.y - crosshair.y);
+      if (
+        moveDistance <= moveHitRadius &&
+        (!moveCandidate || moveDistance < moveCandidate.distance || (moveDistance === moveCandidate.distance && crosshairIndex > moveCandidate.crosshairIndex))
+      ) {
+        moveCandidate = {
+          type: "crosshairMove",
+          crosshairIndex,
+          distance: moveDistance,
+          offset: { x: crosshair.x - point.x, y: crosshair.y - point.y }
+        };
+      }
+    });
+
+    if (resizeCandidate) {
+      return { type: resizeCandidate.type, crosshairIndex: resizeCandidate.crosshairIndex };
+    }
+    if (moveCandidate) {
+      return {
+        type: moveCandidate.type,
+        crosshairIndex: moveCandidate.crosshairIndex,
+        offset: moveCandidate.offset
+      };
+    }
+    return null;
+  }
+
+  function findSpecialDragTarget(state, point) {
+    return (
+      findTextBoxResizeTarget(state, point) ||
+      findRailEndpointTarget(state, point) ||
+      findCrosshairTarget(state, point) ||
+      findTextBoxMoveTarget(state, point) ||
+      findRailLineTarget(state, point)
+    );
   }
 
   function writeDraggedSpecialFeature(target, point) {
@@ -8354,9 +8433,11 @@
     }
 
     if (state.customStartAlignStartsVertical && state.contextMode !== "none") {
-      const alignX = handle.role === "launcher" ? point.x : handles.find((candidate) => candidate.id === "originalLauncher")?.x;
+      const alignedHandles = getStartDragHandles(cloneState());
+      const alignX =
+        handle.role === "launcher" ? point.x : alignedHandles.find((candidate) => candidate.id === "originalLauncher")?.x;
       if (Number.isFinite(alignX)) {
-        handles
+        alignedHandles
           .filter((candidate) => candidate.role === "launcher")
           .forEach((candidate) => {
             writeStartHandlePosition(candidate, { x: alignX, y: candidate.id === handle.id ? point.y : candidate.y }, cloneState());
@@ -8419,6 +8500,14 @@
     canvas.addEventListener("pointerdown", (event) => {
       const state = cloneState();
       const point = getStagePoint(event);
+      const specialTarget = findSpecialDragTarget(state, point);
+      if (specialTarget) {
+        stopPreview();
+        specialDragTarget = specialTarget;
+        canvas.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+        return;
+      }
 
       if (state.individualBallMotionEnabled) {
         const target = findIndividualBallDragTarget(state, point);
@@ -8452,15 +8541,6 @@
         return;
       }
 
-      const specialTarget = findSpecialDragTarget(state, point);
-      if (specialTarget && specialTarget.type !== "railLine") {
-        stopPreview();
-        specialDragTarget = specialTarget;
-        canvas.setPointerCapture?.(event.pointerId);
-        event.preventDefault();
-        return;
-      }
-
       const trajectoryTarget = findTrajectoryTarget(state, point);
       if (trajectoryTarget) {
         stopPreview();
@@ -8470,15 +8550,6 @@
         event.preventDefault();
         return;
       }
-
-      if (!specialTarget) {
-        return;
-      }
-
-      stopPreview();
-      specialDragTarget = specialTarget;
-      canvas.setPointerCapture?.(event.pointerId);
-      event.preventDefault();
     });
 
     canvas.addEventListener("pointermove", (event) => {
@@ -9777,7 +9848,7 @@
       },
       screenAdditions: {
         markerColor: state.markerColor,
-        groupingRects: state.manualGroupingRects,
+        groupingRects: getVisibleManualGroupingRects(state),
         crosshairs: getCrosshairPoints(state),
         crosshairSizePx: state.crosshairSize,
         railColor: state.railColor,
@@ -9808,7 +9879,7 @@
         balls: state.individualBallMotionEnabled ? normalizeIndividualBalls(state.individualBalls, state) : []
       },
       contextPairSnapshots: state.contextPairSnapshots,
-      manualGroupingRects: state.manualGroupingRects,
+      manualGroupingRects: getVisibleManualGroupingRects(state),
       trajectoryOverrides: state.trajectoryOverrides,
       fractureEnabled: state.fractureEnabled,
       contextFractureEnabled: state.contextFractureEnabled,
@@ -9925,7 +9996,7 @@
       contextLauncherVisibleMs: state.contextLauncherVisibleMs,
       contextTargetVisibleMs: state.contextTargetVisibleMs,
       groupingMode: state.groupingMode,
-      manualGroupingRects: JSON.stringify(state.manualGroupingRects),
+      manualGroupingRects: JSON.stringify(getVisibleManualGroupingRects(state)),
       contactGuideMode: state.contactGuideMode,
       markerColor: state.markerColor,
       crosshairEnabled: state.crosshairEnabled,
@@ -11046,7 +11117,7 @@
         stageColor: condition.stageColor,
         objectStyle: condition.objectStyle,
         groupingMode: condition.groupingMode,
-        manualGroupingRects: condition.manualGroupingRects || [],
+        manualGroupingRects: getVisibleManualGroupingRects(condition),
         contactGuideMode: condition.contactGuideMode,
         markerColor: condition.markerColor,
         fractureEnabled: condition.fractureEnabled,
