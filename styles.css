@@ -268,6 +268,15 @@ h3 {
   grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
+.movement-panel.is-individual-motion-active .movement-header-controls,
+.movement-panel.is-individual-motion-active #pairMotionControls {
+  opacity: 0.42;
+}
+
+.movement-panel.is-individual-motion-active #pairMotionControls {
+  pointer-events: none;
+}
+
 .summary-reset-button {
   min-height: 1.55rem;
   padding: 4px 8px;
@@ -602,7 +611,7 @@ h3 {
 
 .billiard-header-row {
   display: grid;
-  grid-template-columns: auto minmax(130px, 0.34fr) minmax(0, 1fr);
+  grid-template-columns: minmax(130px, 0.34fr) minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -623,6 +632,22 @@ h3 {
 
 .billiard-manual-control.is-disabled input {
   cursor: not-allowed;
+}
+
+.individual-ball-subgrid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.wide-checkbox-field {
+  grid-column: span 2;
+}
+
+.individual-ball-dependent-control.is-retracted {
+  display: none !important;
+}
+
+.individual-motion-subgroup .wide-copy {
+  grid-column: 1 / -1;
 }
 
 .context-pair-list {
@@ -1237,9 +1262,14 @@ canvas.trajectory-edit-enabled {
   cursor: crosshair;
 }
 
+canvas.individual-ball-edit-enabled {
+  cursor: crosshair;
+}
+
 canvas.start-drag-enabled:active,
 canvas.special-drag-enabled:active,
-canvas.trajectory-edit-enabled:active {
+canvas.trajectory-edit-enabled:active,
+canvas.individual-ball-edit-enabled:active {
   cursor: grabbing;
 }
 

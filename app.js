@@ -20,6 +20,7 @@
   const MAX_EXPORT_HEIGHT_PX = 2160;
   const MAX_EXPORT_BASENAME_LENGTH = 180;
   const CONTEXT_PAIR_MAX = 10;
+  const INDIVIDUAL_BALL_MAX = 24;
   const RAIL_MAX = 6;
   const MANUAL_GROUPING_RECT_MIN_SIZE = 24;
   const MANUAL_GROUPING_RECT_MAX = 12;
@@ -160,6 +161,10 @@
   const groupingEnabledControl = document.getElementById("groupingEnabled");
   const addGroupingRectButton = document.getElementById("addGroupingRectButton");
   const clearGroupingRectsButton = document.getElementById("clearGroupingRectsButton");
+  const individualBallAddButton = document.getElementById("individualBallAddButton");
+  const individualBallRemoveButton = document.getElementById("individualBallRemoveButton");
+  const movementPanel = document.querySelector(".movement-panel");
+  const movementPanelContent = document.getElementById("movementPanelContent");
 
   /*
    * Parameter propagation rule
@@ -226,6 +231,21 @@
     "billiardRestitution",
     "billiardWallRestitution",
     "billiardStopSpeed",
+    "individualBallMotionEnabled",
+    "individualBallsJson",
+    "individualBallSelectedId",
+    "individualBallLabel",
+    "individualBallColor",
+    "individualBallRadius",
+    "individualBallStartMs",
+    "individualBallSpeed",
+    "individualBallAccel",
+    "individualBallMoveMs",
+    "individualBallVisibleMs",
+    "individualBallAngle",
+    "individualBallStopX",
+    "individualBallStopY",
+    "individualBallOcclusionOrder",
     "fractureEnabled",
     "contextFractureEnabled",
     "fractureTargets",
@@ -365,6 +385,23 @@
     billiardRestitution: "Changes: ball-to-ball bounce. Higher values keep more speed after impact.",
     billiardWallRestitution: "Changes: rail bounce. Higher values keep more speed after a wall bounce.",
     billiardStopSpeed: "Changes: the speed below which billiard balls are treated as stopped.",
+    individualBallMotionEnabled:
+      "Changes: replaces the normal pair controls with independently defined ball paths. The 03 controls are disabled while this is on.",
+    individualBallSelectedId: "Changes: which individual ball is being edited.",
+    individualBallLabel: "Changes: the editor name for the selected ball. This is saved in metadata and frame logs.",
+    individualBallColor: "Changes: selected ball color.",
+    individualBallRadius: "Changes: selected ball size.",
+    individualBallStartMs: "Changes: when the selected ball starts moving.",
+    individualBallSpeed: "Changes: selected ball starting speed.",
+    individualBallAccel:
+      "Changes: selected ball acceleration. Speed, acceleration, movement time, and stop point are kept synchronized.",
+    individualBallMoveMs:
+      "Changes: how long the selected ball moves before parking at its stop point. The stop point updates from speed and acceleration.",
+    individualBallVisibleMs: "Changes: how long the selected ball remains visible in the clip.",
+    individualBallAngle: "Changes: selected ball direction. You can also move the stop handle in the preview.",
+    individualBallStopX: "Changes: selected ball stop-point x-position. Moving this updates angle and movement time.",
+    individualBallStopY: "Changes: selected ball stop-point y-position. Moving this updates angle and movement time.",
+    individualBallOcclusionOrder: "Changes: paint order for overlapping balls. Higher numbers draw in front.",
     fractureEnabled:
       "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
     contextFractureEnabled: "Changes: fracture cue for Context 1 O2 when a saved preset includes it.",
@@ -999,6 +1036,21 @@
     billiardRestitution: 0.92,
     billiardWallRestitution: 0.82,
     billiardStopSpeed: 20,
+    individualBallMotionEnabled: false,
+    individualBallsJson: "[]",
+    individualBallSelectedId: "",
+    individualBallLabel: "Ball 1",
+    individualBallColor: CLASSIC_LAUNCHER_COLOR,
+    individualBallRadius: controlDefaults.ballRadius,
+    individualBallStartMs: 0,
+    individualBallSpeed: controlDefaults.launcherSpeed,
+    individualBallAccel: 0,
+    individualBallMoveMs: 900,
+    individualBallVisibleMs: controlDefaults.durationMs,
+    individualBallAngle: 0,
+    individualBallStopX: 420,
+    individualBallStopY: STAGE_HEIGHT / 2,
+    individualBallOcclusionOrder: 1,
     fractureEnabled: false,
     contextFractureEnabled: false,
     fractureTargets: "{}",
@@ -1083,6 +1135,21 @@
     "billiardStopSpeed"
   ];
   const groupingDependentControls = Array.from(document.querySelectorAll(".grouping-dependent-control"));
+  const individualBallDependentControls = Array.from(document.querySelectorAll(".individual-ball-dependent-control"));
+  const individualBallEditorControlIds = [
+    "individualBallLabel",
+    "individualBallColor",
+    "individualBallRadius",
+    "individualBallStartMs",
+    "individualBallSpeed",
+    "individualBallAccel",
+    "individualBallMoveMs",
+    "individualBallVisibleMs",
+    "individualBallAngle",
+    "individualBallStopX",
+    "individualBallStopY",
+    "individualBallOcclusionOrder"
+  ];
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
   const previewScopeButtons = Array.from(document.querySelectorAll("[data-preview-scope]"));
@@ -1112,7 +1179,9 @@
   let startDragTarget = null;
   let specialDragTarget = null;
   let trajectoryDragTarget = null;
+  let individualBallDragTarget = null;
   let groupingRectDragTarget = null;
+  let isSyncingIndividualBallControls = false;
   let customStartPositionsInitialized = false;
   let sharedPresetKeys = [];
   let customPresetKeys = [];
@@ -1261,6 +1330,80 @@
     );
   }
 
+  function parseIndividualBalls(value) {
+    if (!value) {
+      return [];
+    }
+    try {
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      return Array.isArray(parsed) ? parsed.filter((ball) => ball && typeof ball === "object" && !Array.isArray(ball)) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function normalizeIndividualBall(ball, index = 0, state = null) {
+    const fallbackRadius = Number(state?.ballRadius) || controlDefaults.ballRadius || 28;
+    const row = Math.floor(index / 4);
+    const column = index % 4;
+    const radius = clamp(Number(ball.radius) || fallbackRadius, 6, 80);
+    const startX = clamp(Number(ball.startX), radius, STAGE_WIDTH - radius);
+    const startY = clamp(Number(ball.startY), radius, STAGE_HEIGHT - radius);
+    const speed = clamp(Number(ball.speed) || 0, 0, 6500);
+    const accel = clamp(Number(ball.accel) || 0, -1500, 3000);
+    const moveMs = clamp(Number(ball.moveMs) || 0, 0, 60000);
+    const angleDeg = clamp(Number(ball.angleDeg) || 0, -180, 180);
+    const fallbackStartX = clamp(140 + column * 170, radius, STAGE_WIDTH - radius);
+    const fallbackStartY = clamp(STAGE_HEIGHT / 2 - 90 + row * 70, radius, STAGE_HEIGHT - radius);
+    const normalized = {
+      id: String(ball.id || `ball-${index + 1}`),
+      label: String(ball.label || `Ball ${index + 1}`).slice(0, 24),
+      startX: Number.isFinite(startX) ? startX : fallbackStartX,
+      startY: Number.isFinite(startY) ? startY : fallbackStartY,
+      radius,
+      color: normalizeHexColor(ball.color, index % 2 === 0 ? CLASSIC_LAUNCHER_COLOR : CLASSIC_TARGET_COLOR),
+      startMs: clamp(Number(ball.startMs) || 0, 0, 60000),
+      speed,
+      accel,
+      moveMs,
+      visibleMs: clamp(Number(ball.visibleMs) || Number(state?.durationMs) || controlDefaults.durationMs, 100, 60000),
+      angleDeg,
+      occlusionOrder: clamp(Math.round(Number(ball.occlusionOrder) || index + 1), 1, INDIVIDUAL_BALL_MAX)
+    };
+    const expectedStop = getIndividualBallStopFromMotion(normalized);
+    normalized.stopX = Number.isFinite(Number(ball.stopX)) ? clamp(Number(ball.stopX), radius, STAGE_WIDTH - radius) : expectedStop.x;
+    normalized.stopY = Number.isFinite(Number(ball.stopY)) ? clamp(Number(ball.stopY), radius, STAGE_HEIGHT - radius) : expectedStop.y;
+    return normalized;
+  }
+
+  function normalizeIndividualBalls(balls, state = null) {
+    return parseIndividualBalls(balls)
+      .slice(0, INDIVIDUAL_BALL_MAX)
+      .map((ball, index) => normalizeIndividualBall(ball, index, state));
+  }
+
+  function serializeIndividualBalls(balls, state = null) {
+    return JSON.stringify(
+      normalizeIndividualBalls(balls, state).map((ball) => ({
+        id: ball.id,
+        label: ball.label,
+        startX: Math.round(ball.startX),
+        startY: Math.round(ball.startY),
+        radius: Math.round(ball.radius),
+        color: ball.color,
+        startMs: Math.round(ball.startMs),
+        speed: Number(ball.speed.toFixed(1)),
+        accel: Math.round(ball.accel),
+        moveMs: Math.round(ball.moveMs),
+        visibleMs: Math.round(ball.visibleMs),
+        angleDeg: Math.round(ball.angleDeg),
+        stopX: Math.round(ball.stopX),
+        stopY: Math.round(ball.stopY),
+        occlusionOrder: Math.round(ball.occlusionOrder)
+      }))
+    );
+  }
+
   function parseRailSegments(value) {
     if (!value) {
       return [];
@@ -1344,6 +1487,9 @@
     }
     if (key === "manualGroupingRects") {
       return serializeManualGroupingRects(value);
+    }
+    if (key === "individualBallsJson") {
+      return serializeIndividualBalls(value);
     }
     return value;
   }
@@ -1464,6 +1610,21 @@
       billiardRestitution: Number(controls.billiardRestitution.value),
       billiardWallRestitution: Number(controls.billiardWallRestitution.value),
       billiardStopSpeed: Number(controls.billiardStopSpeed.value),
+      individualBallMotionEnabled: controls.individualBallMotionEnabled.checked,
+      individualBalls: parseIndividualBalls(controls.individualBallsJson.value),
+      individualBallSelectedId: controls.individualBallSelectedId.value,
+      individualBallLabel: controls.individualBallLabel.value,
+      individualBallColor: controls.individualBallColor.value,
+      individualBallRadius: Number(controls.individualBallRadius.value),
+      individualBallStartMs: Number(controls.individualBallStartMs.value),
+      individualBallSpeed: Number(controls.individualBallSpeed.value),
+      individualBallAccel: Number(controls.individualBallAccel.value),
+      individualBallMoveMs: Number(controls.individualBallMoveMs.value),
+      individualBallVisibleMs: Number(controls.individualBallVisibleMs.value),
+      individualBallAngle: Number(controls.individualBallAngle.value),
+      individualBallStopX: Number(controls.individualBallStopX.value),
+      individualBallStopY: Number(controls.individualBallStopY.value),
+      individualBallOcclusionOrder: Number(controls.individualBallOcclusionOrder.value),
       fractureEnabled: controls.fractureEnabled.checked,
       contextFractureEnabled: controls.contextFractureEnabled.checked,
       fractureTargets: parseFractureTargets(controls.fractureTargets.value),
@@ -1531,6 +1692,7 @@
     state.railSegments = state.railEnabled ? getRailSegments(state).slice(1) : [];
     state.trajectoryOverrides = parseTrajectoryOverrides(state.trajectoryOverrides);
     state.manualGroupingRects = normalizeManualGroupingRects(state.manualGroupingRects, state);
+    state.individualBalls = normalizeIndividualBalls(state.individualBalls, state);
     return state.physicsEngineEnabled ? normalizePhysicsEngineState(state) : state;
   }
 
@@ -1692,6 +1854,8 @@
         return `${Math.round(number)} ms`;
       case "count":
         return `${Math.round(number)} ${Math.round(number) === 1 ? "pair" : "pairs"}`;
+      case "order":
+        return String(Math.round(number));
       case "railCount":
         return `${Math.round(number)} ${Math.round(number) === 1 ? "rail" : "rails"}`;
       case "trajectoryTarget":
@@ -1754,6 +1918,8 @@
         return "deg";
       case "count":
         return Number(value) === 1 ? "pair" : "pairs";
+      case "order":
+        return "";
       case "railCount":
         return Number(value) === 1 ? "rail" : "rails";
       case "overlap":
@@ -2238,6 +2404,7 @@
       customStartKeepRowsHorizontal: false,
       customStartAlignStartsVertical: false,
       trajectoryEditEnabled: false,
+      individualBallMotionEnabled: false,
       selectedTrajectoryBall: stimulusDefaults.selectedTrajectoryBall,
       selectedTrajectoryAngle: stimulusDefaults.selectedTrajectoryAngle,
       trajectoryOverrides: {},
@@ -2247,7 +2414,9 @@
   }
 
   function applyPhysicsMode() {
-    const manualEditingWasOn = Boolean(controls.trajectoryEditEnabled.checked || controls.customStartEnabled.checked);
+    const manualEditingWasOn = Boolean(
+      controls.trajectoryEditEnabled.checked || controls.customStartEnabled.checked || controls.individualBallMotionEnabled.checked
+    );
     const state = cloneState();
     const durationMs = Math.max(state.durationMs, state.billiardRealismEnabled ? 3200 : 1800);
     const physicsState = { ...state, durationMs };
@@ -2291,6 +2460,7 @@
       contextLauncherVisibleMs: contextVisibleMs,
       contextTargetVisibleMs: contextVisibleMs,
       contextFractureEnabled: false,
+      individualBallMotionEnabled: false,
       customStartEnabled: false,
       customStartKeepRowsHorizontal: false,
       customStartAlignStartsVertical: false,
@@ -2963,14 +3133,14 @@
         </details>`);
 
       colorCards.push(`
-        <div class="control-subgroup context-pair-editor">
-          <h3 class="subgroup-title">Context ${pairNumber} color</h3>
+        <details class="control-subgroup collapsible-subgroup context-pair-editor">
+          <summary><h3 class="subgroup-title">Context ${pairNumber} color</h3></summary>
           <div class="control-subgrid">
             ${renderContextColor(pairNumber, "Color", "launcherColor", "O1", snapshot)}
             ${renderContextColor(pairNumber, "Color", "targetColor", "O2", snapshot)}
             ${renderContextColor(pairNumber, "Color", "groupingColor", "Grouping box", snapshot)}
           </div>
-        </div>`);
+        </details>`);
     }
 
     contextPairList.innerHTML = pairCards.join("");
@@ -3321,6 +3491,248 @@
     textBoxDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
     });
+  }
+
+  function makeDefaultIndividualBallsFromState(state = cloneState()) {
+    const laneY = getMainLaneY(state);
+    const geometry = getGeometry(state, laneY, { scope: "original", directionSign: 1 });
+    const launcher = updateIndividualBallFromMotion({
+      id: "ball-1",
+      label: "Ball 1",
+      startX: geometry.launcherStartX,
+      startY: geometry.launcherStartY,
+      radius: state.ballRadius,
+      color: state.launcherColor,
+      startMs: state.leadInMs,
+      speed: state.launcherSpeed,
+      accel: state.launcherAccel,
+      moveMs: Math.max(50, geometry.travelMs),
+      visibleMs: Math.max(state.durationMs, state.launcherVisibleMs),
+      angleDeg: 0,
+      occlusionOrder: 1
+    });
+    const target = updateIndividualBallFromMotion({
+      id: "ball-2",
+      label: "Ball 2",
+      startX: geometry.targetBaseX,
+      startY: geometry.targetBaseY,
+      radius: state.ballRadius,
+      color: state.targetColor,
+      startMs: geometry.targetStartTime,
+      speed: Math.max(0, geometry.targetSpeed),
+      accel: state.targetAccel,
+      moveMs: Math.max(0, state.targetTravelMs),
+      visibleMs: Math.max(state.durationMs, state.targetVisibleMs),
+      angleDeg: state.targetAngle,
+      occlusionOrder: 2
+    });
+    return [launcher, target];
+  }
+
+  function getSelectedIndividualBall(state = cloneState()) {
+    const balls = normalizeIndividualBalls(state.individualBalls, state);
+    return balls.find((ball) => ball.id === state.individualBallSelectedId) || balls[0] || null;
+  }
+
+  function writeIndividualBalls(balls, selectedId = controls.individualBallSelectedId.value) {
+    const normalized = normalizeIndividualBalls(balls, cloneState());
+    controls.individualBallsJson.value = serializeIndividualBalls(normalized);
+    const selectedStillExists = normalized.some((ball) => ball.id === selectedId);
+    syncIndividualBallSelector(normalized, selectedStillExists ? selectedId : normalized[0]?.id || "");
+  }
+
+  function ensureIndividualBallsInitialized(force = false) {
+    const current = normalizeIndividualBalls(controls.individualBallsJson.value, cloneState());
+    if (!force && current.length > 0) {
+      return current;
+    }
+    const balls = makeDefaultIndividualBallsFromState({ ...cloneState(), individualBallMotionEnabled: false });
+    writeIndividualBalls(balls, balls[0]?.id || "");
+    return balls;
+  }
+
+  function syncIndividualBallSelector(
+    balls = normalizeIndividualBalls(controls.individualBallsJson.value, cloneState()),
+    preferredId = controls.individualBallSelectedId.value
+  ) {
+    controls.individualBallSelectedId.replaceChildren();
+    balls.forEach((ball) => {
+      const option = document.createElement("option");
+      option.value = ball.id;
+      option.textContent = ball.label;
+      controls.individualBallSelectedId.appendChild(option);
+    });
+    const selectedId = balls.some((ball) => ball.id === preferredId) ? preferredId : balls[0]?.id || "";
+    controls.individualBallSelectedId.value = selectedId;
+    return selectedId;
+  }
+
+  function setIndividualBallEditorControls(ball) {
+    isSyncingIndividualBallControls = true;
+    if (!ball) {
+      individualBallEditorControlIds.forEach((id) => {
+        const control = controls[id];
+        if (control) {
+          control.value = "";
+        }
+      });
+      isSyncingIndividualBallControls = false;
+      return;
+    }
+    const values = {
+      individualBallLabel: ball.label,
+      individualBallColor: ball.color,
+      individualBallRadius: ball.radius,
+      individualBallStartMs: ball.startMs,
+      individualBallSpeed: ball.speed,
+      individualBallAccel: ball.accel,
+      individualBallMoveMs: ball.moveMs,
+      individualBallVisibleMs: ball.visibleMs,
+      individualBallAngle: ball.angleDeg,
+      individualBallStopX: ball.stopX,
+      individualBallStopY: ball.stopY,
+      individualBallOcclusionOrder: ball.occlusionOrder
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const control = controls[id];
+      if (!control) {
+        return;
+      }
+      if (control.type === "range") {
+        setRangeValue(control, value);
+      } else {
+        control.value = value;
+      }
+    });
+    isSyncingIndividualBallControls = false;
+    updateOutputs();
+  }
+
+  function syncSelectedIndividualBallControls() {
+    const state = cloneState();
+    const balls = normalizeIndividualBalls(state.individualBalls, state);
+    const selectedId = syncIndividualBallSelector(balls);
+    setIndividualBallEditorControls(balls.find((ball) => ball.id === selectedId) || null);
+  }
+
+  function setIndividualBallMotionControlsDisabled(disabled) {
+    movementPanel?.classList.toggle("is-individual-motion-active", disabled);
+    movementPanelContent?.querySelectorAll("input, select, button").forEach((item) => {
+      item.disabled = Boolean(disabled);
+    });
+  }
+
+  function syncIndividualBallMotionControls() {
+    const enabled = Boolean(controls.individualBallMotionEnabled.checked);
+    individualBallDependentControls.forEach((field) => {
+      field.classList.toggle("is-retracted", !enabled);
+    });
+    setIndividualBallMotionControlsDisabled(enabled);
+    canvas.classList.toggle("individual-ball-edit-enabled", enabled);
+    if (enabled) {
+      controls.physicsEngineEnabled.checked = false;
+      controls.trajectoryEditEnabled.checked = false;
+      controls.customStartEnabled.checked = false;
+      syncBilliardControlVisibility();
+      syncTrajectoryControlVisibility();
+      syncStartDragUi();
+      ensureIndividualBallsInitialized();
+      syncSelectedIndividualBallControls();
+      individualBallRemoveButton.disabled = normalizeIndividualBalls(controls.individualBallsJson.value, cloneState()).length <= 1;
+    } else {
+      individualBallDragTarget = null;
+    }
+    syncSpecialDragUi();
+  }
+
+  function updateSelectedIndividualBallFromControls(changedId = "") {
+    if (isSyncingIndividualBallControls) {
+      return;
+    }
+    const state = cloneState();
+    let balls = normalizeIndividualBalls(state.individualBalls, state);
+    const selectedId = controls.individualBallSelectedId.value || balls[0]?.id;
+    const index = balls.findIndex((ball) => ball.id === selectedId);
+    if (index < 0) {
+      return;
+    }
+    let ball = {
+      ...balls[index],
+      label: String(controls.individualBallLabel.value || balls[index].label).slice(0, 24),
+      color: normalizeHexColor(controls.individualBallColor.value, balls[index].color),
+      radius: clamp(Number(controls.individualBallRadius.value) || balls[index].radius, 6, 80),
+      startMs: clamp(Number(controls.individualBallStartMs.value) || 0, 0, 60000),
+      speed: clamp(Number(controls.individualBallSpeed.value) || 0, 0, 6500),
+      accel: clamp(Number(controls.individualBallAccel.value) || 0, -1500, 3000),
+      moveMs: clamp(Number(controls.individualBallMoveMs.value) || 0, 0, 60000),
+      visibleMs: clamp(Number(controls.individualBallVisibleMs.value) || 100, 100, 60000),
+      angleDeg: clamp(Number(controls.individualBallAngle.value) || 0, -180, 180),
+      occlusionOrder: clamp(Math.round(Number(controls.individualBallOcclusionOrder.value) || index + 1), 1, INDIVIDUAL_BALL_MAX)
+    };
+    if (changedId === "individualBallStopX" || changedId === "individualBallStopY") {
+      ball = updateIndividualBallFromStopPoint(ball, {
+        x: Number(controls.individualBallStopX.value) || ball.stopX,
+        y: Number(controls.individualBallStopY.value) || ball.stopY
+      });
+    } else {
+      ball = updateIndividualBallFromMotion(ball);
+    }
+    balls[index] = ball;
+    writeIndividualBalls(balls, ball.id);
+    syncIndividualBallSelector(balls);
+    setIndividualBallEditorControls(ball);
+  }
+
+  function addIndividualBall() {
+    const state = cloneState();
+    const balls = normalizeIndividualBalls(state.individualBalls, state);
+    if (balls.length >= INDIVIDUAL_BALL_MAX) {
+      statusText.textContent = "Maximum individual balls reached.";
+      return;
+    }
+    const index = balls.length;
+    const startX = clamp(130 + (index % 5) * 150, 20, STAGE_WIDTH - 20);
+    const startY = clamp(120 + Math.floor(index / 5) * 75, 20, STAGE_HEIGHT - 20);
+    const nextBall = updateIndividualBallFromMotion({
+      id: `ball-${Date.now()}-${index + 1}`,
+      label: `Ball ${index + 1}`,
+      startX,
+      startY,
+      radius: state.ballRadius,
+      color: index % 2 === 0 ? state.launcherColor : state.targetColor,
+      startMs: 0,
+      speed: 420,
+      accel: 0,
+      moveMs: 900,
+      visibleMs: state.durationMs,
+      angleDeg: index % 2 === 0 ? 0 : 180,
+      occlusionOrder: index + 1
+    });
+    writeIndividualBalls([...balls, nextBall], nextBall.id);
+    syncIndividualBallMotionControls();
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = `${nextBall.label} added.`;
+    drawIdlePreview();
+  }
+
+  function removeSelectedIndividualBall() {
+    const state = cloneState();
+    const balls = normalizeIndividualBalls(state.individualBalls, state);
+    if (balls.length <= 1) {
+      statusText.textContent = "Keep at least one individual ball.";
+      return;
+    }
+    const selectedId = controls.individualBallSelectedId.value;
+    const nextBalls = balls.filter((ball) => ball.id !== selectedId);
+    writeIndividualBalls(nextBalls, nextBalls[0]?.id || "");
+    syncIndividualBallMotionControls();
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = "Selected ball removed.";
+    drawIdlePreview();
   }
 
   function getRailCount(state) {
@@ -3846,6 +4258,7 @@
     syncBilliardControlVisibility();
     syncTrajectoryControlVisibility();
     syncTextBoxControlVisibility();
+    syncIndividualBallMotionControls();
     syncRailSegments();
     syncGroupingControlsVisibility();
     syncSpecialDragUi();
@@ -3930,6 +4343,18 @@
   }
 
   function getDynamicCopy(state) {
+    if (state.individualBallMotionEnabled) {
+      const balls = normalizeIndividualBalls(state.individualBalls, state);
+      return {
+        label: "Individual ball movement",
+        summary: `${balls.length} independently specified ball${balls.length === 1 ? "" : "s"}.`,
+        note:
+          "The ordinary pair-motion controls are disabled. Each ball uses its own start point, direction, speed, acceleration, movement time, visibility time, and occlusion order.",
+        literature:
+          "Use this when the experiment needs object paths that are not well described by a single O1-to-O2 launch relation."
+      };
+    }
+
     if (state.physicsEngineEnabled) {
       return {
         label: "Experimental Billiard display",
@@ -4035,6 +4460,43 @@
 
   // Derived labels and measurements shown in the UI and exported for audit.
   function getStandards(state) {
+    if (state.individualBallMotionEnabled) {
+      const balls = normalizeIndividualBalls(state.individualBalls, state);
+      const starts = balls.map((ball) => Number(ball.startMs) || 0);
+      const movementEnds = balls.map((ball) => (Number(ball.startMs) || 0) + (Number(ball.moveMs) || 0));
+      const firstStartMs = Math.round(starts.length ? Math.min(...starts) : 0);
+      const lastMovementMs = Math.round(movementEnds.length ? Math.max(...movementEnds) : 0);
+      const pxPerDva = Math.max(1, state.pxPerDva);
+      const averageRadius = balls.length
+        ? balls.reduce((total, ball) => total + Math.max(0, Number(ball.radius) || 0), 0) / balls.length
+        : state.ballRadius;
+      return {
+        relation: `${balls.length} individual ball${balls.length === 1 ? "" : "s"}`,
+        category: "individual motion",
+        capture: "manual paths",
+        timing: `first start ${firstStartMs} ms, last stop ${lastMovementMs} ms`,
+        overlapPercent: 0,
+        gapPx: 0,
+        gapDva: 0,
+        ballDiameterDva: Number(((averageRadius * 2) / pxPerDva).toFixed(2)),
+        contextBallDiameterDva: 0,
+        contextSeparationDva: 0,
+        fixationDiameterDva: Number(state.fixationDva.toFixed(2)),
+        stimulusOffsetPx: {
+          x: Math.round(state.stimulusXOffset),
+          y: Math.round(state.stimulusYOffset)
+        },
+        stimulusOffsetDva: {
+          x: Number((state.stimulusXOffset / pxPerDva).toFixed(2)),
+          y: Number((state.stimulusYOffset / pxPerDva).toFixed(2))
+        },
+        impactMs: firstStartMs,
+        targetOnsetMs: firstStartMs,
+        approachMs: Math.max(0, lastMovementMs - firstStartMs),
+        clipDurationMs: Math.round(state.durationMs)
+      };
+    }
+
     const overlapPercent = clamp((-state.gapPx / (state.ballRadius * 2)) * 100, 0, 100);
     const gapMagnitude = Math.max(0, state.gapPx);
     const relation =
@@ -4239,6 +4701,26 @@
 
   function getExperimentWarnings(state) {
     const warnings = [];
+    if (state.individualBallMotionEnabled) {
+      const balls = normalizeIndividualBalls(state.individualBalls, state);
+      if (balls.length === 0) {
+        warnings.push("Individual ball movement is on, but no balls are defined.");
+      }
+      balls.forEach((ball) => {
+        const movementEndMs = (Number(ball.startMs) || 0) + (Number(ball.moveMs) || 0);
+        if (movementEndMs > state.durationMs + 0.5) {
+          warnings.push(`${ball.label} is still moving after the video ends.`);
+        }
+        if ((Number(ball.visibleMs) || 0) < movementEndMs - 0.5) {
+          warnings.push(`${ball.label} disappears before its movement time ends.`);
+        }
+      });
+      if (state.soundEnabled) {
+        warnings.push("Impact sound has no automatic collision schedule in individual-ball mode.");
+      }
+      return warnings;
+    }
+
     const impactMovieTimeMs = getImpactMovieTimeMs(state);
     const targetMovieOnsetMs = getTargetMovieOnsetMs(state);
     const geometry = getGeometry(state, getMainLaneY(state));
@@ -4325,6 +4807,7 @@
     const contextPairCount = getContextPairCount(state);
     const contextIsOff = state.contextMode === "none";
     const exportSize = getExportCanvasSize(state);
+    const individualBalls = state.individualBallMotionEnabled ? normalizeIndividualBalls(state.individualBalls, state) : [];
     if (summaryPreset) {
       summaryPreset.textContent = copy.label;
     }
@@ -4338,7 +4821,7 @@
       summaryFps.textContent = `${Math.round(state.fps)}`;
     }
     if (summaryLeadIn) {
-      summaryLeadIn.textContent = `${Math.round(state.leadInMs)} ms`;
+      summaryLeadIn.textContent = state.individualBallMotionEnabled ? "individual" : `${Math.round(state.leadInMs)} ms`;
     }
     if (summaryImpact) {
       summaryImpact.textContent = `${standards.impactMs} ms`;
@@ -4347,54 +4830,66 @@
       summaryTargetOnset.textContent = `${standards.targetOnsetMs} ms`;
     }
     if (summaryDelay) {
-      summaryDelay.textContent = `${Math.round(state.delayMs)} ms`;
+      summaryDelay.textContent = state.individualBallMotionEnabled ? "individual" : `${Math.round(state.delayMs)} ms`;
     }
     if (summaryRelation) {
       summaryRelation.textContent = standards.relation;
     }
     if (summaryOverlap) {
-      summaryOverlap.textContent =
-        state.gapPx > 0
+      summaryOverlap.textContent = state.individualBallMotionEnabled
+        ? "not used"
+        : state.gapPx > 0
           ? `${Math.round(state.gapPx)} px gap, ${standards.gapDva} deg`
           : state.gapPx < 0
             ? `${standards.overlapPercent}% overlap`
             : "touching";
     }
     if (summarySpeed) {
-      summarySpeed.textContent = `${Math.round(state.launcherSpeed)} px/s`;
+      summarySpeed.textContent = state.individualBallMotionEnabled ? `${individualBalls.length} balls` : `${Math.round(state.launcherSpeed)} px/s`;
     }
     if (summaryTargetRatio) {
-      summaryTargetRatio.textContent = `${Number(state.targetSpeedRatio).toFixed(3)} x`;
+      summaryTargetRatio.textContent = state.individualBallMotionEnabled ? "not used" : `${Number(state.targetSpeedRatio).toFixed(3)} x`;
     }
     if (summaryLauncherAccel) {
-      summaryLauncherAccel.textContent = `${Math.round(state.launcherAccel)} px/s^2`;
+      summaryLauncherAccel.textContent = state.individualBallMotionEnabled ? "individual" : `${Math.round(state.launcherAccel)} px/s^2`;
     }
     if (summaryTargetAccel) {
-      summaryTargetAccel.textContent = `${Math.round(state.targetAccel)} px/s^2`;
+      summaryTargetAccel.textContent = state.individualBallMotionEnabled ? "individual" : `${Math.round(state.targetAccel)} px/s^2`;
     }
     if (summaryTargetAngle) {
-      summaryTargetAngle.textContent = `${Math.round(state.targetAngle)} deg`;
+      summaryTargetAngle.textContent = state.individualBallMotionEnabled ? "individual" : `${Math.round(state.targetAngle)} deg`;
     }
     if (summaryRadius) {
-      summaryRadius.textContent =
-        state.contextMode === "none"
+      summaryRadius.textContent = state.individualBallMotionEnabled
+        ? `${individualBalls.length} individual`
+        : state.contextMode === "none"
           ? `${Math.round(state.ballRadius)} px`
           : `main ${Math.round(state.ballRadius)} px / context ${Math.round(state.contextBallRadius)} px`;
     }
     if (summaryAfter) {
-      summaryAfter.textContent = state.physicsEngineEnabled ? "billiard" : describeLauncherBehavior(state.launcherBehavior);
+      summaryAfter.textContent = state.individualBallMotionEnabled
+        ? "individual"
+        : state.physicsEngineEnabled
+          ? "billiard"
+          : describeLauncherBehavior(state.launcherBehavior);
     }
     if (summaryTargetAfter) {
-      summaryTargetAfter.textContent = state.physicsEngineEnabled ? "billiard" : describeTargetBehavior(state.targetBehavior);
+      summaryTargetAfter.textContent = state.individualBallMotionEnabled
+        ? "individual"
+        : state.physicsEngineEnabled
+          ? "billiard"
+          : describeTargetBehavior(state.targetBehavior);
     }
     if (summaryTargetTravel) {
-      summaryTargetTravel.textContent = formatValue("ms", state.targetTravelMs);
+      summaryTargetTravel.textContent = state.individualBallMotionEnabled ? "individual" : formatValue("ms", state.targetTravelMs);
     }
     if (summaryLauncherVisible) {
-      summaryLauncherVisible.textContent = formatValue("visibilityMs", state.launcherVisibleMs);
+      summaryLauncherVisible.textContent = state.individualBallMotionEnabled
+        ? "individual"
+        : formatValue("visibilityMs", state.launcherVisibleMs);
     }
     if (summaryTargetVisible) {
-      summaryTargetVisible.textContent = formatValue("visibilityMs", state.targetVisibleMs);
+      summaryTargetVisible.textContent = state.individualBallMotionEnabled ? "individual" : formatValue("visibilityMs", state.targetVisibleMs);
     }
     if (summaryContext) {
       summaryContext.textContent = contextText;
@@ -4627,6 +5122,88 @@
     const velocity = Math.max(minVelocity, initialVelocity);
     const t = Math.max(0, elapsedMs) / 1000;
     return Math.max(minVelocity, velocity + (Number(acceleration) || 0) * t);
+  }
+
+  function degreesToUnit(angleDeg) {
+    const radians = ((Number(angleDeg) || 0) * Math.PI) / 180;
+    return {
+      x: Math.cos(radians),
+      y: Math.sin(radians)
+    };
+  }
+
+  function getIndividualBallMoveDistance(ball, elapsedMs = ball.moveMs) {
+    return displacementAt(Math.max(0, Number(elapsedMs) || 0), Number(ball.speed) || 0, Number(ball.accel) || 0);
+  }
+
+  function getIndividualBallStopFromMotion(ball) {
+    const unit = degreesToUnit(ball.angleDeg);
+    const distance = getIndividualBallMoveDistance(ball, ball.moveMs);
+    return {
+      x: clamp((Number(ball.startX) || 0) + unit.x * distance, ball.radius, STAGE_WIDTH - ball.radius),
+      y: clamp((Number(ball.startY) || 0) + unit.y * distance, ball.radius, STAGE_HEIGHT - ball.radius)
+    };
+  }
+
+  function solveIndividualBallMoveMsForDistance(distance, speed, accel) {
+    const targetDistance = Math.max(0, Number(distance) || 0);
+    if (targetDistance <= 0) {
+      return 0;
+    }
+    let low = 0;
+    let high = Math.max(100, (targetDistance / Math.max(20, Number(speed) || 0)) * 1000);
+    while (getIndividualBallMoveDistance({ speed, accel, moveMs: high }, high) < targetDistance && high < 60000) {
+      high *= 1.5;
+    }
+    high = Math.min(high, 60000);
+    for (let index = 0; index < 36; index += 1) {
+      const mid = (low + high) / 2;
+      if (getIndividualBallMoveDistance({ speed, accel, moveMs: mid }, mid) >= targetDistance) {
+        high = mid;
+      } else {
+        low = mid;
+      }
+    }
+    return high;
+  }
+
+  function updateIndividualBallFromStopPoint(ball, point) {
+    const dx = point.x - ball.startX;
+    const dy = point.y - ball.startY;
+    const distance = Math.hypot(dx, dy);
+    const angleDeg = distance < 0.5 ? ball.angleDeg : clamp(Math.round((Math.atan2(dy, dx) * 180) / Math.PI), -180, 180);
+    const moveMs = solveIndividualBallMoveMsForDistance(distance, ball.speed, ball.accel);
+    return {
+      ...ball,
+      angleDeg,
+      moveMs,
+      stopX: clamp(point.x, ball.radius, STAGE_WIDTH - ball.radius),
+      stopY: clamp(point.y, ball.radius, STAGE_HEIGHT - ball.radius)
+    };
+  }
+
+  function updateIndividualBallFromMotion(ball) {
+    const stop = getIndividualBallStopFromMotion(ball);
+    return {
+      ...ball,
+      stopX: stop.x,
+      stopY: stop.y
+    };
+  }
+
+  function getIndividualBallPositionAt(ball, stimulusTimeMs) {
+    const moveElapsedMs = Math.max(0, Number(stimulusTimeMs) - Number(ball.startMs || 0));
+    const movingElapsedMs = Math.min(moveElapsedMs, Number(ball.moveMs) || 0);
+    const dx = (Number(ball.stopX) || ball.startX) - ball.startX;
+    const dy = (Number(ball.stopY) || ball.startY) - ball.startY;
+    const stopDistance = Math.hypot(dx, dy);
+    const unit = stopDistance > 0.5 ? { x: dx / stopDistance, y: dy / stopDistance } : degreesToUnit(ball.angleDeg);
+    const distance = Math.min(getIndividualBallMoveDistance(ball, movingElapsedMs), stopDistance);
+    return {
+      x: clamp(ball.startX + unit.x * distance, -ball.radius * 2, STAGE_WIDTH + ball.radius * 2),
+      y: clamp(ball.startY + unit.y * distance, -ball.radius * 2, STAGE_HEIGHT + ball.radius * 2),
+      movingElapsedMs
+    };
   }
 
   function solveTravelMs(distance, initialVelocity, acceleration) {
@@ -5520,6 +6097,42 @@
     if (object.fracture || object.cracked) {
       drawFracture(drawCtx, state, object.x, object.y, radius, object.fracture);
     }
+  }
+
+  function getIndividualBallRenderObjects(state, stimulusTimeMs, hidden = false) {
+    return normalizeIndividualBalls(state.individualBalls, state)
+      .map((ball) => {
+        const position = getIndividualBallPositionAt(ball, stimulusTimeMs);
+        const visible = !hidden && stimulusTimeMs <= ball.visibleMs;
+        return {
+          id: ball.id,
+          event: "individual ball movement",
+          role: ball.label,
+          x: position.x,
+          y: position.y,
+          radius: ball.radius,
+          visible,
+          fill: ball.color,
+          outline: shadeHexColor(ball.color, -0.45),
+          occlusionOrder: ball.occlusionOrder,
+          startX: ball.startX,
+          startY: ball.startY,
+          stopX: ball.stopX,
+          stopY: ball.stopY,
+          startMs: ball.startMs,
+          moveMs: ball.moveMs,
+          visibleMs: ball.visibleMs
+        };
+      })
+      .sort((a, b) => a.occlusionOrder - b.occlusionOrder);
+  }
+
+  function drawIndividualBallMotion(drawCtx, state, stimulusTimeMs) {
+    getIndividualBallRenderObjects(state, stimulusTimeMs).forEach((object) => {
+      if (object.visible) {
+        drawRenderedObject(drawCtx, state, object, object.radius);
+      }
+    });
   }
 
   function getStageThemeColors(state) {
@@ -6483,6 +7096,117 @@
     drawCtx.restore();
   }
 
+  function getSelectedIndividualBallHandle(state) {
+    const ball = getSelectedIndividualBall(state);
+    if (!state.individualBallMotionEnabled || !ball) {
+      return null;
+    }
+    return {
+      id: ball.id,
+      label: ball.label,
+      radius: ball.radius,
+      start: { x: ball.startX, y: ball.startY },
+      stop: { x: ball.stopX, y: ball.stopY }
+    };
+  }
+
+  function drawIndividualBallHandles(drawCtx, state) {
+    const handle = getSelectedIndividualBallHandle(state);
+    if (!handle) {
+      return;
+    }
+
+    drawCtx.save();
+    drawCtx.lineCap = "round";
+    drawCtx.font = '800 11px "Avenir Next", "Segoe UI", sans-serif';
+    drawCtx.textAlign = "left";
+    drawCtx.textBaseline = "middle";
+    drawCtx.strokeStyle = "rgba(232, 197, 116, 0.96)";
+    drawCtx.fillStyle = "rgba(232, 197, 116, 0.96)";
+    drawCtx.lineWidth = 3.25;
+    drawCtx.beginPath();
+    drawCtx.moveTo(handle.start.x, handle.start.y);
+    drawCtx.lineTo(handle.stop.x, handle.stop.y);
+    drawCtx.stroke();
+
+    const angle = Math.atan2(handle.stop.y - handle.start.y, handle.stop.x - handle.start.x);
+    const arrowSize = 12;
+    drawCtx.beginPath();
+    drawCtx.moveTo(handle.stop.x, handle.stop.y);
+    drawCtx.lineTo(handle.stop.x - Math.cos(angle - 0.45) * arrowSize, handle.stop.y - Math.sin(angle - 0.45) * arrowSize);
+    drawCtx.lineTo(handle.stop.x - Math.cos(angle + 0.45) * arrowSize, handle.stop.y - Math.sin(angle + 0.45) * arrowSize);
+    drawCtx.closePath();
+    drawCtx.fill();
+
+    drawCtx.beginPath();
+    drawCtx.arc(handle.start.x, handle.start.y, Math.max(7, handle.radius * 0.28), 0, Math.PI * 2);
+    drawCtx.fill();
+    drawCtx.beginPath();
+    drawCtx.arc(handle.stop.x, handle.stop.y, Math.max(10, handle.radius * 0.36), 0, Math.PI * 2);
+    drawCtx.fill();
+    drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(31, 28, 24, 0.7)" : "rgba(7, 15, 14, 0.88)";
+    drawCtx.lineWidth = 1.4;
+    drawCtx.stroke();
+    drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(255, 250, 240, 0.9)" : "rgba(7, 15, 14, 0.9)";
+    drawCtx.lineWidth = 3;
+    drawCtx.strokeText(handle.label, handle.stop.x + 9, handle.stop.y);
+    drawCtx.fillStyle = "rgba(232, 197, 116, 0.98)";
+    drawCtx.fillText(handle.label, handle.stop.x + 9, handle.stop.y);
+    drawCtx.restore();
+  }
+
+  function findIndividualBallDragTarget(state, point) {
+    const handle = getSelectedIndividualBallHandle(state);
+    if (!handle) {
+      return null;
+    }
+    const startDistance = Math.hypot(point.x - handle.start.x, point.y - handle.start.y);
+    const stopDistance = Math.hypot(point.x - handle.stop.x, point.y - handle.stop.y);
+    if (stopDistance <= Math.max(18, handle.radius * 0.48)) {
+      return { id: handle.id, type: "stop" };
+    }
+    if (startDistance <= Math.max(16, handle.radius * 0.42)) {
+      return { id: handle.id, type: "start" };
+    }
+    return null;
+  }
+
+  function writeDraggedIndividualBall(target, point) {
+    const state = cloneState();
+    const balls = normalizeIndividualBalls(state.individualBalls, state);
+    const index = balls.findIndex((ball) => ball.id === target.id);
+    if (index < 0) {
+      return null;
+    }
+    const ball = { ...balls[index] };
+    const safePoint = {
+      x: clamp(point.x, ball.radius, STAGE_WIDTH - ball.radius),
+      y: clamp(point.y, ball.radius, STAGE_HEIGHT - ball.radius)
+    };
+    balls[index] =
+      target.type === "start"
+        ? updateIndividualBallFromMotion({ ...ball, startX: safePoint.x, startY: safePoint.y })
+        : updateIndividualBallFromStopPoint(ball, safePoint);
+    writeIndividualBalls(balls, ball.id);
+    syncSelectedIndividualBallControls();
+    return balls[index];
+  }
+
+  function updateDraggedIndividualBall(event) {
+    if (!individualBallDragTarget) {
+      return;
+    }
+    const updated = writeDraggedIndividualBall(individualBallDragTarget, getStagePoint(event));
+    if (!updated) {
+      return;
+    }
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = individualBallDragTarget.type === "start" ? "Ball start point updated." : "Ball stop point updated.";
+    drawIdlePreview();
+  }
+
   function drawContextPair(
     drawCtx,
     state,
@@ -6921,6 +7645,19 @@
     const stimulusT = Math.max(0, t - getPreBallBlinkMs(state));
     drawRailFeature(drawCtx, state);
 
+    if (state.individualBallMotionEnabled) {
+      drawIndividualBallMotion(drawCtx, state, stimulusT);
+      drawFixation(drawCtx, state);
+      if (shouldDrawCrosshairAfterBlink(state)) {
+        drawCrosshairFeature(drawCtx, state, 1);
+      }
+      drawTextBoxFeature(drawCtx, state);
+      if (drawCtx === ctx) {
+        drawIndividualBallHandles(drawCtx, state);
+      }
+      return;
+    }
+
     const laneY = getMainLaneY(state);
 
     const eventState = getMainEventState(state, stimulusT, laneY);
@@ -6961,7 +7698,7 @@
 
   function getIdlePreviewTime(state = cloneState()) {
     const blinkMs = getPreBallBlinkMs(state);
-    const needsVisibleEditHandles = Boolean(state.railEnabled || state.trajectoryEditEnabled);
+    const needsVisibleEditHandles = Boolean(state.railEnabled || state.trajectoryEditEnabled || state.individualBallMotionEnabled);
     return blinkMs > 0 && needsVisibleEditHandles ? blinkMs + 1 : 0;
   }
 
@@ -7417,6 +8154,17 @@
       const state = cloneState();
       const point = getStagePoint(event);
 
+      if (state.individualBallMotionEnabled) {
+        const target = findIndividualBallDragTarget(state, point);
+        if (target) {
+          stopPreview();
+          individualBallDragTarget = target;
+          canvas.setPointerCapture?.(event.pointerId);
+          event.preventDefault();
+          return;
+        }
+      }
+
       if (state.trajectoryEditEnabled && state.customStartEnabled) {
         initializeCustomStartPositions();
         const handle = findStartDragHandle(cloneState(), point);
@@ -7468,6 +8216,10 @@
     });
 
     canvas.addEventListener("pointermove", (event) => {
+      if (individualBallDragTarget) {
+        updateDraggedIndividualBall(event);
+        return;
+      }
       if (groupingRectDragTarget) {
         updateDraggedGroupingRect(event);
         return;
@@ -7487,6 +8239,12 @@
     });
 
     const endDrag = (event) => {
+      if (individualBallDragTarget) {
+        updateDraggedIndividualBall(event);
+        canvas.releasePointerCapture?.(event.pointerId);
+        individualBallDragTarget = null;
+        return;
+      }
       if (groupingRectDragTarget) {
         updateDraggedGroupingRect(event);
         canvas.releasePointerCapture?.(event.pointerId);
@@ -8465,6 +9223,9 @@
     if (!state.soundEnabled || state.soundVolume <= 0) {
       return [];
     }
+    if (state.individualBallMotionEnabled) {
+      return [];
+    }
 
     const blinkMs = getPreBallBlinkMs(state);
     const mainLaneY = getMainLaneY(state);
@@ -8625,6 +9386,20 @@
 
   function getEventFrameAudit(state) {
     const blinkMs = getPreBallBlinkMs(state);
+    if (state.individualBallMotionEnabled) {
+      const balls = normalizeIndividualBalls(state.individualBalls, state);
+      const events = balls.flatMap((ball) => [
+        makeEventFrameRecord(state, `${ball.label} starts`, blinkMs + ball.startMs),
+        makeEventFrameRecord(state, `${ball.label} stops`, blinkMs + ball.startMs + ball.moveMs),
+        makeEventFrameRecord(state, `${ball.label} hidden`, blinkMs + ball.visibleMs)
+      ]);
+      return {
+        frameCount: getExportFrameCount(state),
+        frameDurationMs: roundForAudit(getFrameDurationMs(state)),
+        events
+      };
+    }
+
     const mainLaneY = getMainLaneY(state);
     const mainGeometry = getGeometry(state, mainLaneY, { scope: "original", directionSign: 1 });
     const events = [
@@ -8742,6 +9517,10 @@
         stopBelowPxPerSec: state.physicsEngineEnabled ? state.billiardStopSpeed : "",
         massModel: state.physicsEngineEnabled ? `size-based disc mass, radius^${PHYSICS_ENGINE.massPower}` : ""
       },
+      individualBallMotion: {
+        enabled: state.individualBallMotionEnabled,
+        balls: state.individualBallMotionEnabled ? normalizeIndividualBalls(state.individualBalls, state) : []
+      },
       contextPairSnapshots: state.contextPairSnapshots,
       manualGroupingRects: state.manualGroupingRects,
       trajectoryOverrides: state.trajectoryOverrides,
@@ -8816,6 +9595,8 @@
       billiardStopBelowPxPerSec: state.physicsEngineEnabled ? state.billiardStopSpeed : "",
       physicsMassModel: state.physicsEngineEnabled ? `size-based disc mass, radius^${PHYSICS_ENGINE.massPower}` : "",
       physicsRestitution: state.physicsEngineEnabled ? state.billiardRestitution : "",
+      individualBallMotionEnabled: state.individualBallMotionEnabled,
+      individualBallsJson: JSON.stringify(normalizeIndividualBalls(state.individualBalls, state)),
       targetAngleDegrees: state.targetAngle,
       targetTravelMode: state.targetTravelMode,
       targetTravelAfterCollisionMs: state.targetTravelMs,
@@ -9043,6 +9824,10 @@
   }
 
   function getFrameLogObjects(state, stimulusTimeMs, hiddenByPrelaunchBlink = false) {
+    if (state.individualBallMotionEnabled) {
+      return getIndividualBallRenderObjects(state, stimulusTimeMs, hiddenByPrelaunchBlink);
+    }
+
     const objects = [];
     const mainLaneY = getMainLaneY(state);
     const mainEvent = getMainEventState(state, stimulusTimeMs, mainLaneY);
@@ -10765,6 +11550,14 @@
     });
     addGroupingRectButton?.addEventListener("click", addManualGroupingRect);
     clearGroupingRectsButton?.addEventListener("click", clearManualGroupingRects);
+    individualBallAddButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      addIndividualBall();
+    });
+    individualBallRemoveButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      removeSelectedIndividualBall();
+    });
 
     choiceControlButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -10918,6 +11711,39 @@
         });
         return;
       }
+      if (id === "individualBallMotionEnabled") {
+        control.addEventListener("change", () => {
+          activePresetKey = null;
+          syncIndividualBallMotionControls();
+          updateOutputs();
+          refreshText();
+          updateCompatibilityNotice(cloneState());
+          statusText.textContent = control.checked ? "Individual ball movement on." : READY_STATUS;
+          drawIdlePreview();
+        });
+        return;
+      }
+      if (id === "individualBallSelectedId") {
+        control.addEventListener("change", () => {
+          syncSelectedIndividualBallControls();
+          statusText.textContent = "Selected ball loaded.";
+          drawIdlePreview();
+        });
+        return;
+      }
+      if (individualBallEditorControlIds.includes(id)) {
+        const eventName = control.tagName === "SELECT" ? "change" : "input";
+        control.addEventListener(eventName, () => {
+          activePresetKey = null;
+          updateSelectedIndividualBallFromControls(id);
+          updateOutputs();
+          refreshText();
+          updateCompatibilityNotice(cloneState());
+          statusText.textContent = "Individual ball movement updated.";
+          drawIdlePreview();
+        });
+        return;
+      }
       if (id === "crosshairEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
@@ -11001,6 +11827,7 @@
         id === "contextPairSnapshots" ||
         id === "fractureTargets" ||
         id === "manualGroupingRects" ||
+        id === "individualBallsJson" ||
         id === "selectedTrajectoryBall" ||
         id === "trajectoryOverrides" ||
         ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)
