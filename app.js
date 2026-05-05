@@ -22,6 +22,7 @@
   const CONTEXT_PAIR_MAX = 10;
   const INDIVIDUAL_BALL_MAX = 24;
   const RAIL_MAX = 6;
+  const CROSSHAIR_MAX = 6;
   const MANUAL_GROUPING_RECT_MIN_SIZE = 24;
   const MANUAL_GROUPING_RECT_MAX = 12;
   const PHYSICS_ENGINE = {
@@ -225,6 +226,7 @@
     "groupingMode",
     "manualGroupingRects",
     "contactGuideMode",
+    "markerColor",
     "physicsEngineEnabled",
     "billiardRealismEnabled",
     "billiardFriction",
@@ -249,13 +251,18 @@
     "fractureEnabled",
     "contextFractureEnabled",
     "fractureTargets",
+    "fractureColor",
     "crosshairEnabled",
     "crosshairX",
     "crosshairY",
+    "crosshairCount",
+    "crosshairSize",
+    "crosshairPoints",
     "crosshairColor",
     "railEnabled",
     "railCount",
     "railLength",
+    "railColor",
     "railStartX",
     "railStartY",
     "railEndX",
@@ -376,6 +383,7 @@
     manualGroupingRects:
       "Changes: extra grouping rectangles drawn in preview and export. Use Add rectangle, then move borders or resize from corners in the preview.",
     contactGuideMode: "Changes: vertical contact guide lines. Use for: checking alignment while designing; turn off for final stimuli unless it is part of the condition.",
+    markerColor: "Changes: color of the gap marker or bridge cue.",
     physicsEngineEnabled:
       "Experimental: turns Billiard on. It may break or produce unstable motion, so check exported videos before using it in a study.",
     billiardRealismEnabled:
@@ -405,13 +413,17 @@
     fractureEnabled:
       "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
     contextFractureEnabled: "Changes: fracture cue for Context 1 O2 when a saved preset includes it.",
-    crosshairEnabled: "Changes: adds a movable crosshair to the stimulus. Move the crosshair center in the preview.",
+    fractureColor: "Changes: crack color for the fracture cue.",
+    crosshairEnabled: "Changes: adds one or more movable crosshairs to the stimulus. Move centers or resize from the arms in the preview.",
+    crosshairCount: "Changes: number of crosshairs. Extra crosshairs can be moved independently in the preview.",
+    crosshairSize: "Changes: crosshair arm length. You can also resize the crosshair from an arm in the preview.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
     railEnabled: "Changes: adds one or more movable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
     railCount:
       "Changes: number of rail lines drawn. Extra rails start parallel to Rail 1 and can then be moved independently in the preview.",
     railLength:
       "Changes: rail length in pixels. Use for: making rails shorter or longer while preserving each rail's center and angle.",
+    railColor: "Changes: rail line color in preview and export.",
     crosshairBlinkEnabled:
       "Changes: makes the crosshair blink before balls appear. During this pre-ball window the event clock has not started.",
     crosshairBlinkMs:
@@ -1030,6 +1042,7 @@
     groupingMode: "none",
     manualGroupingRects: "[]",
     contactGuideMode: "none",
+    markerColor: "#f5e089",
     physicsEngineEnabled: false,
     billiardRealismEnabled: true,
     billiardFriction: 180,
@@ -1054,13 +1067,18 @@
     fractureEnabled: false,
     contextFractureEnabled: false,
     fractureTargets: "{}",
+    fractureColor: "#fff8ea",
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
+    crosshairCount: 1,
+    crosshairSize: 48,
+    crosshairPoints: "[]",
     crosshairColor: "#fff8ea",
     railEnabled: false,
     railCount: 1,
     railLength: 465,
+    railColor: "#fff8ea",
     railStartX: 92,
     railStartY: STAGE_HEIGHT / 2,
     railEndX: STAGE_WIDTH * 0.58,
@@ -1306,6 +1324,7 @@
    * contextPairSnapshots: array of Context 2+ parameter snapshots. Context 1
    * uses the ordinary context controls, so it is not stored in this array.
    * railSegments: extra rails after Rail 1, each with start/end coordinates.
+   * crosshairPoints: extra crosshairs after Crosshair 1, each with center coordinates.
    * trajectoryOverrides: object mapping target ids to degree offsets.
    */
   function parseContextPairSnapshots(value) {
@@ -1426,6 +1445,33 @@
     );
   }
 
+  function parseCrosshairPoints(value) {
+    if (!value) {
+      return [];
+    }
+    try {
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      return Array.isArray(parsed)
+        ? parsed.filter((point) => point && typeof point === "object" && !Array.isArray(point))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function serializeCrosshairPoints(points) {
+    return JSON.stringify(
+      Array.isArray(points)
+        ? points
+            .filter((point) => point && typeof point === "object" && !Array.isArray(point))
+            .map((point) => ({
+              x: Math.round(clamp(getFeatureCoordinate(point.x, STAGE_WIDTH / 2), 0, STAGE_WIDTH)),
+              y: Math.round(clamp(getFeatureCoordinate(point.y, STAGE_HEIGHT / 2), 0, STAGE_HEIGHT))
+            }))
+        : []
+    );
+  }
+
   function parseTrajectoryOverrides(value) {
     if (!value) {
       return {};
@@ -1478,6 +1524,9 @@
     }
     if (key === "railSegments") {
       return serializeRailSegments(typeof value === "string" ? parseRailSegments(value) : value);
+    }
+    if (key === "crosshairPoints") {
+      return serializeCrosshairPoints(typeof value === "string" ? parseCrosshairPoints(value) : value);
     }
     if (key === "trajectoryOverrides") {
       return serializeTrajectoryOverrides(value);
@@ -1601,6 +1650,7 @@
       groupingMode: normalizeGroupingMode(controls.groupingMode.value),
       manualGroupingRects: parseManualGroupingRects(controls.manualGroupingRects.value),
       contactGuideMode: controls.contactGuideMode.value,
+      markerColor: controls.markerColor.value,
       physicsEngineEnabled:
         controls.physicsEngineEnabled.type === "checkbox"
           ? controls.physicsEngineEnabled.checked
@@ -1628,13 +1678,18 @@
       fractureEnabled: controls.fractureEnabled.checked,
       contextFractureEnabled: controls.contextFractureEnabled.checked,
       fractureTargets: parseFractureTargets(controls.fractureTargets.value),
+      fractureColor: controls.fractureColor.value,
       crosshairEnabled: controls.crosshairEnabled.checked,
       crosshairX: Number(controls.crosshairX.value),
       crosshairY: Number(controls.crosshairY.value),
+      crosshairCount: Number(controls.crosshairCount.value),
+      crosshairSize: Number(controls.crosshairSize.value),
+      crosshairPoints: parseCrosshairPoints(controls.crosshairPoints.value),
       crosshairColor: controls.crosshairColor.value,
       railEnabled: controls.railEnabled.checked,
       railCount: Number(controls.railCount.value),
       railLength: Number(controls.railLength.value),
+      railColor: controls.railColor.value,
       railStartX: Number(controls.railStartX.value),
       railStartY: Number(controls.railStartY.value),
       railEndX: Number(controls.railEndX.value),
@@ -1690,6 +1745,7 @@
     state.contextPairSnapshots = normalizeContextPairSnapshotsForState(state);
     state.fractureTargets = normalizeFractureTargetsForState(state.fractureTargets, state);
     state.railSegments = state.railEnabled ? getRailSegments(state).slice(1) : [];
+    state.crosshairPoints = state.crosshairEnabled ? getCrosshairPoints(state).slice(1) : [];
     state.trajectoryOverrides = parseTrajectoryOverrides(state.trajectoryOverrides);
     state.manualGroupingRects = normalizeManualGroupingRects(state.manualGroupingRects, state);
     state.individualBalls = normalizeIndividualBalls(state.individualBalls, state);
@@ -1858,6 +1914,8 @@
         return String(Math.round(number));
       case "railCount":
         return `${Math.round(number)} ${Math.round(number) === 1 ? "rail" : "rails"}`;
+      case "crosshairCount":
+        return `${Math.round(number)} ${Math.round(number) === 1 ? "crosshair" : "crosshairs"}`;
       case "trajectoryTarget":
         return getTrajectoryTargetLabel(value);
       case "visibilityMs":
@@ -1922,6 +1980,8 @@
         return "";
       case "railCount":
         return Number(value) === 1 ? "rail" : "rails";
+      case "crosshairCount":
+        return Number(value) === 1 ? "crosshair" : "crosshairs";
       case "overlap":
       case "intPx":
       case "signedPx":
@@ -2604,8 +2664,6 @@
       selectedTrajectoryAngle: stimulusDefaults.selectedTrajectoryAngle,
       trajectoryOverrides: stimulusDefaults.trajectoryOverrides,
       crosshairEnabled: true,
-      crosshairX: presentationDefaults.crosshairX,
-      crosshairY: presentationDefaults.crosshairY,
       crosshairBlinkEnabled: true,
       crosshairBlinkMs: blinkMs,
       crosshairPostBlinkMode: "hide"
@@ -3409,7 +3467,9 @@
 
   function syncSpecialDragUi() {
     const manualGroupingEnabled = Boolean(controls.groupingMode.value !== "none" && controls.manualGroupingRects.value !== "[]");
-    const enabled = Boolean(controls.crosshairEnabled.checked || controls.railEnabled.checked || manualGroupingEnabled);
+    const enabled = Boolean(
+      controls.crosshairEnabled.checked || controls.railEnabled.checked || controls.textBoxEnabled.checked || manualGroupingEnabled
+    );
     const trajectoryEnabled = Boolean(controls.trajectoryEditEnabled.checked);
     canvas.classList.toggle("special-drag-enabled", enabled);
     canvas.classList.toggle("trajectory-edit-enabled", trajectoryEnabled);
@@ -3447,6 +3507,7 @@
     crosshairBlinkDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !blinkEnabled);
     });
+    syncSpecialDragUi();
   }
 
   function syncRailControlVisibility() {
@@ -3454,6 +3515,7 @@
     railDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
     });
+    syncSpecialDragUi();
   }
 
   function syncBilliardControlVisibility() {
@@ -3491,6 +3553,7 @@
     textBoxDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
     });
+    syncSpecialDragUi();
   }
 
   function makeDefaultIndividualBallsFromState(state = cloneState()) {
@@ -3733,6 +3796,67 @@
     refreshText();
     statusText.textContent = "Selected ball removed.";
     drawIdlePreview();
+  }
+
+  function getCrosshairCount(state) {
+    if (!state.crosshairEnabled) {
+      return 0;
+    }
+    return clamp(Math.round(Number(state.crosshairCount) || 1), 1, CROSSHAIR_MAX);
+  }
+
+  function getCrosshairSize(state) {
+    return clamp(Math.round(Number(state.crosshairSize) || 48), 16, 160);
+  }
+
+  function getDefaultCrosshairPoint(state, index = 0) {
+    const baseX = getFeatureCoordinate(state?.crosshairX, STAGE_WIDTH / 2);
+    const baseY = getFeatureCoordinate(state?.crosshairY, STAGE_HEIGHT / 2);
+    if (index === 0) {
+      return { x: baseX, y: baseY };
+    }
+    const offsetRadius = 52 + Math.floor((index - 1) / 4) * 34;
+    const angle = ((index - 1) / 4) * Math.PI * 2 + Math.PI / 4;
+    return {
+      x: clamp(baseX + Math.cos(angle) * offsetRadius, 0, STAGE_WIDTH),
+      y: clamp(baseY + Math.sin(angle) * offsetRadius, 0, STAGE_HEIGHT)
+    };
+  }
+
+  function normalizeCrosshairPoint(point, state, index = 0) {
+    const fallback = getDefaultCrosshairPoint(state, index);
+    return {
+      x: clamp(getFeatureCoordinate(point?.x, fallback.x), 0, STAGE_WIDTH),
+      y: clamp(getFeatureCoordinate(point?.y, fallback.y), 0, STAGE_HEIGHT)
+    };
+  }
+
+  function getCrosshairPoints(state) {
+    const count = getCrosshairCount(state);
+    if (!count) {
+      return [];
+    }
+    const storedPoints = Array.isArray(state.crosshairPoints) ? state.crosshairPoints : parseCrosshairPoints(state.crosshairPoints);
+    const points = [normalizeCrosshairPoint({ x: state.crosshairX, y: state.crosshairY }, state, 0)];
+    for (let index = 1; index < count; index += 1) {
+      points.push(normalizeCrosshairPoint(storedPoints[index - 1], state, index));
+    }
+    return points;
+  }
+
+  function writeCrosshairPoint(index, point) {
+    const state = cloneState();
+    const normalizedPoint = normalizeCrosshairPoint(point, state, index);
+    if (index === 0) {
+      writeCoordinateControl("crosshairX", "crosshairY", normalizedPoint.x, normalizedPoint.y);
+      return;
+    }
+    const points = getCrosshairPoints(state).slice(1);
+    while (points.length < index) {
+      points.push(getDefaultCrosshairPoint(state, points.length + 1));
+    }
+    points[index - 1] = normalizedPoint;
+    controls.crosshairPoints.value = serializeCrosshairPoints(points);
   }
 
   function getRailCount(state) {
@@ -6045,10 +6169,11 @@
       x: x + originUnit.x * radius * 0.78,
       y: y + originUnit.y * radius * 0.78
     };
-    const crackColor = state.stageTheme === "light" ? "rgba(31, 28, 24, 0.82)" : "rgba(255, 248, 234, 0.84)";
+    const crackBase = normalizeHexColor(state.fractureColor, state.stageTheme === "light" ? "#201c18" : "#fff8ea");
+    const crackColor = hexToRgba(crackBase, 0.84, crackBase);
     const shadowColor = state.stageTheme === "light" ? "rgba(255, 248, 234, 0.42)" : "rgba(7, 15, 14, 0.64)";
-    const hairlineColor = state.stageTheme === "light" ? "rgba(12, 10, 8, 0.28)" : "rgba(255, 248, 234, 0.28)";
-    const chipFill = state.stageTheme === "light" ? "rgba(17, 14, 10, 0.34)" : "rgba(255, 248, 234, 0.22)";
+    const hairlineColor = hexToRgba(crackBase, 0.28, crackBase);
+    const chipFill = hexToRgba(crackBase, state.stageTheme === "light" ? 0.24 : 0.22, crackBase);
     const crackPaths = [
       { delay: 0, points: [[0, 0], [0.18, -0.03], [0.38, 0.04], [0.64, -0.06], [0.96, 0.04], [1.34, 0.09], [1.68, -0.05]] },
       { delay: 0.15, points: [[0.26, 0.01], [0.44, 0.18], [0.66, 0.36], [0.94, 0.52], [1.28, 0.67]] },
@@ -6196,8 +6321,9 @@
     const markerHalfLength = radius * 1.7;
 
     drawCtx.save();
-    drawCtx.strokeStyle = "rgba(245, 224, 137, 0.92)";
-    drawCtx.fillStyle = "rgba(245, 224, 137, 0.2)";
+    const markerColor = normalizeHexColor(state.markerColor, "#f5e089");
+    drawCtx.strokeStyle = hexToRgba(markerColor, 0.92, markerColor);
+    drawCtx.fillStyle = hexToRgba(markerColor, 0.2, markerColor);
     drawCtx.lineWidth = 3;
 
     if (state.markerMode === "bridge") {
@@ -7530,7 +7656,8 @@
     const segments = getRailSegments(state);
 
     drawCtx.save();
-    drawCtx.strokeStyle = state.stageTheme === "light" ? "rgba(20, 20, 18, 0.72)" : "rgba(245, 244, 235, 0.78)";
+    const fallback = state.stageTheme === "light" ? "#141412" : "#f5f4eb";
+    drawCtx.strokeStyle = hexToRgba(state.railColor, state.stageTheme === "light" ? 0.72 : 0.78, fallback);
     drawCtx.lineWidth = 2.4;
     drawCtx.setLineDash([]);
     drawCtx.lineCap = "round";
@@ -7543,50 +7670,46 @@
     drawCtx.restore();
   }
 
-  function drawCrosshairFeature(drawCtx, state, alpha = 1) {
-    if (!state.crosshairEnabled) {
-      return;
-    }
-
-    const x = getFeatureCoordinate(state.crosshairX, STAGE_WIDTH / 2);
-    const y = getFeatureCoordinate(state.crosshairY, STAGE_HEIGHT / 2);
-    const arm = 24;
-    const gap = 5;
+  function drawSingleCrosshair(drawCtx, state, point, alpha = 1) {
+    const arm = getCrosshairSize(state) / 2;
+    const gap = clamp(arm * 0.22, 4, 12);
     const fallback = state.stageTheme === "light" ? "#11110f" : "#f5f4eb";
     const color = hexToRgba(state.crosshairColor, (state.stageTheme === "light" ? 0.74 : 0.84) * alpha, fallback);
 
     drawCtx.save();
     drawCtx.strokeStyle = color;
-    drawCtx.lineWidth = 2;
+    drawCtx.lineWidth = clamp(arm * 0.085, 1.6, 3.8);
     drawCtx.setLineDash([]);
     drawCtx.lineCap = "square";
     drawCtx.beginPath();
-    drawCtx.moveTo(x - arm, y);
-    drawCtx.lineTo(x - gap, y);
-    drawCtx.moveTo(x + gap, y);
-    drawCtx.lineTo(x + arm, y);
-    drawCtx.moveTo(x, y - arm);
-    drawCtx.lineTo(x, y - gap);
-    drawCtx.moveTo(x, y + gap);
-    drawCtx.lineTo(x, y + arm);
+    drawCtx.moveTo(point.x - arm, point.y);
+    drawCtx.lineTo(point.x - gap, point.y);
+    drawCtx.moveTo(point.x + gap, point.y);
+    drawCtx.lineTo(point.x + arm, point.y);
+    drawCtx.moveTo(point.x, point.y - arm);
+    drawCtx.lineTo(point.x, point.y - gap);
+    drawCtx.moveTo(point.x, point.y + gap);
+    drawCtx.lineTo(point.x, point.y + arm);
     drawCtx.stroke();
     drawCtx.restore();
   }
 
-  function drawTextBoxFeature(drawCtx, state) {
-    if (!state.textBoxEnabled) {
-      return;
-    }
+  function drawCrosshairFeature(drawCtx, state, alpha = 1) {
+    getCrosshairPoints(state).forEach((point) => {
+      drawSingleCrosshair(drawCtx, state, point, alpha);
+    });
+  }
+
+  function getTextBoxBounds(drawCtx, state) {
     const text = String(state.textBoxText || "").trim();
     if (!text) {
-      return;
+      return null;
     }
     const fontSize = clamp(Number(state.textBoxSize) || 24, 10, 64);
     const x = clamp(Number(state.textBoxX) || 0, 0, STAGE_WIDTH);
     const y = clamp(Number(state.textBoxY) || 0, 0, STAGE_HEIGHT);
     const color = normalizeHexColor(state.textBoxColor, "#fffaf0");
 
-    drawCtx.save();
     drawCtx.font = `700 ${fontSize}px Helvetica Neue, Helvetica, Arial, sans-serif`;
     drawCtx.textBaseline = "alphabetic";
     const metrics = drawCtx.measureText(text);
@@ -7597,6 +7720,31 @@
     const boxX = clamp(x, 0, Math.max(0, STAGE_WIDTH - boxWidth));
     const boxY = clamp(y - boxHeight, 0, Math.max(0, STAGE_HEIGHT - boxHeight));
 
+    return {
+      text,
+      fontSize,
+      color,
+      paddingX,
+      paddingY,
+      boxX,
+      boxY,
+      boxWidth,
+      boxHeight
+    };
+  }
+
+  function drawTextBoxFeature(drawCtx, state) {
+    if (!state.textBoxEnabled) {
+      return;
+    }
+    drawCtx.save();
+    const bounds = getTextBoxBounds(drawCtx, state);
+    if (!bounds) {
+      drawCtx.restore();
+      return;
+    }
+    const { text, fontSize, color, paddingX, paddingY, boxX, boxY, boxWidth, boxHeight } = bounds;
+
     drawCtx.fillStyle = state.stageTheme === "light" ? "rgba(255, 250, 240, 0.72)" : "rgba(17, 21, 20, 0.68)";
     drawCtx.strokeStyle = hexToRgba(color, 0.92, color);
     drawCtx.lineWidth = 1.5;
@@ -7604,6 +7752,55 @@
     drawCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
     drawCtx.fillStyle = color;
     drawCtx.fillText(text, boxX + paddingX, boxY + boxHeight - paddingY - fontSize * 0.14);
+    drawCtx.restore();
+  }
+
+  function drawScreenAdditionEditHandles(drawCtx, state) {
+    drawCtx.save();
+    drawCtx.setLineDash([]);
+    drawCtx.lineWidth = 1.5;
+    drawCtx.strokeStyle = "rgba(255, 250, 240, 0.74)";
+    drawCtx.fillStyle = "rgba(180, 92, 74, 0.92)";
+
+    if (state.crosshairEnabled) {
+      const arm = getCrosshairSize(state) / 2;
+      getCrosshairPoints(state).forEach((point) => {
+        [
+          { x: point.x + arm, y: point.y },
+          { x: point.x, y: point.y + arm }
+        ].forEach((handle) => {
+          drawCtx.beginPath();
+          drawCtx.arc(handle.x, handle.y, 5.5, 0, Math.PI * 2);
+          drawCtx.fill();
+          drawCtx.stroke();
+        });
+      });
+    }
+
+    if (state.railEnabled) {
+      getRailSegments(state).forEach((segment) => {
+        [
+          { x: segment.startX, y: segment.startY },
+          { x: segment.endX, y: segment.endY }
+        ].forEach((handle) => {
+          drawCtx.beginPath();
+          drawCtx.arc(handle.x, handle.y, 6, 0, Math.PI * 2);
+          drawCtx.fill();
+          drawCtx.stroke();
+        });
+      });
+    }
+
+    if (state.textBoxEnabled) {
+      const bounds = getTextBoxBounds(drawCtx, state);
+      if (bounds) {
+        drawCtx.strokeStyle = hexToRgba(state.textBoxColor, 0.9, "#fffaf0");
+        drawCtx.strokeRect(bounds.boxX, bounds.boxY, bounds.boxWidth, bounds.boxHeight);
+        drawCtx.fillStyle = hexToRgba(state.textBoxColor, 0.95, "#fffaf0");
+        drawCtx.fillRect(bounds.boxX + bounds.boxWidth - 10, bounds.boxY + bounds.boxHeight - 10, 10, 10);
+      }
+    }
+
     drawCtx.restore();
   }
 
@@ -7654,6 +7851,7 @@
       drawTextBoxFeature(drawCtx, state);
       if (drawCtx === ctx) {
         drawIndividualBallHandles(drawCtx, state);
+        drawScreenAdditionEditHandles(drawCtx, state);
       }
       return;
     }
@@ -7683,6 +7881,7 @@
     if (drawCtx === ctx) {
       drawTrajectoryGuides(drawCtx, state);
       drawStartDragHandles(drawCtx, state);
+      drawScreenAdditionEditHandles(drawCtx, state);
     }
 
     if (state.renderMode === "lab") {
@@ -7698,7 +7897,13 @@
 
   function getIdlePreviewTime(state = cloneState()) {
     const blinkMs = getPreBallBlinkMs(state);
-    const needsVisibleEditHandles = Boolean(state.railEnabled || state.trajectoryEditEnabled || state.individualBallMotionEnabled);
+    const needsVisibleEditHandles = Boolean(
+      state.crosshairEnabled ||
+        state.railEnabled ||
+        state.textBoxEnabled ||
+        state.trajectoryEditEnabled ||
+        state.individualBallMotionEnabled
+    );
     return blinkMs > 0 && needsVisibleEditHandles ? blinkMs + 1 : 0;
   }
 
@@ -7876,12 +8081,53 @@
 
   function findSpecialDragTarget(state, point) {
     if (state.crosshairEnabled) {
-      const crosshair = {
-        x: getFeatureCoordinate(state.crosshairX, STAGE_WIDTH / 2),
-        y: getFeatureCoordinate(state.crosshairY, STAGE_HEIGHT / 2)
-      };
-      if (Math.hypot(point.x - crosshair.x, point.y - crosshair.y) <= 22) {
-        return { type: "crosshair" };
+      const arm = getCrosshairSize(state) / 2;
+      const resizeHitRadius = Math.max(13, arm * 0.18);
+      const crosshairPoints = getCrosshairPoints(state);
+      for (let crosshairIndex = crosshairPoints.length - 1; crosshairIndex >= 0; crosshairIndex -= 1) {
+        const crosshair = crosshairPoints[crosshairIndex];
+        const resizeHandles = [
+          { x: crosshair.x + arm, y: crosshair.y },
+          { x: crosshair.x - arm, y: crosshair.y },
+          { x: crosshair.x, y: crosshair.y + arm },
+          { x: crosshair.x, y: crosshair.y - arm }
+        ];
+        if (resizeHandles.some((handle) => Math.hypot(point.x - handle.x, point.y - handle.y) <= resizeHitRadius)) {
+          return { type: "crosshairResize", crosshairIndex };
+        }
+        if (Math.hypot(point.x - crosshair.x, point.y - crosshair.y) <= Math.max(22, arm * 0.55)) {
+          return {
+            type: "crosshairMove",
+            crosshairIndex,
+            offset: { x: crosshair.x - point.x, y: crosshair.y - point.y }
+          };
+        }
+      }
+    }
+
+    if (state.textBoxEnabled) {
+      const bounds = getTextBoxBounds(ctx, state);
+      if (bounds) {
+        const resizeCorner = { x: bounds.boxX + bounds.boxWidth, y: bounds.boxY + bounds.boxHeight };
+        if (Math.hypot(point.x - resizeCorner.x, point.y - resizeCorner.y) <= 18) {
+          return {
+            type: "textBoxResize",
+            initialSize: bounds.fontSize,
+            initialWidth: bounds.boxWidth,
+            initialHeight: bounds.boxHeight,
+            originX: bounds.boxX,
+            originY: bounds.boxY
+          };
+        }
+        const insideX = point.x >= bounds.boxX && point.x <= bounds.boxX + bounds.boxWidth;
+        const insideY = point.y >= bounds.boxY && point.y <= bounds.boxY + bounds.boxHeight;
+        if (insideX && insideY) {
+          return {
+            type: "textBoxMove",
+            offset: { x: bounds.boxX - point.x, y: bounds.boxY - point.y },
+            boxHeight: bounds.boxHeight
+          };
+        }
       }
     }
 
@@ -7912,8 +8158,15 @@
   }
 
   function writeDraggedSpecialFeature(target, point) {
-    if (target.type === "crosshair") {
-      writeCoordinateControl("crosshairX", "crosshairY", point.x, point.y);
+    if (target.type === "crosshairMove") {
+      writeCrosshairPoint(target.crosshairIndex, {
+        x: point.x + target.offset.x,
+        y: point.y + target.offset.y
+      });
+    } else if (target.type === "crosshairResize") {
+      const crosshair = getCrosshairPoints(cloneState())[target.crosshairIndex] || getDefaultCrosshairPoint(cloneState(), 0);
+      const nextSize = clamp(Math.hypot(point.x - crosshair.x, point.y - crosshair.y) * 2, 16, 160);
+      controls.crosshairSize.value = Math.round(nextSize / 2) * 2;
     } else if (target.type === "railStart") {
       const segment = getRailSegments(cloneState())[target.railIndex] || getDefaultRailSegment(cloneState(), target.railIndex);
       const nextSegment = { ...segment, startX: point.x, startY: point.y };
@@ -7932,6 +8185,19 @@
         target.railIndex,
         translateRailSegmentWithinStage(segment, desiredStartX - segment.startX, desiredStartY - segment.startY)
       );
+    } else if (target.type === "textBoxMove") {
+      const nextX = clamp(point.x + target.offset.x, 0, STAGE_WIDTH);
+      const nextTopY = clamp(point.y + target.offset.y, 0, STAGE_HEIGHT);
+      writeCoordinateControl("textBoxX", "textBoxY", nextX, nextTopY + target.boxHeight);
+    } else if (target.type === "textBoxResize") {
+      const widthScale = (point.x - target.originX) / Math.max(1, target.initialWidth);
+      const heightScale = (point.y - target.originY) / Math.max(1, target.initialHeight);
+      const nextSize = clamp(target.initialSize * Math.max(widthScale, heightScale, 0.35), 10, 64);
+      controls.textBoxSize.value = Math.round(nextSize);
+      const currentBounds = getTextBoxBounds(ctx, cloneState());
+      if (currentBounds) {
+        writeCoordinateControl("textBoxX", "textBoxY", target.originX, target.originY + currentBounds.boxHeight);
+      }
     }
   }
 
@@ -8658,7 +8924,10 @@
       parts.push(`ar${sanitizeLabel(state.aspectRatio)}`);
     }
     if (state.crosshairEnabled) {
-      parts.push(`cross${compactNumber(state.crosshairX)}x${compactNumber(state.crosshairY)}`);
+      const crosshairCount = getCrosshairCount(state);
+      parts.push(
+        `${crosshairCount > 1 ? `cross${crosshairCount}` : "cross"}${compactNumber(state.crosshairX)}x${compactNumber(state.crosshairY)}-${compactNumber(state.crosshairSize)}px`
+      );
     }
     if (state.railEnabled) {
       const railCount = getRailCount(state);
@@ -9506,6 +9775,23 @@
         volume: state.soundVolume,
         cueEvents: soundCueEvents
       },
+      screenAdditions: {
+        markerColor: state.markerColor,
+        groupingRects: state.manualGroupingRects,
+        crosshairs: getCrosshairPoints(state),
+        crosshairSizePx: state.crosshairSize,
+        railColor: state.railColor,
+        rails: getRailSegments(state),
+        textBox: {
+          enabled: state.textBoxEnabled,
+          text: state.textBoxText,
+          color: state.textBoxColor,
+          sizePx: state.textBoxSize,
+          x: state.textBoxX,
+          y: state.textBoxY
+        },
+        fractureColor: state.fractureColor
+      },
       billiard: {
         enabled: state.physicsEngineEnabled,
         realism: state.physicsEngineEnabled ? state.billiardRealismEnabled : "",
@@ -9641,13 +9927,18 @@
       groupingMode: state.groupingMode,
       manualGroupingRects: JSON.stringify(state.manualGroupingRects),
       contactGuideMode: state.contactGuideMode,
+      markerColor: state.markerColor,
       crosshairEnabled: state.crosshairEnabled,
       crosshairX: state.crosshairX,
       crosshairY: state.crosshairY,
+      crosshairCount: getCrosshairCount(state),
+      crosshairSizePx: state.crosshairSize,
+      crosshairPoints: JSON.stringify(getCrosshairPoints(state).slice(1)),
       crosshairColor: state.crosshairColor,
       railEnabled: state.railEnabled,
       railCount: getRailCount(state),
       railLengthPx: state.railLength,
+      railColor: state.railColor,
       railStartX: state.railStartX,
       railStartY: state.railStartY,
       railEndX: state.railEndX,
@@ -9659,6 +9950,7 @@
       fractureEnabled: state.fractureEnabled,
       contextFractureEnabled: state.contextFractureEnabled,
       fractureTargets: JSON.stringify(state.fractureTargets),
+      fractureColor: state.fractureColor,
       trajectoryEditEnabled: state.trajectoryEditEnabled,
       selectedTrajectoryBall: state.selectedTrajectoryBall,
       selectedTrajectoryAngle: state.selectedTrajectoryAngle,
@@ -9694,6 +9986,12 @@
       fixationDva: state.fixationDva,
       stimulusXOffsetPx: state.stimulusXOffset,
       stimulusYOffsetPx: state.stimulusYOffset,
+      textBoxEnabled: state.textBoxEnabled,
+      textBoxText: state.textBoxText,
+      textBoxColor: state.textBoxColor,
+      textBoxSizePx: state.textBoxSize,
+      textBoxX: state.textBoxX,
+      textBoxY: state.textBoxY,
       soundEnabled: state.soundEnabled,
       soundType: state.soundType,
       soundVolume: state.soundVolume,
@@ -10271,16 +10569,22 @@
         readConditionParameter(parameters, "manualGroupingRects", baseState.manualGroupingRects)
       ),
       contactGuideMode: readConditionParameter(parameters, "contactGuideMode", baseState.contactGuideMode),
+      markerColor: readConditionParameter(parameters, "markerColor", baseState.markerColor),
       fractureEnabled: readConditionParameter(parameters, "fractureEnabled", baseState.fractureEnabled),
       contextFractureEnabled: readConditionParameter(parameters, "contextFractureEnabled", baseState.contextFractureEnabled),
       fractureTargets: parseFractureTargets(readConditionParameter(parameters, "fractureTargets", baseState.fractureTargets)),
+      fractureColor: readConditionParameter(parameters, "fractureColor", baseState.fractureColor),
       crosshairEnabled: readConditionParameter(parameters, "crosshairEnabled", baseState.crosshairEnabled),
       crosshairX: readConditionParameter(parameters, "crosshairX", baseState.crosshairX),
       crosshairY: readConditionParameter(parameters, "crosshairY", baseState.crosshairY),
+      crosshairCount: readConditionParameter(parameters, "crosshairCount", baseState.crosshairCount),
+      crosshairSize: readConditionParameter(parameters, "crosshairSizePx", baseState.crosshairSize),
+      crosshairPoints: parseCrosshairPoints(readConditionParameter(parameters, "crosshairPoints", baseState.crosshairPoints)),
       crosshairColor: readConditionParameter(parameters, "crosshairColor", baseState.crosshairColor),
       railEnabled: readConditionParameter(parameters, "railEnabled", baseState.railEnabled),
       railCount: readConditionParameter(parameters, "railCount", baseState.railCount),
       railLength: readConditionParameter(parameters, "railLengthPx", baseState.railLength),
+      railColor: readConditionParameter(parameters, "railColor", baseState.railColor),
       railStartX: readConditionParameter(parameters, "railStartX", baseState.railStartX),
       railStartY: readConditionParameter(parameters, "railStartY", baseState.railStartY),
       railEndX: readConditionParameter(parameters, "railEndX", baseState.railEndX),
@@ -10328,6 +10632,12 @@
       fixationDva: readConditionParameter(parameters, "fixationDva", baseState.fixationDva),
       stimulusXOffset: readConditionParameter(parameters, "stimulusXOffsetPx", baseState.stimulusXOffset),
       stimulusYOffset: readConditionParameter(parameters, "stimulusYOffsetPx", baseState.stimulusYOffset),
+      textBoxEnabled: readConditionParameter(parameters, "textBoxEnabled", baseState.textBoxEnabled),
+      textBoxText: readConditionParameter(parameters, "textBoxText", baseState.textBoxText),
+      textBoxColor: readConditionParameter(parameters, "textBoxColor", baseState.textBoxColor),
+      textBoxSize: readConditionParameter(parameters, "textBoxSizePx", baseState.textBoxSize),
+      textBoxX: readConditionParameter(parameters, "textBoxX", baseState.textBoxX),
+      textBoxY: readConditionParameter(parameters, "textBoxY", baseState.textBoxY),
       soundEnabled: readConditionParameter(parameters, "soundEnabled", baseState.soundEnabled),
       soundType: readConditionParameter(parameters, "soundType", baseState.soundType),
       soundVolume: readConditionParameter(parameters, "soundVolume", baseState.soundVolume),
@@ -10484,13 +10794,18 @@
       groupingMode: condition.parameters.groupingMode,
       manualGroupingRects: JSON.stringify(condition.parameters.manualGroupingRects || []),
       contactGuideMode: condition.parameters.contactGuideMode,
+      markerColor: condition.parameters.markerColor,
       crosshairEnabled: condition.parameters.crosshairEnabled,
       crosshairX: condition.parameters.crosshairX,
       crosshairY: condition.parameters.crosshairY,
+      crosshairCount: condition.parameters.crosshairCount,
+      crosshairSizePx: condition.parameters.crosshairSizePx,
+      crosshairPoints: JSON.stringify(condition.parameters.crosshairPoints || []),
       crosshairColor: condition.parameters.crosshairColor,
       railEnabled: condition.parameters.railEnabled,
       railCount: condition.parameters.railCount,
       railLengthPx: condition.parameters.railLengthPx,
+      railColor: condition.parameters.railColor,
       railStartX: condition.parameters.railStartX,
       railStartY: condition.parameters.railStartY,
       railEndX: condition.parameters.railEndX,
@@ -10502,6 +10817,7 @@
       fractureEnabled: condition.parameters.fractureEnabled,
       contextFractureEnabled: condition.parameters.contextFractureEnabled,
       fractureTargets: JSON.stringify(condition.parameters.fractureTargets || {}),
+      fractureColor: condition.parameters.fractureColor,
       trajectoryEditEnabled: condition.parameters.trajectoryEditEnabled,
       selectedTrajectoryBall: condition.parameters.selectedTrajectoryBall,
       selectedTrajectoryAngle: condition.parameters.selectedTrajectoryAngle,
@@ -10529,6 +10845,12 @@
       fixationDva: condition.parameters.fixationDva,
       stimulusXOffsetPx: condition.parameters.stimulusXOffsetPx,
       stimulusYOffsetPx: condition.parameters.stimulusYOffsetPx,
+      textBoxEnabled: condition.parameters.textBoxEnabled,
+      textBoxText: condition.parameters.textBoxText,
+      textBoxColor: condition.parameters.textBoxColor,
+      textBoxSizePx: condition.parameters.textBoxSizePx,
+      textBoxX: condition.parameters.textBoxX,
+      textBoxY: condition.parameters.textBoxY,
       soundEnabled: condition.parameters.soundEnabled,
       soundType: condition.parameters.soundType,
       soundVolume: condition.parameters.soundVolume,
@@ -10726,16 +11048,22 @@
         groupingMode: condition.groupingMode,
         manualGroupingRects: condition.manualGroupingRects || [],
         contactGuideMode: condition.contactGuideMode,
+        markerColor: condition.markerColor,
         fractureEnabled: condition.fractureEnabled,
         contextFractureEnabled: condition.contextFractureEnabled,
         fractureTargets: condition.fractureTargets || {},
+        fractureColor: condition.fractureColor,
         crosshairEnabled: condition.crosshairEnabled,
         crosshairX: condition.crosshairX,
         crosshairY: condition.crosshairY,
+        crosshairCount: condition.crosshairCount,
+        crosshairSizePx: condition.crosshairSize,
+        crosshairPoints: condition.crosshairPoints,
         crosshairColor: condition.crosshairColor,
         railEnabled: condition.railEnabled,
         railCount: condition.railCount,
         railLengthPx: condition.railLength,
+        railColor: condition.railColor,
         railStartX: condition.railStartX,
         railStartY: condition.railStartY,
         railEndX: condition.railEndX,
@@ -10771,6 +11099,12 @@
         fixationDva: condition.fixationDva,
         stimulusXOffsetPx: condition.stimulusXOffset,
         stimulusYOffsetPx: condition.stimulusYOffset,
+        textBoxEnabled: condition.textBoxEnabled,
+        textBoxText: condition.textBoxText,
+        textBoxColor: condition.textBoxColor,
+        textBoxSizePx: condition.textBoxSize,
+        textBoxX: condition.textBoxX,
+        textBoxY: condition.textBoxY,
         soundEnabled: condition.soundEnabled,
         soundType: condition.soundType,
         soundVolume: condition.soundVolume,
@@ -11830,7 +12164,7 @@
         id === "individualBallsJson" ||
         id === "selectedTrajectoryBall" ||
         id === "trajectoryOverrides" ||
-        ["crosshairX", "crosshairY", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)
+        ["crosshairX", "crosshairY", "crosshairPoints", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)
       ) {
         return;
       }
@@ -11845,8 +12179,13 @@
           "objectStyle",
           "groupingMode",
           "contactGuideMode",
+          "markerColor",
           "crosshairBlinkMs",
+          "crosshairCount",
+          "crosshairSize",
           "crosshairColor",
+          "railColor",
+          "fractureColor",
           "textBoxText",
           "textBoxColor",
           "textBoxSize",

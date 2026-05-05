@@ -447,7 +447,7 @@
                   </div>
                 </details>
                 <details class="control-subgroup collapsible-subgroup" open>
-                  <summary><h3 class="subgroup-title">Visible cues</h3></summary>
+                  <summary><h3 class="subgroup-title">Screen additions</h3></summary>
                   <div class="control-subgrid">
                     <label class="field checkbox-field">
                       <input id="groupingEnabled" type="checkbox" />
@@ -482,6 +482,10 @@
                         <option value="both">Stop and start markers</option>
                       </select>
                     </label>
+                    <label class="field color-field">
+                      <span>Marker color</span>
+                      <input id="markerColor" type="color" />
+                    </label>
                     <label class="field">
                       <span>Contact guide</span>
                       <select id="contactGuideMode">
@@ -495,9 +499,96 @@
                       <input id="fractureEnabled" type="checkbox" />
                       <span>Fracture</span>
                     </label>
+                    <label class="field color-field">
+                      <span>Fracture color</span>
+                      <input id="fractureColor" type="color" />
+                    </label>
                     <input id="contextFractureEnabled" type="checkbox" hidden />
                     <input id="fractureTargets" type="hidden" />
                     <div id="fractureTargetList" class="fracture-target-list is-retracted"></div>
+                    <label class="field checkbox-field">
+                      <input id="crosshairEnabled" type="checkbox" />
+                      <span>Crosshair</span>
+                    </label>
+                    <label class="field crosshair-dependent-control is-retracted">
+                      <span>Crosshair count</span>
+                      <input id="crosshairCount" data-format="crosshairCount" min="1" max="6" step="1" type="range" />
+                      <output data-for="crosshairCount"></output>
+                    </label>
+                    <label class="field crosshair-dependent-control is-retracted">
+                      <span>Crosshair size</span>
+                      <input id="crosshairSize" data-format="intPx" min="16" max="160" step="2" type="range" />
+                      <output data-for="crosshairSize"></output>
+                    </label>
+                    <label class="field color-field crosshair-dependent-control is-retracted">
+                      <span>Crosshair color</span>
+                      <input id="crosshairColor" type="color" />
+                    </label>
+                    <label class="field checkbox-field">
+                      <input id="crosshairBlinkEnabled" type="checkbox" />
+                      <span>Blink before launch</span>
+                    </label>
+                    <label class="field">
+                      <span>Blink time</span>
+                      <input id="crosshairBlinkMs" data-format="ms" min="100" max="3000" step="50" type="range" />
+                      <output data-for="crosshairBlinkMs"></output>
+                    </label>
+                    <label class="field wide-choice-field crosshair-blink-dependent-control is-retracted">
+                      <span>After blink</span>
+                      <input id="crosshairPostBlinkMode" type="hidden" value="hide" />
+                      <span class="choice-row two-choice-row" role="group" aria-label="Crosshair after blink">
+                        <button class="choice-button" data-choice-for="crosshairPostBlinkMode" data-choice-value="hide" type="button">Disappear</button>
+                        <button class="choice-button" data-choice-for="crosshairPostBlinkMode" data-choice-value="stay" type="button">Stay</button>
+                      </span>
+                    </label>
+                    <label class="field checkbox-field">
+                      <input id="railEnabled" type="checkbox" />
+                      <span>Rail</span>
+                    </label>
+                    <label class="field rail-dependent-control is-retracted">
+                      <span>Rail count</span>
+                      <input id="railCount" data-format="railCount" min="1" max="6" step="1" type="range" />
+                      <output data-for="railCount"></output>
+                    </label>
+                    <label class="field rail-dependent-control is-retracted">
+                      <span>Rail length</span>
+                      <input id="railLength" data-format="intPx" min="40" max="1100" step="5" type="range" />
+                      <output data-for="railLength"></output>
+                    </label>
+                    <label class="field color-field rail-dependent-control is-retracted">
+                      <span>Rail color</span>
+                      <input id="railColor" type="color" />
+                    </label>
+                    <label class="field checkbox-field">
+                      <input id="textBoxEnabled" type="checkbox" />
+                      <span>Text box</span>
+                    </label>
+                    <label class="field text-box-dependent-control is-retracted">
+                      <span>Text</span>
+                      <input id="textBoxText" type="text" maxlength="80" placeholder="Label" />
+                    </label>
+                    <label class="field color-field text-box-dependent-control is-retracted">
+                      <span>Text color</span>
+                      <input id="textBoxColor" type="color" />
+                    </label>
+                    <label class="field text-box-dependent-control is-retracted">
+                      <span>Text size</span>
+                      <input id="textBoxSize" data-format="intPx" min="10" max="64" step="1" type="range" />
+                      <output data-for="textBoxSize"></output>
+                    </label>
+                    <label class="field text-box-dependent-control is-retracted">
+                      <span>Text X</span>
+                      <input id="textBoxX" data-format="intPx" min="0" max="960" step="1" type="range" />
+                      <output data-for="textBoxX"></output>
+                    </label>
+                    <label class="field text-box-dependent-control is-retracted">
+                      <span>Text Y</span>
+                      <input id="textBoxY" data-format="intPx" min="0" max="540" step="1" type="range" />
+                      <output data-for="textBoxY"></output>
+                    </label>
+                    <p class="microcopy wide-copy">
+                      Move crosshairs, rails, rectangles, and text in the preview. Resize from endpoints or corners; exported videos hide the editor handles.
+                    </p>
                   </div>
                 </details>
                 <details class="control-subgroup collapsible-subgroup billiard-subgroup">
@@ -542,77 +633,6 @@
                   </div>
                 </details>
                 <details class="control-subgroup collapsible-subgroup">
-                  <summary><h3 class="subgroup-title">Crosshair and rail</h3></summary>
-                  <div class="control-subgrid">
-                <label class="field checkbox-field">
-                  <input id="crosshairEnabled" type="checkbox" />
-                  <span>Crosshair</span>
-                </label>
-                <label class="field color-field crosshair-dependent-control is-retracted">
-                  <span>Crosshair color</span>
-                  <input id="crosshairColor" type="color" />
-                </label>
-                <label class="field checkbox-field">
-                  <input id="railEnabled" type="checkbox" />
-                  <span>Rail</span>
-                </label>
-                <label class="field rail-dependent-control is-retracted">
-                  <span>Rail count</span>
-                  <input id="railCount" data-format="railCount" min="1" max="6" step="1" type="range" />
-                  <output data-for="railCount"></output>
-                </label>
-                <label class="field rail-dependent-control is-retracted">
-                  <span>Rail length</span>
-                  <input id="railLength" data-format="intPx" min="40" max="1100" step="5" type="range" />
-                  <output data-for="railLength"></output>
-                </label>
-                <label class="field checkbox-field">
-                  <input id="crosshairBlinkEnabled" type="checkbox" />
-                  <span>Blink before launch</span>
-                </label>
-                <label class="field">
-                  <span>Blink time</span>
-                  <input id="crosshairBlinkMs" data-format="ms" min="100" max="3000" step="50" type="range" />
-                  <output data-for="crosshairBlinkMs"></output>
-                </label>
-                <label class="field wide-choice-field crosshair-blink-dependent-control is-retracted">
-                  <span>After blink</span>
-                  <input id="crosshairPostBlinkMode" type="hidden" value="hide" />
-                  <span class="choice-row two-choice-row" role="group" aria-label="Crosshair after blink">
-                    <button class="choice-button" data-choice-for="crosshairPostBlinkMode" data-choice-value="hide" type="button">Disappear</button>
-                    <button class="choice-button" data-choice-for="crosshairPostBlinkMode" data-choice-value="stay" type="button">Stay</button>
-                  </span>
-                </label>
-                <label class="field checkbox-field">
-                  <input id="textBoxEnabled" type="checkbox" />
-                  <span>Text box</span>
-                </label>
-                <label class="field text-box-dependent-control is-retracted">
-                  <span>Text</span>
-                  <input id="textBoxText" type="text" maxlength="80" placeholder="Label" />
-                </label>
-                <label class="field color-field text-box-dependent-control is-retracted">
-                  <span>Text color</span>
-                  <input id="textBoxColor" type="color" />
-                </label>
-                <label class="field text-box-dependent-control is-retracted">
-                  <span>Text size</span>
-                  <input id="textBoxSize" data-format="intPx" min="10" max="64" step="1" type="range" />
-                  <output data-for="textBoxSize"></output>
-                </label>
-                <label class="field text-box-dependent-control is-retracted">
-                  <span>Text X</span>
-                  <input id="textBoxX" data-format="intPx" min="0" max="960" step="1" type="range" />
-                  <output data-for="textBoxX"></output>
-                </label>
-                <label class="field text-box-dependent-control is-retracted">
-                  <span>Text Y</span>
-                  <input id="textBoxY" data-format="intPx" min="0" max="540" step="1" type="range" />
-                  <output data-for="textBoxY"></output>
-                </label>
-                  </div>
-                </details>
-                <details class="control-subgroup collapsible-subgroup">
                   <summary><h3 class="subgroup-title">Sound cue</h3></summary>
                   <div class="control-subgrid">
                     <label class="field checkbox-field">
@@ -637,6 +657,7 @@
                 </details>
                 <input id="crosshairX" type="hidden" />
                 <input id="crosshairY" type="hidden" />
+                <input id="crosshairPoints" type="hidden" />
                 <input id="railStartX" type="hidden" />
                 <input id="railStartY" type="hidden" />
                 <input id="railEndX" type="hidden" />

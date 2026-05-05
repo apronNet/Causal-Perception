@@ -37,17 +37,18 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 ![Special feature guide](docs/screenshots/special-features-guide.svg)
 ![Billiard guide](docs/screenshots/billiard-guide.svg)
 
-- **Crosshair** adds a movable fixation-like crosshair to the stimulus.
+- **Screen additions** groups the visible overlays: grouping boxes, markers, contact guides, fractures, crosshairs, rails, and text labels. Movable additions can be repositioned in the preview; rectangles, crosshairs, rails, and text can be resized from their handles.
+- **Crosshair** adds one or more movable fixation-like crosshairs to the stimulus.
 - **Blink before launch** shows only the crosshair before the balls appear. The crosshair disappears after the blink by default; use **After blink: Stay** if it should remain during the launch. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
-- **Rail** adds one or more movable line segments. Use this for alignment or path-cue manipulations.
-- **Fracture** adds edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
+- **Rail** adds one or more movable, recolorable line segments. Use this for alignment or path-cue manipulations.
+- **Fracture** adds recolorable edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
 - **Set up each ball's movement individually** replaces the ordinary O1/O2 controls with a per-ball editor. Add balls, set speed, acceleration, movement time, visibility time, radius, color, and occlusion order, then move the selected ball's start and stop handles in the preview. Moving the stop point updates angle and movement time.
 - **Billiard** is experimental. It may break or produce unstable motion, so check exported videos before using it in a study. It uses ball size to estimate mass and solves a simple collision. Realism is on by default: clean head-on hits stay straight, with a faster break-like launch, visible table slowdown, cushion rebound, and real recollisions. Turn Realism off to edit manual friction and bounce values. With context pairs, each row acts as its own table lane so balls do not cross through other rows. Billiard turns off delay, gaps, tunnels, markers, sudden color change, and manual trajectories.
 - **Impact sound** adds a short cue at each visible collision event, including context-pair collisions. If sound is not a condition, leave it off.
 
 ## Perceptual Grouping
 
-Perceptual grouping is in **Special features** because the boxes are visible cues. The grouping toggle automatically boxes the original pair and Context 1 when context is shown. If you need a custom region, click **Add rectangle** and move its border or resize from a corner in the preview.
+Perceptual grouping is under **Special features > Screen additions** because the boxes are visible cues. The grouping toggle automatically boxes the original pair and Context 1 when context is shown. If you need a custom region, click **Add rectangle** and move its border or resize from a corner in the preview.
 
 ![Perceptual grouping guide](docs/screenshots/perceptual-grouping-guide.svg)
 
