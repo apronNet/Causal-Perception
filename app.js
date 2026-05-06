@@ -8535,7 +8535,7 @@
   }
 
   function drawIdlePreview(state = cloneState()) {
-    setPreviewReadyToPlay(false);
+    setPreviewReadyToPlay(true);
     if (previewScopeMode === "sequence" && sequenceClips.length > 1) {
       const plan = makePlaybackPlan({ includeSequence: true });
       drawPlaybackPlanFrame(plan, 0, ctx);
