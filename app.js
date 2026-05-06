@@ -23,6 +23,7 @@
   const INDIVIDUAL_BALL_MAX = 24;
   const RAIL_MAX = 6;
   const CROSSHAIR_MAX = 6;
+  const TEXT_BOX_MAX = 6;
   const MANUAL_GROUPING_RECT_MIN_SIZE = 24;
   const MANUAL_GROUPING_RECT_MAX = 12;
   const PHYSICS_ENGINE = {
@@ -164,8 +165,9 @@
   const clearGroupingRectsButton = document.getElementById("clearGroupingRectsButton");
   const individualBallAddButton = document.getElementById("individualBallAddButton");
   const individualBallRemoveButton = document.getElementById("individualBallRemoveButton");
+  const textBoxAddButton = document.getElementById("textBoxAddButton");
+  const textBoxRemoveButton = document.getElementById("textBoxRemoveButton");
   const movementPanel = document.querySelector(".movement-panel");
-  const movementPanelContent = document.getElementById("movementPanelContent");
 
   /*
    * Parameter propagation rule
@@ -255,6 +257,8 @@
     "crosshairEnabled",
     "crosshairX",
     "crosshairY",
+    "crosshairOffsetX",
+    "crosshairOffsetY",
     "crosshairCount",
     "crosshairSize",
     "crosshairPoints",
@@ -276,6 +280,8 @@
     "selectedTrajectoryAngle",
     "trajectoryOverrides",
     "textBoxEnabled",
+    "textBoxSelectedId",
+    "textBoxItems",
     "textBoxText",
     "textBoxColor",
     "textBoxSize",
@@ -338,8 +344,8 @@
     gapPx: "Changes: contact spacing at closest approach. Negative values mean overlap; 0 means the borders just touch; positive values leave a visible spatial gap.",
     markerMode:
       "Changes: optional cue drawn only when Contact spacing is a positive gap. Use for: testing whether a bridge or boundary marker changes responses to gap displays.",
-    ballRadius: "Changes: object size. When many context pairs are shown, all pairs auto-shrink so the rows fit vertically.",
-    contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together at high pair counts.",
+    ballRadius: "Changes: object size. When context pairs are added, all rows auto-shrink so dense displays stay readable.",
+    contextBallRadius: "Changes: Context 1 object size. Added context pairs copy this size, then auto-shrink together as more rows are added.",
     occluderEnabled: "Changes: adds a tunnel over the contact region. Use for: hidden-contact or pass-behind-occluder displays.",
     occluderWidth:
       "Changes: tunnel width. The rendered tunnel scales with ball size and shrinks further when rows are close, preventing tunnel overlap.",
@@ -394,7 +400,7 @@
     billiardWallRestitution: "Changes: rail bounce. Higher values keep more speed after a wall bounce.",
     billiardStopSpeed: "Changes: the speed below which billiard balls are treated as stopped.",
     individualBallMotionEnabled:
-      "Changes: replaces the normal pair controls with independently defined ball paths. The 03 controls are disabled while this is on.",
+      "Changes: replaces the normal pair controls with independently defined ball paths. Current original and context balls are converted into editable individual balls.",
     individualBallSelectedId: "Changes: which individual ball is being edited.",
     individualBallLabel: "Changes: the editor name for the selected ball. This is saved in metadata and frame logs.",
     individualBallColor: "Changes: selected ball color.",
@@ -414,9 +420,11 @@
       "Turns the crack cue on. With context pairs, Special features shows per-object O1/O2 switches so each pair can fracture independently.",
     contextFractureEnabled: "Changes: fracture cue for Context 1 O2 when a saved preset includes it.",
     fractureColor: "Changes: crack color for the fracture cue.",
-    crosshairEnabled: "Changes: adds one or more movable crosshairs to the stimulus. Move centers or resize from the arms in the preview.",
-    crosshairCount: "Changes: number of crosshairs. Extra crosshairs can be moved independently in the preview.",
-    crosshairSize: "Changes: crosshair arm length. You can also resize the crosshair from an arm in the preview.",
+    crosshairEnabled: "Changes: adds one or more crosshairs to the stimulus. Position the first one with X/Y offsets.",
+    crosshairCount: "Changes: number of crosshairs. Extra crosshairs use fixed offsets around the first crosshair.",
+    crosshairSize: "Changes: crosshair arm length.",
+    crosshairOffsetX: "Changes: horizontal crosshair position as a signed offset from the screen center.",
+    crosshairOffsetY: "Changes: vertical crosshair position as a signed offset from the screen center.",
     crosshairColor: "Changes: crosshair line color in preview and export.",
     railEnabled: "Changes: adds one or more movable rail lines. Rail 1 starts by connecting the original pair centers before motion starts.",
     railCount:
@@ -435,6 +443,8 @@
     selectedTrajectoryAngle:
       "Changes: angle of the selected trajectory vector. Moving a preview arrow updates this value; 0 follows the default path.",
     textBoxEnabled: "Changes: adds a simple text label to preview and export.",
+    textBoxSelectedId: "Changes: which text box is being edited.",
+    textBoxItems: "Internal list of text boxes used for preview, export, and metadata.",
     textBoxText: "Changes: the text drawn in the stimulus field.",
     textBoxColor: "Changes: text and box line color.",
     textBoxSize: "Changes: text size in pixels.",
@@ -1071,6 +1081,8 @@
     crosshairEnabled: false,
     crosshairX: STAGE_WIDTH / 2,
     crosshairY: STAGE_HEIGHT / 2,
+    crosshairOffsetX: 0,
+    crosshairOffsetY: 0,
     crosshairCount: 1,
     crosshairSize: 48,
     crosshairPoints: "[]",
@@ -1092,6 +1104,8 @@
     selectedTrajectoryAngle: 0,
     trajectoryOverrides: "{}",
     textBoxEnabled: false,
+    textBoxSelectedId: "text-1",
+    textBoxItems: "[]",
     textBoxText: "Label",
     textBoxColor: "#fffaf0",
     textBoxSize: 24,
@@ -1143,6 +1157,7 @@
   const crosshairBlinkDependentControls = Array.from(document.querySelectorAll(".crosshair-blink-dependent-control"));
   const trajectoryDependentControls = Array.from(document.querySelectorAll(".trajectory-dependent-control"));
   const textBoxDependentControls = Array.from(document.querySelectorAll(".text-box-dependent-control"));
+  const textBoxEditorControlIds = ["textBoxText", "textBoxColor", "textBoxSize", "textBoxX", "textBoxY"];
   const originalPairContextLabels = Array.from(document.querySelectorAll(".original-pair-context-label"));
   const billiardDependentControls = Array.from(document.querySelectorAll(".billiard-dependent-control"));
   const billiardManualFields = Array.from(document.querySelectorAll(".billiard-manual-control"));
@@ -1200,6 +1215,7 @@
   let individualBallDragTarget = null;
   let groupingRectDragTarget = null;
   let isSyncingIndividualBallControls = false;
+  let isSyncingTextBoxControls = false;
   let customStartPositionsInitialized = false;
   let sharedPresetKeys = [];
   let customPresetKeys = [];
@@ -1472,6 +1488,71 @@
     );
   }
 
+  function parseTextBoxes(value) {
+    if (!value) {
+      return [];
+    }
+    try {
+      const parsed = typeof value === "string" ? JSON.parse(value) : value;
+      return Array.isArray(parsed)
+        ? parsed.filter((box) => box && typeof box === "object" && !Array.isArray(box))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function getLegacyTextBoxFromState(state, index = 0) {
+    return {
+      id: "text-1",
+      label: "Text 1",
+      text: state?.textBoxText ?? presentationDefaults.textBoxText,
+      color: state?.textBoxColor ?? presentationDefaults.textBoxColor,
+      size: state?.textBoxSize ?? presentationDefaults.textBoxSize,
+      x: state?.textBoxX ?? presentationDefaults.textBoxX,
+      y: state?.textBoxY ?? presentationDefaults.textBoxY,
+      order: index + 1
+    };
+  }
+
+  function normalizeTextBox(box, index = 0, state = null) {
+    const fallback = getLegacyTextBoxFromState(state, index);
+    const size = clamp(Math.round(Number(box.size ?? box.sizePx ?? fallback.size) || fallback.size), 10, 64);
+    const x = clamp(Math.round(getFeatureCoordinate(box.x, fallback.x)), 0, STAGE_WIDTH);
+    const y = clamp(Math.round(getFeatureCoordinate(box.y, fallback.y)), 0, STAGE_HEIGHT);
+    return {
+      id: String(box.id || `text-${index + 1}`),
+      label: String(box.label || `Text ${index + 1}`).slice(0, 24),
+      text: String(box.text ?? fallback.text ?? "").slice(0, 80),
+      color: normalizeHexColor(box.color, fallback.color),
+      size,
+      x,
+      y,
+      order: clamp(Math.round(Number(box.order) || index + 1), 1, TEXT_BOX_MAX)
+    };
+  }
+
+  function normalizeTextBoxes(boxes, state = null) {
+    const parsed = parseTextBoxes(boxes);
+    const source = parsed.length > 0 ? parsed : [getLegacyTextBoxFromState(state)];
+    return source.slice(0, TEXT_BOX_MAX).map((box, index) => normalizeTextBox(box, index, state));
+  }
+
+  function serializeTextBoxes(boxes, state = null) {
+    return JSON.stringify(
+      normalizeTextBoxes(boxes, state).map((box) => ({
+        id: box.id,
+        label: box.label,
+        text: box.text,
+        color: box.color,
+        size: Math.round(box.size),
+        x: Math.round(box.x),
+        y: Math.round(box.y),
+        order: Math.round(box.order)
+      }))
+    );
+  }
+
   function parseTrajectoryOverrides(value) {
     if (!value) {
       return {};
@@ -1540,6 +1621,9 @@
     if (key === "individualBallsJson") {
       return serializeIndividualBalls(value);
     }
+    if (key === "textBoxItems") {
+      return serializeTextBoxes(value);
+    }
     return value;
   }
 
@@ -1596,7 +1680,8 @@
   }
 
   // Canonical state snapshot used by preview, export, metadata, and condition sets.
-  function cloneState() {
+  function cloneState(options = {}) {
+    const { normalizePhysics = true } = options;
     const state = {
       durationMs: Number(controls.durationMs.value),
       leadInMs: Number(controls.leadInMs.value),
@@ -1680,8 +1765,8 @@
       fractureTargets: parseFractureTargets(controls.fractureTargets.value),
       fractureColor: controls.fractureColor.value,
       crosshairEnabled: controls.crosshairEnabled.checked,
-      crosshairX: Number(controls.crosshairX.value),
-      crosshairY: Number(controls.crosshairY.value),
+      crosshairX: getFeatureCoordinate(controls.crosshairX.value, presentationDefaults.crosshairX),
+      crosshairY: getFeatureCoordinate(controls.crosshairY.value, presentationDefaults.crosshairY),
       crosshairCount: Number(controls.crosshairCount.value),
       crosshairSize: Number(controls.crosshairSize.value),
       crosshairPoints: parseCrosshairPoints(controls.crosshairPoints.value),
@@ -1690,10 +1775,10 @@
       railCount: Number(controls.railCount.value),
       railLength: Number(controls.railLength.value),
       railColor: controls.railColor.value,
-      railStartX: Number(controls.railStartX.value),
-      railStartY: Number(controls.railStartY.value),
-      railEndX: Number(controls.railEndX.value),
-      railEndY: Number(controls.railEndY.value),
+      railStartX: getFeatureCoordinate(controls.railStartX.value, presentationDefaults.railStartX),
+      railStartY: getFeatureCoordinate(controls.railStartY.value, presentationDefaults.railStartY),
+      railEndX: getFeatureCoordinate(controls.railEndX.value, presentationDefaults.railEndX),
+      railEndY: getFeatureCoordinate(controls.railEndY.value, presentationDefaults.railEndY),
       railSegments: parseRailSegments(controls.railSegments.value),
       crosshairBlinkEnabled: controls.crosshairBlinkEnabled.checked,
       crosshairBlinkMs: Number(controls.crosshairBlinkMs.value),
@@ -1703,6 +1788,8 @@
       selectedTrajectoryAngle: Number(controls.selectedTrajectoryAngle.value),
       trajectoryOverrides: parseTrajectoryOverrides(controls.trajectoryOverrides.value),
       textBoxEnabled: controls.textBoxEnabled.checked,
+      textBoxSelectedId: controls.textBoxSelectedId.value,
+      textBoxes: parseTextBoxes(controls.textBoxItems.value),
       textBoxText: controls.textBoxText.value,
       textBoxColor: controls.textBoxColor.value,
       textBoxSize: Number(controls.textBoxSize.value),
@@ -1749,7 +1836,9 @@
     state.trajectoryOverrides = parseTrajectoryOverrides(state.trajectoryOverrides);
     state.manualGroupingRects = normalizeManualGroupingRects(state.manualGroupingRects, state);
     state.individualBalls = normalizeIndividualBalls(state.individualBalls, state);
-    return state.physicsEngineEnabled ? normalizePhysicsEngineState(state) : state;
+    state.textBoxes = normalizeTextBoxes(state.textBoxes, state);
+    state.textBoxItems = serializeTextBoxes(state.textBoxes, state);
+    return normalizePhysics && state.physicsEngineEnabled ? normalizePhysicsEngineState(state) : state;
   }
 
   function cloneSequenceState(state) {
@@ -2477,7 +2566,7 @@
     const manualEditingWasOn = Boolean(
       controls.trajectoryEditEnabled.checked || controls.customStartEnabled.checked || controls.individualBallMotionEnabled.checked
     );
-    const state = cloneState();
+    const state = cloneState({ normalizePhysics: false });
     const durationMs = Math.max(state.durationMs, state.billiardRealismEnabled ? 3200 : 1800);
     const physicsState = { ...state, durationMs };
     const visibleMs = Math.max(state.launcherVisibleMs, state.targetVisibleMs, durationMs);
@@ -2524,18 +2613,7 @@
       customStartEnabled: false,
       customStartKeepRowsHorizontal: false,
       customStartAlignStartsVertical: false,
-      originalLauncherStartX: presentationDefaults.originalLauncherStartX,
-      originalLauncherStartY: presentationDefaults.originalLauncherStartY,
-      originalTargetStartX: presentationDefaults.originalTargetStartX,
-      originalTargetStartY: presentationDefaults.originalTargetStartY,
-      contextLauncherStartX: presentationDefaults.contextLauncherStartX,
-      contextLauncherStartY: presentationDefaults.contextLauncherStartY,
-      contextTargetStartX: presentationDefaults.contextTargetStartX,
-      contextTargetStartY: presentationDefaults.contextTargetStartY,
       trajectoryEditEnabled: false,
-      selectedTrajectoryBall: stimulusDefaults.selectedTrajectoryBall,
-      selectedTrajectoryAngle: stimulusDefaults.selectedTrajectoryAngle,
-      trajectoryOverrides: "{}",
       colorChangeMode: "none",
       contactGuideMode: "none",
       contextPairSnapshots: state.contextPairSnapshots.map((snapshot) =>
@@ -2554,8 +2632,15 @@
     return Math.max(0, Number(controls.crosshairBlinkMs.value) || Number(presentationDefaults.crosshairBlinkMs) || 0);
   }
 
-  function getBlinkClassicLaunchDurationMs(blinkMs = getBlinkMsControlValue()) {
+  function getMinimumBlinkLaunchDurationMs(blinkMs = getBlinkMsControlValue()) {
     return blinkMs + (Number(controlDefaults.durationMs) || 1200);
+  }
+
+  function getBlinkPreservingDurationMs(state, blinkMs = getBlinkMsControlValue()) {
+    const currentDuration = Math.max(0, Number(state?.durationMs) || 0);
+    const requiredDuration = currentDuration + blinkMs;
+    const maxDuration = getRangeHardMax(controls.durationMs) || requiredDuration;
+    return Math.min(maxDuration, Math.ceil(requiredDuration / 50) * 50);
   }
 
   function getTravelDurationPadMs() {
@@ -2601,86 +2686,52 @@
       : "Video duration extended so O2 can use the travel time.";
   }
 
-  function getClassicLaunchValuesAfterBlink(state = cloneState()) {
+  function getBlinkValuesPreservingLaunch(state = cloneState()) {
     const blinkMs = getBlinkMsControlValue();
     return {
       ...state,
-      durationMs: getBlinkClassicLaunchDurationMs(blinkMs),
-      leadInMs: controlDefaults.leadInMs,
-      launcherSpeed: controlDefaults.launcherSpeed,
-      launcherAccel: stimulusDefaults.launcherAccel,
-      targetSpeedRatio: controlDefaults.targetSpeedRatio,
-      targetAccel: stimulusDefaults.targetAccel,
-      launcherBehavior: controlDefaults.launcherBehavior,
-      targetBehavior: stimulusDefaults.targetBehavior,
-      targetAngle: controlDefaults.targetAngle,
-      delayMs: controlDefaults.delayMs,
-      gapPx: controlDefaults.gapPx,
-      markerMode: controlDefaults.markerMode,
-      ballRadius: controlDefaults.ballRadius,
-      occluderEnabled: false,
-      occluderWidth: controlDefaults.occluderWidth,
-      contactOcclusionMode: stimulusDefaults.contactOcclusionMode,
-      launcherVisibleMs: stimulusDefaults.launcherVisibleMs,
-      targetVisibleMs: stimulusDefaults.targetVisibleMs,
-      contextMode: "none",
-      contextPairCount: 1,
-      contextPairSnapshots: "[]",
-      contextDurationMs: controlDefaults.contextDurationMs,
-      contextOffsetMs: controlDefaults.contextOffsetMs,
-      contextDirection: controlDefaults.contextDirection,
-      contextYOffset: controlDefaults.contextYOffset,
-      contextBallRadius: controlDefaults.ballRadius,
-      contextLeadInMs: controlDefaults.leadInMs,
-      contextLauncherSpeed: controlDefaults.launcherSpeed,
-      contextLauncherAccel: stimulusDefaults.contextLauncherAccel,
-      contextLauncherBehavior: controlDefaults.launcherBehavior,
-      contextTargetBehavior: stimulusDefaults.contextTargetBehavior,
-      contextDelayMs: controlDefaults.delayMs,
-      contextGapPx: controlDefaults.gapPx,
-      contextContactOcclusionMode: stimulusDefaults.contextContactOcclusionMode,
-      contextOccluderEnabled: false,
-      contextOccluderWidth: controlDefaults.occluderWidth,
-      contextTargetSpeedRatio: controlDefaults.targetSpeedRatio,
-      contextTargetAccel: stimulusDefaults.contextTargetAccel,
-      contextTargetAngle: controlDefaults.targetAngle,
-      contextLauncherVisibleMs: stimulusDefaults.contextLauncherVisibleMs,
-      contextTargetVisibleMs: stimulusDefaults.contextTargetVisibleMs,
-      customStartEnabled: false,
-      customStartKeepRowsHorizontal: false,
-      customStartAlignStartsVertical: false,
-      originalLauncherStartX: presentationDefaults.originalLauncherStartX,
-      originalLauncherStartY: presentationDefaults.originalLauncherStartY,
-      originalTargetStartX: presentationDefaults.originalTargetStartX,
-      originalTargetStartY: presentationDefaults.originalTargetStartY,
-      contextLauncherStartX: presentationDefaults.contextLauncherStartX,
-      contextLauncherStartY: presentationDefaults.contextLauncherStartY,
-      contextTargetStartX: presentationDefaults.contextTargetStartX,
-      contextTargetStartY: presentationDefaults.contextTargetStartY,
-      stimulusXOffset: 0,
-      stimulusYOffset: 0,
-      trajectoryEditEnabled: false,
-      selectedTrajectoryBall: stimulusDefaults.selectedTrajectoryBall,
-      selectedTrajectoryAngle: stimulusDefaults.selectedTrajectoryAngle,
-      trajectoryOverrides: stimulusDefaults.trajectoryOverrides,
+      durationMs: getBlinkPreservingDurationMs(state, blinkMs),
       crosshairEnabled: true,
       crosshairBlinkEnabled: true,
       crosshairBlinkMs: blinkMs,
-      crosshairPostBlinkMode: "hide"
+      crosshairPostBlinkMode: state.crosshairPostBlinkMode || presentationDefaults.crosshairPostBlinkMode
     };
   }
 
-  function applyClassicLaunchAfterBlinkEnabled() {
+  function applyBlinkPreservingLaunchEnabled() {
     activePresetKey = null;
-    setControls(getClassicLaunchValuesAfterBlink());
-    statusText.textContent = "Blink enabled; post-blink event reset to classic launching.";
+    const currentState = cloneState({ normalizePhysics: false });
+    const contextPairSnapshots = serializeContextPairSnapshots(currentState.contextPairSnapshots);
+    const individualBallsJson = serializeIndividualBalls(currentState.individualBalls);
+    setControls({
+      ...getBlinkValuesPreservingLaunch(currentState),
+      contextMode: currentState.contextMode,
+      contextPairCount: currentState.contextPairCount,
+      contextPairSnapshots,
+      individualBallsJson,
+      individualBallSelectedId: currentState.individualBallSelectedId
+    });
+    controls.contextPairSnapshots.value = contextPairSnapshots;
+    syncContextPairSnapshots();
+    renderContextPairEditors();
+    renderFractureTargetEditors();
+    if (currentState.individualBallMotionEnabled) {
+      ensureIndividualBallsInitialized(false);
+      syncSelectedIndividualBallControls();
+    }
+    lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
+    updateOutputs();
+    refreshText();
+    updateCompatibilityNotice(cloneState());
+    drawIdlePreview();
+    statusText.textContent = "Blink enabled; current ball positions and trajectories kept.";
   }
 
-  function ensureBlinkLeavesFullClassicLaunchDuration() {
+  function ensureBlinkLeavesFullLaunchDuration() {
     if (!controls.crosshairBlinkEnabled.checked) {
       return;
     }
-    const requiredDuration = getBlinkClassicLaunchDurationMs();
+    const requiredDuration = getMinimumBlinkLaunchDurationMs();
     if (Number(controls.durationMs.value) < requiredDuration) {
       setRangeValue(controls.durationMs, requiredDuration);
     }
@@ -2742,7 +2793,7 @@
    * Context 1 is controlled by the visible "Context 1" controls. Additional
    * pairs are dynamically rendered from contextPairSnapshots so each pair can
    * diverge after it is added. Rows stack downward from the original pair; radius
-   * and spacing auto-fit at high counts.
+   * shrinks progressively as rows are added, and spacing auto-fits at high counts.
    */
   function getContextPairCount(state) {
     if (state.contextMode === "none") {
@@ -2759,7 +2810,9 @@
     const verticalMargin = 34;
     const availableHeight = STAGE_HEIGHT - verticalMargin * 2;
     const fitRadius = Math.floor((availableHeight - visibleContextPairs * desiredGap) / (totalRows * 2));
-    return clamp(Math.min(requestedRadius, fitRadius), 8, 60);
+    const densityScale = 1 - Math.max(0, visibleContextPairs - 1) * 0.1;
+    const densityRadius = Math.round(requestedRadius * densityScale);
+    return clamp(Math.min(requestedRadius, densityRadius, fitRadius), 8, 60);
   }
 
   function getAutoContextPairSpacing(radius, pairCount, preferredSpacing = 112) {
@@ -2915,7 +2968,7 @@
     return {
       laneY,
       yOffset: getDefaultContextPairOffset(state, pairIndex),
-      ballRadius: getAutoContextPairRadius(state.contextBallRadius || state.ballRadius, getContextPairCount(state) || state.contextPairCount || 1),
+      ballRadius: clamp(Math.round(Number(state.contextBallRadius || state.ballRadius) || stimulusDefaults.contextBallRadius), 8, 60),
       leadInMs: state.leadInMs,
       launcherSpeed: state.launcherSpeed,
       launcherAccel: state.launcherAccel,
@@ -3480,9 +3533,7 @@
 
   function syncSpecialDragUi() {
     const manualGroupingEnabled = Boolean(controls.groupingMode.value !== "none" && controls.manualGroupingRects.value !== "[]");
-    const enabled = Boolean(
-      controls.crosshairEnabled.checked || controls.railEnabled.checked || controls.textBoxEnabled.checked || manualGroupingEnabled
-    );
+    const enabled = Boolean(controls.railEnabled.checked || controls.textBoxEnabled.checked || manualGroupingEnabled);
     const trajectoryEnabled = Boolean(controls.trajectoryEditEnabled.checked);
     canvas.classList.toggle("special-drag-enabled", enabled);
     canvas.classList.toggle("trajectory-edit-enabled", trajectoryEnabled);
@@ -3521,6 +3572,34 @@
       field.classList.toggle("is-retracted", !blinkEnabled);
     });
     syncSpecialDragUi();
+  }
+
+  function getCrosshairOffsetXValue() {
+    return clamp(Math.round(Number(controls.crosshairOffsetX?.value) || 0), -STAGE_WIDTH / 2, STAGE_WIDTH / 2);
+  }
+
+  function getCrosshairOffsetYValue() {
+    return clamp(Math.round(Number(controls.crosshairOffsetY?.value) || 0), -STAGE_HEIGHT / 2, STAGE_HEIGHT / 2);
+  }
+
+  function syncCrosshairPositionFromOffsetControls() {
+    writeCoordinateControl(
+      "crosshairX",
+      "crosshairY",
+      STAGE_WIDTH / 2 + getCrosshairOffsetXValue(),
+      STAGE_HEIGHT / 2 + getCrosshairOffsetYValue()
+    );
+  }
+
+  function syncCrosshairOffsetControlsFromPosition(state = cloneState()) {
+    const offsetX = clamp(Math.round(getFeatureCoordinate(state.crosshairX, STAGE_WIDTH / 2) - STAGE_WIDTH / 2), -STAGE_WIDTH / 2, STAGE_WIDTH / 2);
+    const offsetY = clamp(Math.round(getFeatureCoordinate(state.crosshairY, STAGE_HEIGHT / 2) - STAGE_HEIGHT / 2), -STAGE_HEIGHT / 2, STAGE_HEIGHT / 2);
+    if (controls.crosshairOffsetX && document.activeElement !== controls.crosshairOffsetX) {
+      setRangeValue(controls.crosshairOffsetX, offsetX);
+    }
+    if (controls.crosshairOffsetY && document.activeElement !== controls.crosshairOffsetY) {
+      setRangeValue(controls.crosshairOffsetY, offsetY);
+    }
   }
 
   function syncRailControlVisibility() {
@@ -3566,43 +3645,362 @@
     textBoxDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
     });
+    if (enabled) {
+      ensureTextBoxesInitialized();
+      syncSelectedTextBoxControls();
+      textBoxRemoveButton.disabled = normalizeTextBoxes(controls.textBoxItems.value, cloneState()).length <= 1;
+    } else {
+      specialDragTarget = specialDragTarget?.type?.startsWith("textBox") ? null : specialDragTarget;
+    }
     syncSpecialDragUi();
+  }
+
+  function writeTextBoxes(boxes, selectedId = controls.textBoxSelectedId.value) {
+    const normalized = normalizeTextBoxes(boxes, cloneState());
+    controls.textBoxItems.value = serializeTextBoxes(normalized);
+    const selectedStillExists = normalized.some((box) => box.id === selectedId);
+    syncTextBoxSelector(normalized, selectedStillExists ? selectedId : normalized[0]?.id || "");
+  }
+
+  function ensureTextBoxesInitialized(force = false) {
+    const state = cloneState();
+    const current = normalizeTextBoxes(controls.textBoxItems.value, state);
+    if (!force && current.length > 0) {
+      return current;
+    }
+    const boxes = [getLegacyTextBoxFromState(state)];
+    writeTextBoxes(boxes, boxes[0].id);
+    return boxes;
+  }
+
+  function syncTextBoxSelector(
+    boxes = normalizeTextBoxes(controls.textBoxItems.value, cloneState()),
+    preferredId = controls.textBoxSelectedId.value
+  ) {
+    controls.textBoxSelectedId.replaceChildren();
+    boxes.forEach((box, index) => {
+      const option = document.createElement("option");
+      option.value = box.id;
+      option.textContent = box.label || `Text ${index + 1}`;
+      controls.textBoxSelectedId.appendChild(option);
+    });
+    const selectedId = boxes.some((box) => box.id === preferredId) ? preferredId : boxes[0]?.id || "";
+    controls.textBoxSelectedId.value = selectedId;
+    return selectedId;
+  }
+
+  function setTextBoxEditorControls(box) {
+    isSyncingTextBoxControls = true;
+    if (!box) {
+      textBoxEditorControlIds.forEach((id) => {
+        const control = controls[id];
+        if (control) {
+          control.value = "";
+        }
+      });
+      isSyncingTextBoxControls = false;
+      return;
+    }
+    const values = {
+      textBoxText: box.text,
+      textBoxColor: box.color,
+      textBoxSize: box.size,
+      textBoxX: box.x,
+      textBoxY: box.y
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const control = controls[id];
+      if (!control) {
+        return;
+      }
+      if (control.type === "range") {
+        setRangeValue(control, value);
+      } else {
+        control.value = value;
+      }
+    });
+    isSyncingTextBoxControls = false;
+  }
+
+  function syncSelectedTextBoxControls() {
+    const state = cloneState();
+    const boxes = normalizeTextBoxes(state.textBoxes, state);
+    const selectedId = syncTextBoxSelector(boxes);
+    setTextBoxEditorControls(boxes.find((box) => box.id === selectedId) || null);
+  }
+
+  function updateSelectedTextBoxFromControls() {
+    if (isSyncingTextBoxControls) {
+      return;
+    }
+    const state = cloneState();
+    const boxes = normalizeTextBoxes(state.textBoxes, state);
+    const selectedId = controls.textBoxSelectedId.value || boxes[0]?.id;
+    const index = boxes.findIndex((box) => box.id === selectedId);
+    if (index < 0) {
+      return;
+    }
+    const nextBox = normalizeTextBox(
+      {
+        ...boxes[index],
+        label: controls.textBoxText.value ? controls.textBoxText.value.slice(0, 24) : boxes[index].label,
+        text: controls.textBoxText.value,
+        color: controls.textBoxColor.value,
+        size: controls.textBoxSize.value,
+        x: controls.textBoxX.value,
+        y: controls.textBoxY.value
+      },
+      index,
+      state
+    );
+    boxes[index] = nextBox;
+    writeTextBoxes(boxes, nextBox.id);
+    setTextBoxEditorControls(nextBox);
+  }
+
+  function addTextBox() {
+    const state = cloneState();
+    const boxes = normalizeTextBoxes(state.textBoxes, state);
+    if (boxes.length >= TEXT_BOX_MAX) {
+      statusText.textContent = "Maximum text boxes reached.";
+      return;
+    }
+    const index = boxes.length;
+    const offset = Math.min(index * 30, 150);
+    const nextBox = normalizeTextBox(
+      {
+        id: `text-${Date.now()}-${index + 1}`,
+        label: `Text ${index + 1}`,
+        text: `Label ${index + 1}`,
+        color: state.textBoxColor,
+        size: state.textBoxSize,
+        x: 36 + offset,
+        y: Math.max(28, state.textBoxY - offset)
+      },
+      index,
+      state
+    );
+    controls.textBoxEnabled.checked = true;
+    writeTextBoxes([...boxes, nextBox], nextBox.id);
+    syncTextBoxControlVisibility();
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = `${nextBox.label} added.`;
+    drawIdlePreview();
+  }
+
+  function removeSelectedTextBox() {
+    const state = cloneState();
+    const boxes = normalizeTextBoxes(state.textBoxes, state);
+    if (boxes.length <= 1) {
+      statusText.textContent = "Keep at least one text box.";
+      return;
+    }
+    const selectedId = controls.textBoxSelectedId.value;
+    const nextBoxes = boxes.filter((box) => box.id !== selectedId);
+    writeTextBoxes(nextBoxes, nextBoxes[0]?.id || "");
+    syncTextBoxControlVisibility();
+    activePresetKey = null;
+    updateOutputs();
+    refreshText();
+    statusText.textContent = "Text box removed.";
+    drawIdlePreview();
+  }
+
+  function getIndividualAngleFromPoints(startX, startY, stopX, stopY, fallback = 0) {
+    const dx = Number(stopX) - Number(startX);
+    const dy = Number(stopY) - Number(startY);
+    if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 0.5) {
+      return clamp(Math.round(Number(fallback) || 0), -180, 180);
+    }
+    return clamp(Math.round((Math.atan2(dy, dx) * 180) / Math.PI), -180, 180);
+  }
+
+  function getExpectedIndividualBallCount(state = cloneState()) {
+    const contextCount =
+      state.contextMode === "none" ? 0 : getContextPairCount(state) * (state.contextMode === "single" ? 1 : 2);
+    return Math.min(INDIVIDUAL_BALL_MAX, 2 + contextCount);
   }
 
   function makeDefaultIndividualBallsFromState(state = cloneState()) {
     const laneY = getMainLaneY(state);
     const geometry = getGeometry(state, laneY, { scope: "original", directionSign: 1 });
-    const launcher = updateIndividualBallFromMotion({
-      id: "ball-1",
-      label: "Ball 1",
+    const balls = [];
+    const palette = getPalette(state);
+    const durationMs = Math.max(0, Number(state.durationMs) || 0);
+    const pushBall = (raw) => {
+      if (balls.length >= INDIVIDUAL_BALL_MAX) {
+        return;
+      }
+      balls.push(normalizeIndividualBall({ ...raw, occlusionOrder: balls.length + 1 }, balls.length, state));
+    };
+    const eventEndFor = (startMs, fallbackMoveMs) =>
+      Math.max(0, Math.min(durationMs - Math.max(0, Number(startMs) || 0), Math.max(0, Number(fallbackMoveMs) || 0)));
+
+    const originalEnd = getMainEventState(state, durationMs, laneY);
+    const originalLauncherContinues = state.physicsEngineEnabled || state.launcherBehavior !== "stop";
+    const originalLauncherStop = originalLauncherContinues
+      ? { x: originalEnd.launcherX, y: originalEnd.launcherY }
+      : { x: geometry.launcherStopX, y: geometry.launcherStopY };
+    const originalLauncherMoveMs = originalLauncherContinues
+      ? eventEndFor(state.leadInMs, durationMs)
+      : Math.max(50, geometry.travelMs);
+    pushBall({
+      id: "ball-original-launcher",
+      label: "Original O1",
       startX: geometry.launcherStartX,
       startY: geometry.launcherStartY,
+      stopX: originalLauncherStop.x,
+      stopY: originalLauncherStop.y,
       radius: state.ballRadius,
-      color: state.launcherColor,
+      color: palette.launcher.fill,
       startMs: state.leadInMs,
       speed: state.launcherSpeed,
       accel: state.launcherAccel,
-      moveMs: Math.max(50, geometry.travelMs),
-      visibleMs: Math.max(state.durationMs, state.launcherVisibleMs),
-      angleDeg: 0,
-      occlusionOrder: 1
+      moveMs: originalLauncherMoveMs,
+      visibleMs: durationMs,
+      angleDeg: getIndividualAngleFromPoints(geometry.launcherStartX, geometry.launcherStartY, originalLauncherStop.x, originalLauncherStop.y)
     });
-    const target = updateIndividualBallFromMotion({
-      id: "ball-2",
-      label: "Ball 2",
+    const originalTargetMoves = state.physicsEngineEnabled || state.targetBehavior === "continue";
+    const originalTargetStop = originalTargetMoves
+      ? { x: originalEnd.targetX, y: originalEnd.targetY }
+      : { x: geometry.targetBaseX, y: geometry.targetBaseY };
+    pushBall({
+      id: "ball-original-target",
+      label: "Original O2",
       startX: geometry.targetBaseX,
       startY: geometry.targetBaseY,
+      stopX: originalTargetStop.x,
+      stopY: originalTargetStop.y,
       radius: state.ballRadius,
-      color: state.targetColor,
+      color: palette.target.fill,
       startMs: geometry.targetStartTime,
       speed: Math.max(0, geometry.targetSpeed),
       accel: state.targetAccel,
-      moveMs: Math.max(0, state.targetTravelMs),
-      visibleMs: Math.max(state.durationMs, state.targetVisibleMs),
-      angleDeg: state.targetAngle,
-      occlusionOrder: 2
+      moveMs: originalTargetMoves ? eventEndFor(geometry.targetStartTime, state.targetTravelMs) : 0,
+      visibleMs: durationMs,
+      angleDeg: getIndividualAngleFromPoints(geometry.targetBaseX, geometry.targetBaseY, originalTargetStop.x, originalTargetStop.y, state.targetAngle)
     });
-    return [launcher, target];
+
+    if (state.contextMode !== "none") {
+      const directionSign = geometry.contextDirectionSign;
+      const contextOffset = Number(state.contextOffsetMs) || 0;
+      getContextPairDescriptors(state, geometry).forEach((descriptor) => {
+        if (balls.length >= INDIVIDUAL_BALL_MAX) {
+          return;
+        }
+        const pairNumber = descriptor.pairIndex + 1;
+        const localEndTime = Math.max(0, durationMs - contextOffset);
+        const eventState = descriptor.eventState;
+        const localGeometry = descriptor.geometry;
+        const colorSource =
+          descriptor.pairIndex === 0
+            ? { launcher: palette.context.fill, target: palette.contextTarget.fill }
+            : {
+                launcher: normalizeHexColor(descriptor.snapshot?.launcherColor, state.launcherColor),
+                target: normalizeHexColor(descriptor.snapshot?.targetColor, state.targetColor)
+              };
+        if (state.contextMode === "single") {
+          const singleEnd = getDirectedSingleEventState(
+            eventState,
+            localEndTime,
+            descriptor.laneY,
+            directionSign,
+            descriptor.scope,
+            descriptor.trajectoryScope
+          );
+          const singleStartMs = contextOffset + eventState.leadInMs;
+          pushBall({
+            id: `ball-context-${pairNumber}-single`,
+            label: `Context ${pairNumber}`,
+            startX: localGeometry.launcherStartX,
+            startY: localGeometry.launcherStartY,
+            stopX: singleEnd.singleX,
+            stopY: singleEnd.singleY,
+            radius: localGeometry.radius,
+            color: colorSource.launcher,
+            startMs: singleStartMs,
+            speed: eventState.launcherSpeed,
+            accel: eventState.launcherAccel,
+            moveMs: eventEndFor(singleStartMs, durationMs),
+            visibleMs: durationMs,
+            angleDeg: getIndividualAngleFromPoints(
+              localGeometry.launcherStartX,
+              localGeometry.launcherStartY,
+              singleEnd.singleX,
+              singleEnd.singleY
+            )
+          });
+          return;
+        }
+        const contextEnd = getDirectedEventState(
+          eventState,
+          localEndTime,
+          descriptor.laneY,
+          directionSign,
+          descriptor.scope,
+          descriptor.trajectoryScope
+        );
+        const contextLauncherStartMs = contextOffset + eventState.leadInMs;
+        const contextLauncherContinues = eventState.physicsEngineEnabled || eventState.launcherBehavior !== "stop";
+        const contextLauncherStop = contextLauncherContinues
+          ? { x: contextEnd.launcherX, y: contextEnd.launcherY }
+          : { x: localGeometry.launcherStopX, y: localGeometry.launcherStopY };
+        pushBall({
+          id: `ball-context-${pairNumber}-launcher`,
+          label: `Context ${pairNumber} O1`,
+          startX: localGeometry.launcherStartX,
+          startY: localGeometry.launcherStartY,
+          stopX: contextLauncherStop.x,
+          stopY: contextLauncherStop.y,
+          radius: localGeometry.radius,
+          color: colorSource.launcher,
+          startMs: contextLauncherStartMs,
+          speed: eventState.launcherSpeed,
+          accel: eventState.launcherAccel,
+          moveMs: contextLauncherContinues
+            ? eventEndFor(contextLauncherStartMs, durationMs)
+            : Math.max(50, localGeometry.travelMs),
+          visibleMs: durationMs,
+          angleDeg: getIndividualAngleFromPoints(
+            localGeometry.launcherStartX,
+            localGeometry.launcherStartY,
+            contextLauncherStop.x,
+            contextLauncherStop.y
+          )
+        });
+        const contextTargetStartMs = contextOffset + localGeometry.targetStartTime;
+        const contextTargetMoves = eventState.physicsEngineEnabled || eventState.targetBehavior === "continue";
+        const contextTargetStop = contextTargetMoves
+          ? { x: contextEnd.targetX, y: contextEnd.targetY }
+          : { x: localGeometry.targetBaseX, y: localGeometry.targetBaseY };
+        pushBall({
+          id: `ball-context-${pairNumber}-target`,
+          label: `Context ${pairNumber} O2`,
+          startX: localGeometry.targetBaseX,
+          startY: localGeometry.targetBaseY,
+          stopX: contextTargetStop.x,
+          stopY: contextTargetStop.y,
+          radius: localGeometry.radius,
+          color: colorSource.target,
+          startMs: contextTargetStartMs,
+          speed: Math.max(0, localGeometry.targetSpeed),
+          accel: eventState.targetAccel,
+          moveMs: contextTargetMoves ? eventEndFor(contextTargetStartMs, eventState.targetTravelMs) : 0,
+          visibleMs: durationMs,
+          angleDeg: getIndividualAngleFromPoints(
+            localGeometry.targetBaseX,
+            localGeometry.targetBaseY,
+            contextTargetStop.x,
+            contextTargetStop.y,
+            eventState.targetAngle
+          )
+        });
+      });
+    }
+
+    return balls;
   }
 
   function getSelectedIndividualBall(state = cloneState()) {
@@ -3618,12 +4016,24 @@
   }
 
   function ensureIndividualBallsInitialized(force = false) {
-    const current = normalizeIndividualBalls(controls.individualBallsJson.value, cloneState());
-    if (!force && current.length > 0) {
+    const baseState = { ...cloneState(), individualBallMotionEnabled: false };
+    const current = normalizeIndividualBalls(controls.individualBallsJson.value, baseState);
+    const expectedCount = getExpectedIndividualBallCount(baseState);
+    if (!force && current.length >= expectedCount) {
       return current;
     }
-    const balls = makeDefaultIndividualBallsFromState({ ...cloneState(), individualBallMotionEnabled: false });
-    writeIndividualBalls(balls, balls[0]?.id || "");
+    const defaults = makeDefaultIndividualBallsFromState(baseState);
+    const balls =
+      !force && current.length > 0
+        ? [
+            ...defaults.map((defaultBall, index) => {
+              const existingBall = current.find((ball) => ball.id === defaultBall.id);
+              return normalizeIndividualBall(existingBall ? { ...defaultBall, ...existingBall } : defaultBall, index, baseState);
+            }),
+            ...current.filter((ball) => !defaults.some((defaultBall) => defaultBall.id === ball.id))
+          ].slice(0, INDIVIDUAL_BALL_MAX)
+        : defaults;
+    writeIndividualBalls(balls, controls.individualBallSelectedId.value || balls[0]?.id || "");
     return balls;
   }
 
@@ -3691,19 +4101,17 @@
     setIndividualBallEditorControls(balls.find((ball) => ball.id === selectedId) || null);
   }
 
-  function setIndividualBallMotionControlsDisabled(disabled) {
-    movementPanel?.classList.toggle("is-individual-motion-active", disabled);
-    movementPanelContent?.querySelectorAll("input, select, button").forEach((item) => {
-      item.disabled = Boolean(disabled);
-    });
+  function syncIndividualBallMotionLayout(enabled) {
+    movementPanel?.classList.toggle("is-individual-motion-active", enabled);
   }
 
-  function syncIndividualBallMotionControls() {
+  function syncIndividualBallMotionControls(options = {}) {
+    const { refreshFromCurrentSetup = false } = options;
     const enabled = Boolean(controls.individualBallMotionEnabled.checked);
     individualBallDependentControls.forEach((field) => {
       field.classList.toggle("is-retracted", !enabled);
     });
-    setIndividualBallMotionControlsDisabled(enabled);
+    syncIndividualBallMotionLayout(enabled);
     canvas.classList.toggle("individual-ball-edit-enabled", enabled);
     if (enabled) {
       controls.physicsEngineEnabled.checked = false;
@@ -3712,7 +4120,7 @@
       syncBilliardControlVisibility();
       syncTrajectoryControlVisibility();
       syncStartDragUi();
-      ensureIndividualBallsInitialized();
+      ensureIndividualBallsInitialized(refreshFromCurrentSetup);
       syncSelectedIndividualBallControls();
       individualBallRemoveButton.disabled = normalizeIndividualBalls(controls.individualBallsJson.value, cloneState()).length <= 1;
     } else {
@@ -3855,21 +4263,6 @@
       points.push(normalizeCrosshairPoint(storedPoints[index - 1], state, index));
     }
     return points;
-  }
-
-  function writeCrosshairPoint(index, point) {
-    const state = cloneState();
-    const normalizedPoint = normalizeCrosshairPoint(point, state, index);
-    if (index === 0) {
-      writeCoordinateControl("crosshairX", "crosshairY", normalizedPoint.x, normalizedPoint.y);
-      return;
-    }
-    const points = getCrosshairPoints(state).slice(1);
-    while (points.length < index) {
-      points.push(getDefaultCrosshairPoint(state, points.length + 1));
-    }
-    points[index - 1] = normalizedPoint;
-    controls.crosshairPoints.value = serializeCrosshairPoints(points);
   }
 
   function getRailCount(state) {
@@ -4350,6 +4743,9 @@
     }
     normalizePostContactControlValues(normalizedValues, "launcherBehavior", "targetBehavior");
     normalizePostContactControlValues(normalizedValues, "contextLauncherBehavior", "contextTargetBehavior");
+    if (normalizedValues.textBoxes && !normalizedValues.textBoxItems) {
+      normalizedValues.textBoxItems = normalizedValues.textBoxes;
+    }
 
     delete controls.ballRadius?.dataset.autoFitRequestedRadius;
     delete controls.contextBallRadius?.dataset.autoFitRequestedRadius;
@@ -4379,6 +4775,7 @@
       }
     });
     syncAllChoiceControlButtons();
+    syncCrosshairOffsetControlsFromPosition(cloneState({ normalizePhysics: false }));
     const manualEditingEnabled = syncManualStartTrajectoryControls();
     if (manualEditingEnabled && controls.physicsEngineEnabled.checked) {
       controls.physicsEngineEnabled.checked = false;
@@ -4486,7 +4883,7 @@
         label: "Individual ball movement",
         summary: `${balls.length} independently specified ball${balls.length === 1 ? "" : "s"}.`,
         note:
-          "The ordinary pair-motion controls are disabled. Each ball uses its own start point, direction, speed, acceleration, movement time, visibility time, and occlusion order.",
+          "The ordinary pair-motion controls are hidden. Each ball uses its own start point, direction, speed, acceleration, movement time, visibility time, and occlusion order.",
         literature:
           "Use this when the experiment needs object paths that are not well described by a single O1-to-O2 launch relation."
       };
@@ -4843,15 +5240,6 @@
       if (balls.length === 0) {
         warnings.push("Individual ball movement is on, but no balls are defined.");
       }
-      balls.forEach((ball) => {
-        const movementEndMs = (Number(ball.startMs) || 0) + (Number(ball.moveMs) || 0);
-        if (movementEndMs > state.durationMs + 0.5) {
-          warnings.push(`${ball.label} is still moving after the video ends.`);
-        }
-        if ((Number(ball.visibleMs) || 0) < movementEndMs - 0.5) {
-          warnings.push(`${ball.label} disappears before its movement time ends.`);
-        }
-      });
       if (state.soundEnabled) {
         warnings.push("Impact sound has no automatic collision schedule in individual-ball mode.");
       }
@@ -4862,8 +5250,6 @@
     const targetMovieOnsetMs = getTargetMovieOnsetMs(state);
     const geometry = getGeometry(state, getMainLaneY(state));
     const contactDistance = state.ballRadius * 2 + state.gapPx;
-    const targetMotionEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetTravelMs) || 0);
-    const targetVisibleEndMs = targetMovieOnsetMs + Math.max(0, Number(state.targetVisibleMs) || 0);
     if (state.contactGuideMode !== "none") {
       warnings.push("Contact guide is visible in export. Turn off unless it is a condition.");
     }
@@ -4900,9 +5286,6 @@
       warnings.push("Contact occurs after the video ends. Increase Video duration if the launch should be visible.");
     } else if (state.targetBehavior === "continue" && targetMovieOnsetMs >= state.durationMs) {
       warnings.push("O2 starts after the video ends. Increase Video duration if the launched motion should be visible.");
-    }
-    if (state.targetBehavior === "continue" && targetVisibleEndMs < targetMotionEndMs - 0.5) {
-      warnings.push("O2 on-screen time ends before travel after collision finishes; O2 disappears while still moving.");
     }
     if (state.contextMode !== "none") {
       const contextTimes = getContextPairDescriptors(state, geometry).map(
@@ -6544,7 +6927,7 @@
     }
 
     if (contextGeometries.length === 0) {
-      drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
+      drawManualGroupingRects(drawCtx, state, false);
       return;
     }
 
@@ -6552,7 +6935,7 @@
       contextDescriptors.forEach((descriptor) => {
         drawBox(descriptor.label, descriptor.geometry, state.groupingContextColor, "#80a7a1");
       });
-      drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
+      drawManualGroupingRects(drawCtx, state, false);
       return;
     }
 
@@ -6563,7 +6946,7 @@
           : contextGeometries;
       drawBox("Context set", grouped, state.groupingContextColor, "#80a7a1");
     }
-    drawManualGroupingRects(drawCtx, state, drawCtx === ctx);
+    drawManualGroupingRects(drawCtx, state, false);
   }
 
   function drawContactGuides(drawCtx, state, eventState) {
@@ -7657,6 +8040,9 @@
   }
 
   function getFeatureCoordinate(value, fallback) {
+    if (value === "" || value === null || value === undefined) {
+      return fallback;
+    }
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
   }
@@ -7713,15 +8099,16 @@
     });
   }
 
-  function getTextBoxBounds(drawCtx, state) {
-    const text = String(state.textBoxText || "").trim();
+  function getTextBoxBounds(drawCtx, state, box = null) {
+    const source = box || getLegacyTextBoxFromState(state);
+    const text = String(source.text || "").trim();
     if (!text) {
       return null;
     }
-    const fontSize = clamp(Number(state.textBoxSize) || 24, 10, 64);
-    const x = clamp(Number(state.textBoxX) || 0, 0, STAGE_WIDTH);
-    const y = clamp(Number(state.textBoxY) || 0, 0, STAGE_HEIGHT);
-    const color = normalizeHexColor(state.textBoxColor, "#fffaf0");
+    const fontSize = clamp(Number(source.size) || 24, 10, 64);
+    const x = clamp(Number(source.x) || 0, 0, STAGE_WIDTH);
+    const y = clamp(Number(source.y) || 0, 0, STAGE_HEIGHT);
+    const color = normalizeHexColor(source.color, "#fffaf0");
 
     drawCtx.font = `700 ${fontSize}px Helvetica Neue, Helvetica, Arial, sans-serif`;
     drawCtx.textBaseline = "alphabetic";
@@ -7742,18 +8129,14 @@
       boxX,
       boxY,
       boxWidth,
-      boxHeight
+      boxHeight,
+      id: source.id
     };
   }
 
-  function drawTextBoxFeature(drawCtx, state) {
-    if (!state.textBoxEnabled) {
-      return;
-    }
-    drawCtx.save();
-    const bounds = getTextBoxBounds(drawCtx, state);
+  function drawSingleTextBoxFeature(drawCtx, state, box) {
+    const bounds = getTextBoxBounds(drawCtx, state, box);
     if (!bounds) {
-      drawCtx.restore();
       return;
     }
     const { text, fontSize, color, paddingX, paddingY, boxX, boxY, boxWidth, boxHeight } = bounds;
@@ -7765,6 +8148,16 @@
     drawCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
     drawCtx.fillStyle = color;
     drawCtx.fillText(text, boxX + paddingX, boxY + boxHeight - paddingY - fontSize * 0.14);
+  }
+
+  function drawTextBoxFeature(drawCtx, state) {
+    if (!state.textBoxEnabled) {
+      return;
+    }
+    drawCtx.save();
+    normalizeTextBoxes(state.textBoxes, state)
+      .sort((a, b) => a.order - b.order)
+      .forEach((box) => drawSingleTextBoxFeature(drawCtx, state, box));
     drawCtx.restore();
   }
 
@@ -7774,21 +8167,6 @@
     drawCtx.lineWidth = 1.5;
     drawCtx.strokeStyle = "rgba(255, 250, 240, 0.74)";
     drawCtx.fillStyle = "rgba(180, 92, 74, 0.92)";
-
-    if (state.crosshairEnabled) {
-      const arm = getCrosshairSize(state) / 2;
-      getCrosshairPoints(state).forEach((point) => {
-        [
-          { x: point.x + arm, y: point.y },
-          { x: point.x, y: point.y + arm }
-        ].forEach((handle) => {
-          drawCtx.beginPath();
-          drawCtx.arc(handle.x, handle.y, 5.5, 0, Math.PI * 2);
-          drawCtx.fill();
-          drawCtx.stroke();
-        });
-      });
-    }
 
     if (state.railEnabled) {
       getRailSegments(state).forEach((segment) => {
@@ -7864,7 +8242,6 @@
       drawTextBoxFeature(drawCtx, state);
       if (drawCtx === ctx) {
         drawIndividualBallHandles(drawCtx, state);
-        drawScreenAdditionEditHandles(drawCtx, state);
       }
       return;
     }
@@ -7893,8 +8270,6 @@
 
     if (drawCtx === ctx) {
       drawTrajectoryGuides(drawCtx, state);
-      drawStartDragHandles(drawCtx, state);
-      drawScreenAdditionEditHandles(drawCtx, state);
     }
 
     if (state.renderMode === "lab") {
@@ -7910,14 +8285,7 @@
 
   function getIdlePreviewTime(state = cloneState()) {
     const blinkMs = getPreBallBlinkMs(state);
-    const needsVisibleEditHandles = Boolean(
-      state.crosshairEnabled ||
-        state.railEnabled ||
-        state.textBoxEnabled ||
-        state.trajectoryEditEnabled ||
-        state.individualBallMotionEnabled
-    );
-    return blinkMs > 0 && needsVisibleEditHandles ? blinkMs + 1 : 0;
+    return blinkMs > 0 && state.crosshairEnabled ? blinkMs + 1 : 0;
   }
 
   function drawIdlePreview(state = cloneState()) {
@@ -8098,12 +8466,17 @@
 
   function findTextBoxResizeTarget(state, point) {
     if (state.textBoxEnabled) {
-      const bounds = getTextBoxBounds(ctx, state);
-      if (bounds) {
+      const boxes = normalizeTextBoxes(state.textBoxes, state);
+      for (let boxIndex = boxes.length - 1; boxIndex >= 0; boxIndex -= 1) {
+        const bounds = getTextBoxBounds(ctx, state, boxes[boxIndex]);
+        if (!bounds) {
+          continue;
+        }
         const resizeCorner = { x: bounds.boxX + bounds.boxWidth, y: bounds.boxY + bounds.boxHeight };
         if (Math.hypot(point.x - resizeCorner.x, point.y - resizeCorner.y) <= 18) {
           return {
             type: "textBoxResize",
+            textBoxId: boxes[boxIndex].id,
             initialSize: bounds.fontSize,
             initialWidth: bounds.boxWidth,
             initialHeight: bounds.boxHeight,
@@ -8118,13 +8491,18 @@
 
   function findTextBoxMoveTarget(state, point) {
     if (state.textBoxEnabled) {
-      const bounds = getTextBoxBounds(ctx, state);
-      if (bounds) {
+      const boxes = normalizeTextBoxes(state.textBoxes, state);
+      for (let boxIndex = boxes.length - 1; boxIndex >= 0; boxIndex -= 1) {
+        const bounds = getTextBoxBounds(ctx, state, boxes[boxIndex]);
+        if (!bounds) {
+          continue;
+        }
         const insideX = point.x >= bounds.boxX && point.x <= bounds.boxX + bounds.boxWidth;
         const insideY = point.y >= bounds.boxY && point.y <= bounds.boxY + bounds.boxHeight;
         if (insideX && insideY) {
           return {
             type: "textBoxMove",
+            textBoxId: boxes[boxIndex].id,
             offset: { x: bounds.boxX - point.x, y: bounds.boxY - point.y },
             boxHeight: bounds.boxHeight
           };
@@ -8172,81 +8550,31 @@
     return null;
   }
 
-  function findCrosshairTarget(state, point) {
-    if (!state.crosshairEnabled) {
-      return null;
-    }
-
-    const arm = getCrosshairSize(state) / 2;
-    const resizeHitRadius = Math.max(13, arm * 0.18);
-    const moveHitRadius = Math.max(22, arm * 0.55);
-    const crosshairPoints = getCrosshairPoints(state);
-    let resizeCandidate = null;
-    let moveCandidate = null;
-
-    crosshairPoints.forEach((crosshair, crosshairIndex) => {
-      const resizeHandles = [
-        { x: crosshair.x + arm, y: crosshair.y },
-        { x: crosshair.x - arm, y: crosshair.y },
-        { x: crosshair.x, y: crosshair.y + arm },
-        { x: crosshair.x, y: crosshair.y - arm }
-      ];
-      const resizeDistance = Math.min(...resizeHandles.map((handle) => Math.hypot(point.x - handle.x, point.y - handle.y)));
-      if (
-        resizeDistance <= resizeHitRadius &&
-        (!resizeCandidate || resizeDistance < resizeCandidate.distance || (resizeDistance === resizeCandidate.distance && crosshairIndex > resizeCandidate.crosshairIndex))
-      ) {
-        resizeCandidate = { type: "crosshairResize", crosshairIndex, distance: resizeDistance };
-      }
-
-      const moveDistance = Math.hypot(point.x - crosshair.x, point.y - crosshair.y);
-      if (
-        moveDistance <= moveHitRadius &&
-        (!moveCandidate || moveDistance < moveCandidate.distance || (moveDistance === moveCandidate.distance && crosshairIndex > moveCandidate.crosshairIndex))
-      ) {
-        moveCandidate = {
-          type: "crosshairMove",
-          crosshairIndex,
-          distance: moveDistance,
-          offset: { x: crosshair.x - point.x, y: crosshair.y - point.y }
-        };
-      }
-    });
-
-    if (resizeCandidate) {
-      return { type: resizeCandidate.type, crosshairIndex: resizeCandidate.crosshairIndex };
-    }
-    if (moveCandidate) {
-      return {
-        type: moveCandidate.type,
-        crosshairIndex: moveCandidate.crosshairIndex,
-        offset: moveCandidate.offset
-      };
-    }
-    return null;
-  }
-
   function findSpecialDragTarget(state, point) {
     return (
       findTextBoxResizeTarget(state, point) ||
       findRailEndpointTarget(state, point) ||
-      findCrosshairTarget(state, point) ||
       findTextBoxMoveTarget(state, point) ||
       findRailLineTarget(state, point)
     );
   }
 
+  function writeTextBoxEdit(textBoxId, updates) {
+    const state = cloneState();
+    const boxes = normalizeTextBoxes(state.textBoxes, state);
+    const index = boxes.findIndex((box) => box.id === textBoxId);
+    if (index < 0) {
+      return null;
+    }
+    const nextBox = normalizeTextBox({ ...boxes[index], ...updates }, index, state);
+    boxes[index] = nextBox;
+    writeTextBoxes(boxes, nextBox.id);
+    setTextBoxEditorControls(nextBox);
+    return nextBox;
+  }
+
   function writeDraggedSpecialFeature(target, point) {
-    if (target.type === "crosshairMove") {
-      writeCrosshairPoint(target.crosshairIndex, {
-        x: point.x + target.offset.x,
-        y: point.y + target.offset.y
-      });
-    } else if (target.type === "crosshairResize") {
-      const crosshair = getCrosshairPoints(cloneState())[target.crosshairIndex] || getDefaultCrosshairPoint(cloneState(), 0);
-      const nextSize = clamp(Math.hypot(point.x - crosshair.x, point.y - crosshair.y) * 2, 16, 160);
-      controls.crosshairSize.value = Math.round(nextSize / 2) * 2;
-    } else if (target.type === "railStart") {
+    if (target.type === "railStart") {
       const segment = getRailSegments(cloneState())[target.railIndex] || getDefaultRailSegment(cloneState(), target.railIndex);
       const nextSegment = { ...segment, startX: point.x, startY: point.y };
       updateRailLengthFromSegment(nextSegment);
@@ -8267,15 +8595,15 @@
     } else if (target.type === "textBoxMove") {
       const nextX = clamp(point.x + target.offset.x, 0, STAGE_WIDTH);
       const nextTopY = clamp(point.y + target.offset.y, 0, STAGE_HEIGHT);
-      writeCoordinateControl("textBoxX", "textBoxY", nextX, nextTopY + target.boxHeight);
+      writeTextBoxEdit(target.textBoxId, { x: nextX, y: nextTopY + target.boxHeight });
     } else if (target.type === "textBoxResize") {
       const widthScale = (point.x - target.originX) / Math.max(1, target.initialWidth);
       const heightScale = (point.y - target.originY) / Math.max(1, target.initialHeight);
       const nextSize = clamp(target.initialSize * Math.max(widthScale, heightScale, 0.35), 10, 64);
-      controls.textBoxSize.value = Math.round(nextSize);
-      const currentBounds = getTextBoxBounds(ctx, cloneState());
+      const nextBox = writeTextBoxEdit(target.textBoxId, { size: nextSize });
+      const currentBounds = nextBox ? getTextBoxBounds(ctx, cloneState(), nextBox) : null;
       if (currentBounds) {
-        writeCoordinateControl("textBoxX", "textBoxY", target.originX, target.originY + currentBounds.boxHeight);
+        writeTextBoxEdit(target.textBoxId, { x: target.originX, y: target.originY + currentBounds.boxHeight });
       }
     }
   }
@@ -8500,14 +8828,6 @@
     canvas.addEventListener("pointerdown", (event) => {
       const state = cloneState();
       const point = getStagePoint(event);
-      const specialTarget = findSpecialDragTarget(state, point);
-      if (specialTarget) {
-        stopPreview();
-        specialDragTarget = specialTarget;
-        canvas.setPointerCapture?.(event.pointerId);
-        event.preventDefault();
-        return;
-      }
 
       if (state.individualBallMotionEnabled) {
         const target = findIndividualBallDragTarget(state, point);
@@ -8520,9 +8840,11 @@
         }
       }
 
+      let currentState = state;
       if (state.trajectoryEditEnabled && state.customStartEnabled) {
         initializeCustomStartPositions();
-        const handle = findStartDragHandle(cloneState(), point);
+        currentState = cloneState();
+        const handle = findStartDragHandle(currentState, point);
         if (handle) {
           stopPreview();
           startDragTarget = handle;
@@ -8532,7 +8854,17 @@
         }
       }
 
-      const groupingTarget = findManualGroupingRectTarget(state, point);
+      const trajectoryTarget = findTrajectoryTarget(currentState, point);
+      if (trajectoryTarget) {
+        stopPreview();
+        beginTrajectoryDrag(trajectoryTarget, currentState);
+        drawIdlePreview();
+        canvas.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+
+      const groupingTarget = findManualGroupingRectTarget(currentState, point);
       if (groupingTarget) {
         stopPreview();
         groupingRectDragTarget = groupingTarget;
@@ -8541,11 +8873,10 @@
         return;
       }
 
-      const trajectoryTarget = findTrajectoryTarget(state, point);
-      if (trajectoryTarget) {
+      const specialTarget = findSpecialDragTarget(currentState, point);
+      if (specialTarget) {
         stopPreview();
-        beginTrajectoryDrag(trajectoryTarget, state);
-        drawIdlePreview();
+        specialDragTarget = specialTarget;
         canvas.setPointerCapture?.(event.pointerId);
         event.preventDefault();
         return;
@@ -9861,6 +10192,7 @@
           x: state.textBoxX,
           y: state.textBoxY
         },
+        textBoxes: state.textBoxEnabled ? normalizeTextBoxes(state.textBoxes, state) : [],
         fractureColor: state.fractureColor
       },
       billiard: {
@@ -10063,6 +10395,7 @@
       textBoxSizePx: state.textBoxSize,
       textBoxX: state.textBoxX,
       textBoxY: state.textBoxY,
+      textBoxItems: state.textBoxEnabled ? JSON.stringify(normalizeTextBoxes(state.textBoxes, state)) : "[]",
       soundEnabled: state.soundEnabled,
       soundType: state.soundType,
       soundVolume: state.soundVolume,
@@ -10709,6 +11042,22 @@
       textBoxSize: readConditionParameter(parameters, "textBoxSizePx", baseState.textBoxSize),
       textBoxX: readConditionParameter(parameters, "textBoxX", baseState.textBoxX),
       textBoxY: readConditionParameter(parameters, "textBoxY", baseState.textBoxY),
+      textBoxes: normalizeTextBoxes(readConditionParameter(parameters, "textBoxItems", baseState.textBoxItems), {
+        ...baseState,
+        textBoxText: readConditionParameter(parameters, "textBoxText", baseState.textBoxText),
+        textBoxColor: readConditionParameter(parameters, "textBoxColor", baseState.textBoxColor),
+        textBoxSize: readConditionParameter(parameters, "textBoxSizePx", baseState.textBoxSize),
+        textBoxX: readConditionParameter(parameters, "textBoxX", baseState.textBoxX),
+        textBoxY: readConditionParameter(parameters, "textBoxY", baseState.textBoxY)
+      }),
+      textBoxItems: serializeTextBoxes(readConditionParameter(parameters, "textBoxItems", baseState.textBoxItems), {
+        ...baseState,
+        textBoxText: readConditionParameter(parameters, "textBoxText", baseState.textBoxText),
+        textBoxColor: readConditionParameter(parameters, "textBoxColor", baseState.textBoxColor),
+        textBoxSize: readConditionParameter(parameters, "textBoxSizePx", baseState.textBoxSize),
+        textBoxX: readConditionParameter(parameters, "textBoxX", baseState.textBoxX),
+        textBoxY: readConditionParameter(parameters, "textBoxY", baseState.textBoxY)
+      }),
       soundEnabled: readConditionParameter(parameters, "soundEnabled", baseState.soundEnabled),
       soundType: readConditionParameter(parameters, "soundType", baseState.soundType),
       soundVolume: readConditionParameter(parameters, "soundVolume", baseState.soundVolume),
@@ -10922,6 +11271,7 @@
       textBoxSizePx: condition.parameters.textBoxSizePx,
       textBoxX: condition.parameters.textBoxX,
       textBoxY: condition.parameters.textBoxY,
+      textBoxItems: JSON.stringify(condition.parameters.textBoxItems || []),
       soundEnabled: condition.parameters.soundEnabled,
       soundType: condition.parameters.soundType,
       soundVolume: condition.parameters.soundVolume,
@@ -11176,6 +11526,7 @@
         textBoxSizePx: condition.textBoxSize,
         textBoxX: condition.textBoxX,
         textBoxY: condition.textBoxY,
+        textBoxItems: condition.textBoxEnabled ? normalizeTextBoxes(condition.textBoxes, condition) : [],
         soundEnabled: condition.soundEnabled,
         soundType: condition.soundType,
         soundVolume: condition.soundVolume,
@@ -11963,6 +12314,14 @@
       event.preventDefault();
       removeSelectedIndividualBall();
     });
+    textBoxAddButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      addTextBox();
+    });
+    textBoxRemoveButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      removeSelectedTextBox();
+    });
 
     choiceControlButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -12020,6 +12379,10 @@
           renderContextPairEditors();
           renderFractureTargetEditors();
           lastContextPairCount = Math.max(1, getContextPairCount(cloneState()) || 1);
+          if (controls.individualBallMotionEnabled.checked) {
+            ensureIndividualBallsInitialized(false);
+            syncSelectedIndividualBallControls();
+          }
           syncTrajectoryControlVisibility();
           syncGroupingControlsVisibility();
           enforceCustomStartConstraints();
@@ -12040,6 +12403,10 @@
           renderContextPairEditors();
           renderFractureTargetEditors();
           lastContextPairCount = nextPairCount;
+          if (controls.individualBallMotionEnabled.checked) {
+            ensureIndividualBallsInitialized(false);
+            syncSelectedIndividualBallControls();
+          }
           syncTrajectoryControlVisibility();
           updateOutputs();
           refreshText();
@@ -12119,7 +12486,7 @@
       if (id === "individualBallMotionEnabled") {
         control.addEventListener("change", () => {
           activePresetKey = null;
-          syncIndividualBallMotionControls();
+          syncIndividualBallMotionControls({ refreshFromCurrentSetup: control.checked });
           updateOutputs();
           refreshText();
           updateCompatibilityNotice(cloneState());
@@ -12168,7 +12535,7 @@
         control.addEventListener("change", () => {
           activePresetKey = null;
           if (control.checked) {
-            applyClassicLaunchAfterBlinkEnabled();
+            applyBlinkPreservingLaunchEnabled();
             return;
           }
           syncCrosshairControlVisibility();
@@ -12197,6 +12564,27 @@
         });
         return;
       }
+      if (id === "textBoxSelectedId") {
+        control.addEventListener("change", () => {
+          syncSelectedTextBoxControls();
+          statusText.textContent = "Selected text box loaded.";
+          drawIdlePreview();
+        });
+        return;
+      }
+      if (textBoxEditorControlIds.includes(id)) {
+        const eventName = control.tagName === "SELECT" ? "change" : "input";
+        control.addEventListener(eventName, () => {
+          activePresetKey = null;
+          updateSelectedTextBoxFromControls();
+          updateOutputs();
+          refreshText();
+          updateCompatibilityNotice(cloneState());
+          statusText.textContent = "Text box updated.";
+          drawIdlePreview();
+        });
+        return;
+      }
       if (id === "selectedTrajectoryAngle") {
         control.addEventListener("input", () => {
           activePresetKey = null;
@@ -12208,6 +12596,17 @@
           updateOutputs();
           refreshText();
           statusText.textContent = `${getTrajectoryTargetLabel(controls.selectedTrajectoryBall.value)} trajectory updated.`;
+          drawIdlePreview();
+        });
+        return;
+      }
+      if (id === "crosshairOffsetX" || id === "crosshairOffsetY") {
+        control.addEventListener("input", () => {
+          activePresetKey = null;
+          syncCrosshairPositionFromOffsetControls();
+          updateOutputs();
+          refreshText();
+          statusText.textContent = READY_STATUS;
           drawIdlePreview();
         });
         return;
@@ -12233,6 +12632,7 @@
         id === "fractureTargets" ||
         id === "manualGroupingRects" ||
         id === "individualBallsJson" ||
+        id === "textBoxItems" ||
         id === "selectedTrajectoryBall" ||
         id === "trajectoryOverrides" ||
         ["crosshairX", "crosshairY", "crosshairPoints", "railStartX", "railStartY", "railEndX", "railEndY", "railSegments"].includes(id)
@@ -12287,7 +12687,7 @@
         const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
         control.addEventListener(eventName, () => {
           if (id === "crosshairBlinkMs") {
-            ensureBlinkLeavesFullClassicLaunchDuration();
+            ensureBlinkLeavesFullLaunchDuration();
           }
           updateOutputs();
           refreshText();

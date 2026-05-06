@@ -270,11 +270,7 @@ h3 {
 
 .movement-panel.is-individual-motion-active .movement-header-controls,
 .movement-panel.is-individual-motion-active #pairMotionControls {
-  opacity: 0.42;
-}
-
-.movement-panel.is-individual-motion-active #pairMotionControls {
-  pointer-events: none;
+  display: none;
 }
 
 .summary-reset-button {
@@ -329,6 +325,17 @@ h3 {
 }
 
 .movement-header-controls .checkbox-field {
+  min-height: 28px;
+}
+
+.individual-motion-toggle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.individual-motion-toggle-row .checkbox-field {
   min-height: 28px;
 }
 
@@ -1249,7 +1256,7 @@ canvas {
   -webkit-touch-callout: none;
 }
 
-/* app.js owns these cursor states during start-point, rail/crosshair, and trajectory editing. */
+/* app.js owns these cursor states during start-point, rail/text/grouping, and trajectory editing. */
 canvas.start-drag-enabled {
   cursor: grab;
 }

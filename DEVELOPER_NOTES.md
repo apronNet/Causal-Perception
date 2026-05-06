@@ -42,7 +42,11 @@ Touch every relevant point below. Missing one is the usual source of silent bugs
 
 Context 1 uses the normal context controls. Context 2 and later are stored as JSON in `contextPairSnapshots` and rendered dynamically. When a new context pair is added, it copies the current original pair; later edits to the original pair do not automatically change that copied pair.
 
-Many context rows auto-shrink and re-space so up to 10 pairs fit vertically. If a lab changes the stage size, check `getAutoContextPairRadius()` and `getAutoContextPairSpacing()`.
+Context rows progressively auto-shrink and re-space so up to 10 pairs fit vertically. If a lab changes the stage size, check `getAutoContextPairRadius()` and `getAutoContextPairSpacing()`.
+
+## Screen Additions
+
+Multiple text labels are stored in `textBoxItems`. Keep the legacy `textBoxText`, `textBoxColor`, `textBoxSize`, `textBoxX`, and `textBoxY` controls wired because they are the selected-label editor and preserve older preset/export fields. When text-box behavior changes, check preview drawing, metadata JSON, the one-row PsychoPy CSV, condition-set CSV, and `withCondition()` / `stateFromConditionParameters()`.
 
 ## Motion Conventions
 
@@ -96,7 +100,7 @@ Keep the documentation updated with every project adjustment, including changes 
 - If a code path changes, update the relevant checklist in this file.
 - If a feature changes what participants see or hear, include its experimental meaning, not only its UI label.
 
-Current ownership reminder: **Manually adjust starting positions and trajectories** is one visible switch in Starting Position and Movement. Keep the separate `trajectoryEditEnabled` and `customStartEnabled` state fields for preset, metadata, and condition compatibility. Whole-stimulus x/y offsets are internal hidden fields unless a specific experiment needs them exposed.
+Current ownership reminder: **Manually adjust starting positions and trajectories** is one visible switch in Starting Position and Movement. Keep the separate `trajectoryEditEnabled` and `customStartEnabled` state fields for preset, metadata, and condition compatibility. The switch must work for the original pair, Context 1, and snapshot-backed Context 2+ rows. Whole-stimulus x/y offsets are internal hidden fields unless a specific experiment needs them exposed.
 
 ## Utility Interface Benchmarks
 

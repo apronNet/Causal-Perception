@@ -93,6 +93,7 @@ This order prevents the most common fork failure: changing what a control does o
 | Canonical state | `cloneState()` | The one object used by preview, export, records, and condition sets. | Type mismatches here spread everywhere. |
 | Context snapshots | `contextPairSnapshots` | Stored JSON for Context 2+ after a pair is created. | Context 1 can work while Context 2+ stays stale. |
 | Trajectory overrides | `trajectoryOverrides` | Stored JSON mapping selected object ids to angle offsets. | Individual trajectory edits can appear in preview but be absent from export records if not wired through state. |
+| Text boxes | `textBoxItems` plus legacy `textBox*` fields | Stored JSON for multiple visible text labels; legacy fields keep the first-label editor compatible with older presets. | Added labels can appear in preview but be missing from CSV, metadata JSON, or condition rows if only the legacy fields are updated. |
 | Clip sequence | `sequenceClips` in `app.js` | In-memory list of full clip states for composed exports. | Export can accidentally render only the selected clip if plan helpers are bypassed. |
 | Sidecar records | CSV, JSON, frame log | The durable evidence for generated stimuli. | A movie without sidecars is hard to audit or reproduce. |
 
@@ -204,6 +205,8 @@ flowchart LR
 ```
 
 When a fork changes context motion, test Context 1 and Context 2+ separately. They do not share the same storage path.
+
+Manual start-point and trajectory editing crosses that same boundary. Original and Context 1 start points live in hidden coordinate controls; Context 2+ start points live in `contextPairSnapshots`; all trajectory angles live in `trajectoryOverrides` under ids such as `context2Target` or `context4Launcher`. If a fork changes row alignment or drag behavior, recompute the visible handles after each write before applying cross-row constraints, or one row can overwrite another row's freshly edited position.
 
 ## Condition Set Flow
 

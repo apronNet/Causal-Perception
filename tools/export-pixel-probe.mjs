@@ -449,6 +449,34 @@ const browserProbe = String.raw`
     };
   };
 
+  const getVisibleDisplacementAudit = (rows, eventName, role) => {
+    const samples = rows
+      .filter((row) => row.event === eventName && row.role === role && row.visible === "true")
+      .map((row) => ({
+        frame: Number(row.frame),
+        timeMs: Number(row.movieTimeMs),
+        x: Number(row.xPx),
+        y: Number(row.yPx)
+      }))
+      .filter((sample) => Number.isFinite(sample.x) && Number.isFinite(sample.y))
+      .sort((a, b) => a.frame - b.frame);
+    if (samples.length < 2) {
+      return { sampleCount: samples.length, moved: false };
+    }
+    const first = samples[0];
+    const last = samples[samples.length - 1];
+    const deltaX = last.x - first.x;
+    const deltaY = last.y - first.y;
+    return {
+      sampleCount: samples.length,
+      firstFrame: first.frame,
+      lastFrame: last.frame,
+      deltaX: Number(deltaX.toFixed(2)),
+      deltaY: Number(deltaY.toFixed(2)),
+      moved: Math.hypot(deltaX, deltaY) > 8
+    };
+  };
+
   await wait(() => window.launchingVideoMakerReady && document.getElementById("outputFormat"), 15000, "app ready");
 
   const commonControls = () => {
@@ -779,53 +807,62 @@ const browserProbe = String.raw`
   setControl("customStartEnabled", true);
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const startEditCanvas = document.getElementById("stage");
-  const startEditRect = startEditCanvas.getBoundingClientRect();
   const startEditSnapshotsBefore = JSON.parse(document.getElementById("contextPairSnapshots").value || "[]");
   const startEditBeforeLast = startEditSnapshotsBefore.at(-1) || {};
   const startEditCenter = {
     x: Number(startEditBeforeLast.launcherStartX),
     y: Number(startEditBeforeLast.launcherStartY)
   };
-  const toClientPoint = (point) => ({
-    clientX: startEditRect.left + (point.x / startEditCanvas.width) * startEditRect.width,
-    clientY: startEditRect.top + (point.y / startEditCanvas.height) * startEditRect.height
-  });
-  const startEditPointerStart = toClientPoint(startEditCenter);
-  const startEditPointerEnd = toClientPoint({
-    x: startEditCenter.x + 140,
-    y: startEditCenter.y + 34
-  });
-  startEditCanvas.dispatchEvent(
-    new PointerEvent("pointerdown", {
-      bubbles: true,
-      pointerId: 21,
-      clientX: startEditPointerStart.clientX,
-      clientY: startEditPointerStart.clientY,
-      button: 0,
-      buttons: 1,
-      isPrimary: true
-    })
-  );
-  startEditCanvas.dispatchEvent(
-    new PointerEvent("pointermove", {
-      bubbles: true,
-      pointerId: 21,
-      clientX: startEditPointerEnd.clientX,
-      clientY: startEditPointerEnd.clientY,
-      button: 0,
-      buttons: 1,
-      isPrimary: true
-    })
-  );
-  startEditCanvas.dispatchEvent(
-    new PointerEvent("pointerup", {
-      bubbles: true,
-      pointerId: 21,
-      clientX: startEditPointerEnd.clientX,
-      clientY: startEditPointerEnd.clientY,
-      button: 0,
-      isPrimary: true
-    })
+  const toClientPoint = (point) => {
+    const rect = startEditCanvas.getBoundingClientRect();
+    return {
+      clientX: rect.left + (point.x / startEditCanvas.width) * rect.width,
+      clientY: rect.top + (point.y / startEditCanvas.height) * rect.height
+    };
+  };
+  const dragStagePoint = (from, to, pointerId) => {
+    const pointerStart = toClientPoint(from);
+    const pointerEnd = toClientPoint(to);
+    startEditCanvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        pointerId,
+        clientX: pointerStart.clientX,
+        clientY: pointerStart.clientY,
+        button: 0,
+        buttons: 1,
+        isPrimary: true
+      })
+    );
+    startEditCanvas.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        pointerId,
+        clientX: pointerEnd.clientX,
+        clientY: pointerEnd.clientY,
+        button: 0,
+        buttons: 1,
+        isPrimary: true
+      })
+    );
+    startEditCanvas.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        pointerId,
+        clientX: pointerEnd.clientX,
+        clientY: pointerEnd.clientY,
+        button: 0,
+        isPrimary: true
+      })
+    );
+  };
+  dragStagePoint(
+    startEditCenter,
+    {
+      x: startEditCenter.x + 140,
+      y: startEditCenter.y + 34
+    },
+    21
   );
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const startEditSnapshotsAfter = JSON.parse(document.getElementById("contextPairSnapshots").value || "[]");
@@ -833,6 +870,42 @@ const browserProbe = String.raw`
   const startEditContextPairCount = Number(document.getElementById("contextPairCount").value);
   const startEditMovedX = Number(startEditAfterLast.launcherStartX) - Number(startEditBeforeLast.launcherStartX);
   const startEditMovedY = Number(startEditAfterLast.launcherStartY) - Number(startEditBeforeLast.launcherStartY);
+  const context2TargetBefore = startEditSnapshotsAfter[0] || {};
+  const context2TargetCenter = {
+    x: Number(context2TargetBefore.targetStartX),
+    y: Number(context2TargetBefore.targetStartY)
+  };
+  dragStagePoint(
+    context2TargetCenter,
+    {
+      x: context2TargetCenter.x - 76,
+      y: context2TargetCenter.y - 29
+    },
+    22
+  );
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const startEditSnapshotsAfterSecondDrag = JSON.parse(document.getElementById("contextPairSnapshots").value || "[]");
+  const context2AfterTargetDrag = startEditSnapshotsAfterSecondDrag[0] || {};
+  const context2TargetMovedX = Number(context2AfterTargetDrag.targetStartX) - Number(context2TargetBefore.targetStartX);
+  const context2TargetMovedY = Number(context2AfterTargetDrag.targetStartY) - Number(context2TargetBefore.targetStartY);
+  const context2RowStillHorizontal =
+    Math.abs(Number(context2AfterTargetDrag.targetStartY) - Number(context2AfterTargetDrag.launcherStartY)) < 0.6;
+
+  commonControls();
+  setControl("durationMs", 1800);
+  setControl("contextMode", "launch");
+  setControl("contextPairCount", 4);
+  setControl("contextDurationMs", 1400);
+  setControl("trajectoryEditEnabled", true);
+  await wait(() => isControlVisible("selectedTrajectoryAngle"), 15000, "multi-pair trajectory controls visible");
+  setControl("selectedTrajectoryBall", "context2Target");
+  setControl("selectedTrajectoryAngle", 32);
+  setControl("selectedTrajectoryBall", "context4Launcher");
+  setControl("selectedTrajectoryAngle", -18);
+  const multiPairTrajectoryOverrides = JSON.parse(document.getElementById("trajectoryOverrides").value || "{}");
+  const multiPairTrajectoryRows = await exportFrameLogRows();
+  const context2TargetDisplacement = getVisibleDisplacementAudit(multiPairTrajectoryRows, "Context 2", "O2");
+  const context4LauncherDisplacement = getVisibleDisplacementAudit(multiPairTrajectoryRows, "Context 4", "O1");
 
   commonControls();
   setControl("durationMs", 2400);
@@ -1001,13 +1074,43 @@ const browserProbe = String.raw`
       snapshotBackedContextPairs: startEditSnapshotsBefore.length,
       movedLastContextLauncherX: Number(startEditMovedX.toFixed(1)),
       movedLastContextLauncherY: Number(startEditMovedY.toFixed(1)),
+      movedContext2TargetX: Number(context2TargetMovedX.toFixed(1)),
+      movedContext2TargetY: Number(context2TargetMovedY.toFixed(1)),
       lastContextTargetY: Number(startEditAfterLast.targetStartY),
       lastContextLauncherY: Number(startEditAfterLast.launcherStartY),
+      context2TargetY: Number(context2AfterTargetDrag.targetStartY),
+      context2LauncherY: Number(context2AfterTargetDrag.launcherStartY),
+      context2RowStillHorizontal,
       movedLastContextPair:
         startEditSnapshotsBefore.length >= 4 &&
         startEditMovedX > 80 &&
         Math.abs(startEditMovedY) > 10 &&
-        Math.abs(Number(startEditAfterLast.targetStartY) - Number(startEditAfterLast.launcherStartY)) < 0.6
+        Math.abs(Number(startEditAfterLast.targetStartY) - Number(startEditAfterLast.launcherStartY)) < 0.6,
+      movedMoreThanOneContextPair:
+        startEditSnapshotsBefore.length >= 4 &&
+        startEditMovedX > 80 &&
+        Math.hypot(context2TargetMovedX, context2TargetMovedY) > 40 &&
+        context2RowStillHorizontal
+    },
+    multiPairTrajectories: {
+      overrides: multiPairTrajectoryOverrides,
+      context2TargetAngle: multiPairTrajectoryOverrides.context2Target,
+      context4LauncherAngle: multiPairTrajectoryOverrides.context4Launcher,
+      context2TargetDisplacement,
+      context4LauncherDisplacement,
+      context2TargetUsesOverride:
+        multiPairTrajectoryOverrides.context2Target === 32 &&
+        Math.abs(context2TargetDisplacement.deltaY) > 20 &&
+        context2TargetDisplacement.moved,
+      context4LauncherUsesOverride:
+        multiPairTrajectoryOverrides.context4Launcher === -18 &&
+        Math.abs(context4LauncherDisplacement.deltaY) > 20 &&
+        context4LauncherDisplacement.moved,
+      moreThanOnePairUsesTrajectoryOverrides:
+        multiPairTrajectoryOverrides.context2Target === 32 &&
+        multiPairTrajectoryOverrides.context4Launcher === -18 &&
+        Math.abs(context2TargetDisplacement.deltaY) > 20 &&
+        Math.abs(context4LauncherDisplacement.deltaY) > 20
     },
     longBilliardRealism: {
       durationMs: longRealismExport.metadata.parameters.durationMs,

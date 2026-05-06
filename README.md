@@ -24,7 +24,7 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 **Manually adjust starting positions and trajectories** shows editable start-point handles and trajectory vectors in the preview.
 
-**Context** adds extra object pairs. New context pairs copy the original pair when they are added; later changes to the original pair do not automatically change those copied pairs.
+**Context** adds extra object pairs. New context pairs copy the original pair when they are added; later changes to the original pair do not automatically change those copied pairs. As more pairs are added, the app shrinks all rows so the full display stays readable.
 
 **Compose a sequence** starts a sequence. The first click stores the current settings as Clip 1 and opens Clip 2 with the default clear-launch settings. The clip strip below the preview lets you return to any earlier clip and keep editing it. **Current clip** previews only the selected clip; **Sequence** previews the full composition. When a sequence has two or more clips, **Export video** exports the full sequence as one movie.
 
@@ -37,9 +37,9 @@ Special features are visible or audible stimulus cues. Use them only when the cu
 ![Special feature guide](docs/screenshots/special-features-guide.svg)
 ![Billiard guide](docs/screenshots/billiard-guide.svg)
 
-- **Screen additions** groups the visible overlays: grouping boxes, markers, contact guides, fractures, crosshairs, rails, and text labels. Movable additions can be repositioned in the preview; rectangles, crosshairs, rails, and text can be resized from their handles.
-- **Crosshair** adds one or more movable fixation-like crosshairs to the stimulus.
-- **Blink before launch** shows only the crosshair before the balls appear. The crosshair disappears after the blink by default; use **After blink: Stay** if it should remain during the launch. When enabled, the app resets the post-blink event to a classic launch and sets video duration to `blink time + 1200 ms`.
+- **Screen additions** groups the visible overlays: grouping boxes, markers, contact guides, fractures, crosshairs, rails, and text labels. Use **Add text box** for additional labels; the selected text row controls the label, color, size, and x/y position recorded in CSV and JSON exports.
+- **Crosshair** adds one or more fixation-like crosshairs to the stimulus. Set the first crosshair exactly with signed X/Y offsets from screen center; crosshairs are not draggable in the preview.
+- **Blink before launch** shows only the crosshair before the balls appear. The crosshair disappears after the blink by default; use **After blink: Stay** if it should remain during the launch. When enabled, the app keeps the current ball positions and trajectories, then extends video duration by the blink time so the existing event still has room to play.
 - **Rail** adds one or more movable, recolorable line segments. Use this for alignment or path-cue manipulations.
 - **Fracture** adds recolorable edge-reaching cracks after impact. When context pairs are present, Special features lets you choose O1 or O2 separately for each pair.
 - **Set up each ball's movement individually** replaces the ordinary O1/O2 controls with a per-ball editor. Add balls, set speed, acceleration, movement time, visibility time, radius, color, and occlusion order, then move the selected ball's start and stop handles in the preview. Moving the stop point updates angle and movement time.
