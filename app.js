@@ -1220,6 +1220,7 @@
   let parameterTooltip = null;
   let previewStart = 0;
   let previewPlaybackPlan = null;
+  let previewCanvasReadyToPlay = false;
   let sequenceClips = [];
   let activeSequenceIndex = 0;
   let previewScopeMode = "clip";
@@ -8530,14 +8531,19 @@
   }
 
   function getIdlePreviewTime(state = cloneState()) {
-    const blinkMs = getPreBallBlinkMs(state);
-    return blinkMs > 0 && state.crosshairEnabled ? blinkMs + 1 : 0;
+    return 0;
   }
 
   function drawIdlePreview(state = cloneState()) {
-    const idleTime = getIdlePreviewTime(state);
-    drawFrame(state, idleTime, ctx);
-    updatePreviewTimer(idleTime, getPreviewTimerPlayback(state));
+    previewCanvasReadyToPlay = false;
+    if (previewScopeMode === "sequence" && sequenceClips.length > 1) {
+      const plan = makePlaybackPlan({ includeSequence: true });
+      drawPlaybackPlanFrame(plan, 0, ctx);
+      updatePreviewTimer(0, plan);
+      return;
+    }
+    drawFrame(state, getIdlePreviewTime(state), ctx);
+    updatePreviewTimer(0, getPreviewTimerPlayback(state));
   }
 
   function getStagePoint(event) {
@@ -9127,6 +9133,8 @@
         event.preventDefault();
         return;
       }
+
+      handlePreviewCanvasClick(event);
     });
 
     canvas.addEventListener("pointermove", (event) => {
@@ -9341,6 +9349,7 @@
     }
     previewStart = 0;
     previewPlaybackPlan = null;
+    previewCanvasReadyToPlay = false;
     updatePreviewTimer(0, getPreviewTimerPlayback(cloneState()));
     clearImpactSoundTimers();
   }
@@ -9417,6 +9426,7 @@
     stopPreview();
     const plan = makePlaybackPlan({ includeSequence: previewScopeMode === "sequence" });
     previewPlaybackPlan = plan;
+    previewCanvasReadyToPlay = false;
     const soundEvents = getPlanImpactSoundEvents(plan);
     if (soundEvents.length > 0) {
       const audioContext = getPreviewAudioContext();
@@ -9433,12 +9443,34 @@
     }
     previewStart = 0;
     previewHandle = requestAnimationFrame(tickPreview);
+    statusText.textContent = "Preview playing.";
     previewFallbackTimer = window.setTimeout(() => {
       if (previewHandle !== null && previewStart === 0) {
         previewStart = performance.now();
       }
       tickPreviewFallback();
     }, 120);
+  }
+
+  function resetPreviewToStart({ armNextClick = true } = {}) {
+    stopPreview();
+    const plan = makePlaybackPlan({ includeSequence: previewScopeMode === "sequence" });
+    drawPlaybackPlanFrame(plan, 0, ctx);
+    updatePreviewTimer(0, plan);
+    previewCanvasReadyToPlay = Boolean(armNextClick);
+    statusText.textContent = "Preview reset to start. Click preview again to play.";
+  }
+
+  function handlePreviewCanvasClick(event) {
+    if (event.button && event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    if (previewCanvasReadyToPlay) {
+      playPreview();
+      return;
+    }
+    resetPreviewToStart();
   }
 
   function sanitizeLabel(label) {
