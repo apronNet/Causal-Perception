@@ -451,6 +451,16 @@ h3 {
   display: none;
 }
 
+.context-panel.is-disabled-by-individual-motion {
+  opacity: 0.52;
+}
+
+.context-panel.is-disabled-by-individual-motion button,
+.context-panel.is-disabled-by-individual-motion input,
+.context-panel.is-disabled-by-individual-motion select {
+  cursor: not-allowed;
+}
+
 /* app.js toggles these when context, canvas editing, rail, crosshair, trajectory, or tunnel controls are inactive. */
 .context-dependent-control.is-retracted,
 .context-pair-only-control.is-retracted,
@@ -645,14 +655,20 @@ h3 {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.individual-ball-toolbar {
-  display: grid;
-  grid-template-columns: minmax(9rem, 0.28fr);
-  gap: 4px;
+.individual-motion-subgroup > summary {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.individual-ball-add-inline {
+  min-height: 1.75rem;
+  padding: 4px 9px;
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 .individual-ball-group-list {
   display: grid;
+  grid-column: 1 / -1;
   gap: 6px;
 }
 
@@ -685,7 +701,7 @@ h3 {
 }
 
 .individual-ball-card-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .individual-ball-remove-card-button {

@@ -157,6 +157,7 @@
   const feedbackPanel = document.getElementById("feedbackPanel");
   const feedbackMessage = document.getElementById("feedbackMessage");
   const feedbackMailLink = document.getElementById("feedbackMailLink");
+  const contextPanel = document.querySelector(".context-panel");
   const contextPairList = document.getElementById("contextPairList");
   const contextColorPairList = document.getElementById("contextColorPairList");
   const fractureTargetList = document.getElementById("fractureTargetList");
@@ -1063,7 +1064,7 @@
     individualBallMotionEnabled: false,
     individualBallsJson: "[]",
     individualBallSelectedId: "",
-    individualBallLabel: "Ball 1",
+    individualBallLabel: "O1",
     individualBallColor: CLASSIC_LAUNCHER_COLOR,
     individualBallRadius: controlDefaults.ballRadius,
     individualBallStartMs: 0,
@@ -1392,6 +1393,15 @@
     }
   }
 
+  function normalizeIndividualBallLabel(label, index = 0) {
+    const fallback = `O${index + 1}`;
+    const raw = String(label || fallback).trim();
+    if (!raw || /^Original O[12]$/.test(raw) || /^Context \d+(?: O[12])?$/.test(raw) || /^Ball \d+$/.test(raw)) {
+      return fallback;
+    }
+    return raw.slice(0, 24);
+  }
+
   function normalizeIndividualBall(ball, index = 0, state = null) {
     const fallbackRadius = Number(state?.ballRadius) || controlDefaults.ballRadius || 28;
     const row = Math.floor(index / 4);
@@ -1407,7 +1417,7 @@
     const fallbackStartY = clamp(STAGE_HEIGHT / 2 - 90 + row * 70, radius, STAGE_HEIGHT - radius);
     const normalized = {
       id: String(ball.id || `ball-${index + 1}`),
-      label: String(ball.label || `Ball ${index + 1}`).slice(0, 24),
+      label: normalizeIndividualBallLabel(ball.label, index),
       startX: Number.isFinite(startX) ? startX : fallbackStartX,
       startY: Number.isFinite(startY) ? startY : fallbackStartY,
       radius,
@@ -2759,6 +2769,18 @@
     });
   }
 
+  function syncContextPanelAvailability() {
+    const disabledByIndividualMotion = Boolean(controls.individualBallMotionEnabled.checked);
+    contextPanel?.classList.toggle("is-disabled-by-individual-motion", disabledByIndividualMotion);
+    contextPanel?.setAttribute("aria-disabled", String(disabledByIndividualMotion));
+    contextPanel?.querySelectorAll("button, input, select, textarea").forEach((control) => {
+      if (control.type === "hidden") {
+        return;
+      }
+      control.disabled = disabledByIndividualMotion;
+    });
+  }
+
   function syncContextControlVisibility() {
     const contextIsOff = controls.contextMode.value === "none";
     if (contextIsOff) {
@@ -2774,6 +2796,7 @@
     });
     syncContextPairOnlyControlVisibility();
     syncOccluderWidthVisibility();
+    syncContextPanelAvailability();
 
     if (contextIsOff) {
       hideParameterTooltip();
@@ -3863,7 +3886,7 @@
       : Math.max(50, geometry.travelMs);
     pushBall({
       id: "ball-original-launcher",
-      label: "Original O1",
+      label: "O1",
       startX: geometry.launcherStartX,
       startY: geometry.launcherStartY,
       stopX: originalLauncherStop.x,
@@ -3883,7 +3906,7 @@
       : { x: geometry.targetBaseX, y: geometry.targetBaseY };
     pushBall({
       id: "ball-original-target",
-      label: "Original O2",
+      label: "O2",
       startX: geometry.targetBaseX,
       startY: geometry.targetBaseY,
       stopX: originalTargetStop.x,
@@ -3928,7 +3951,7 @@
           const singleStartMs = contextOffset + eventState.leadInMs;
           pushBall({
             id: `ball-context-${pairNumber}-single`,
-            label: `Context ${pairNumber}`,
+            label: `O${balls.length + 1}`,
             startX: localGeometry.launcherStartX,
             startY: localGeometry.launcherStartY,
             stopX: singleEnd.singleX,
@@ -3964,7 +3987,7 @@
           : { x: localGeometry.launcherStopX, y: localGeometry.launcherStopY };
         pushBall({
           id: `ball-context-${pairNumber}-launcher`,
-          label: `Context ${pairNumber} O1`,
+          label: `O${balls.length + 1}`,
           startX: localGeometry.launcherStartX,
           startY: localGeometry.launcherStartY,
           stopX: contextLauncherStop.x,
@@ -3992,7 +4015,7 @@
           : { x: localGeometry.targetBaseX, y: localGeometry.targetBaseY };
         pushBall({
           id: `ball-context-${pairNumber}-target`,
-          label: `Context ${pairNumber} O2`,
+          label: `O${balls.length + 1}`,
           startX: localGeometry.targetBaseX,
           startY: localGeometry.targetBaseY,
           stopX: contextTargetStop.x,
@@ -4313,6 +4336,7 @@
       field.classList.toggle("is-retracted", !enabled);
     });
     syncIndividualBallMotionLayout(enabled);
+    syncContextPanelAvailability();
     canvas.classList.toggle("individual-ball-edit-enabled", enabled);
     if (enabled) {
       controls.physicsEngineEnabled.checked = false;
@@ -4401,7 +4425,7 @@
     const startY = clamp(120 + Math.floor(index / 5) * 75, 20, STAGE_HEIGHT - 20);
     const nextBall = updateIndividualBallFromMotion({
       id: `ball-${Date.now()}-${index + 1}`,
-      label: `Ball ${index + 1}`,
+      label: `O${index + 1}`,
       startX,
       startY,
       radius: state.ballRadius,
@@ -12530,6 +12554,7 @@
     clearGroupingRectsButton?.addEventListener("click", clearManualGroupingRects);
     individualBallAddButton?.addEventListener("click", (event) => {
       event.preventDefault();
+      event.stopPropagation();
       addIndividualBall();
     });
     individualBallRemoveButton?.addEventListener("click", (event) => {
