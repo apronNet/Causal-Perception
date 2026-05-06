@@ -8535,7 +8535,7 @@
   }
 
   function drawIdlePreview(state = cloneState()) {
-    previewCanvasReadyToPlay = false;
+    setPreviewReadyToPlay(false);
     if (previewScopeMode === "sequence" && sequenceClips.length > 1) {
       const plan = makePlaybackPlan({ includeSequence: true });
       drawPlaybackPlanFrame(plan, 0, ctx);
@@ -9134,7 +9134,7 @@
         return;
       }
 
-      handlePreviewCanvasClick(event);
+      handlePreviewClick(event);
     });
 
     canvas.addEventListener("pointermove", (event) => {
@@ -9349,7 +9349,7 @@
     }
     previewStart = 0;
     previewPlaybackPlan = null;
-    previewCanvasReadyToPlay = false;
+    setPreviewReadyToPlay(false);
     updatePreviewTimer(0, getPreviewTimerPlayback(cloneState()));
     clearImpactSoundTimers();
   }
@@ -9426,7 +9426,7 @@
     stopPreview();
     const plan = makePlaybackPlan({ includeSequence: previewScopeMode === "sequence" });
     previewPlaybackPlan = plan;
-    previewCanvasReadyToPlay = false;
+    setPreviewReadyToPlay(false);
     const soundEvents = getPlanImpactSoundEvents(plan);
     if (soundEvents.length > 0) {
       const audioContext = getPreviewAudioContext();
@@ -9452,20 +9452,27 @@
     }, 120);
   }
 
+  function setPreviewReadyToPlay(isReady) {
+    previewCanvasReadyToPlay = Boolean(isReady);
+    if (previewButton) {
+      previewButton.textContent = previewCanvasReadyToPlay ? "Start preview" : "Reset preview";
+    }
+  }
+
   function resetPreviewToStart({ armNextClick = true } = {}) {
     stopPreview();
     const plan = makePlaybackPlan({ includeSequence: previewScopeMode === "sequence" });
     drawPlaybackPlanFrame(plan, 0, ctx);
     updatePreviewTimer(0, plan);
-    previewCanvasReadyToPlay = Boolean(armNextClick);
+    setPreviewReadyToPlay(armNextClick);
     statusText.textContent = "Preview reset to start. Click preview again to play.";
   }
 
-  function handlePreviewCanvasClick(event) {
-    if (event.button && event.button !== 0) {
+  function handlePreviewClick(event) {
+    if (event?.button && event.button !== 0) {
       return;
     }
-    event.preventDefault();
+    event?.preventDefault();
     if (previewCanvasReadyToPlay) {
       playPreview();
       return;
@@ -13038,7 +13045,7 @@
       resetToDefaultSettings();
     });
 
-    previewButton.addEventListener("click", playPreview);
+    previewButton.addEventListener("click", handlePreviewClick);
     physicsModeButton?.addEventListener("click", applyPhysicsMode);
     savePresetButton.addEventListener("click", saveCurrentPreset);
     deletePresetButton.addEventListener("click", deleteSelectedPreset);
