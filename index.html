@@ -130,77 +130,31 @@
               <details id="individualBallControls" class="control-subgroup collapsible-subgroup individual-motion-subgroup individual-ball-dependent-control is-retracted" open>
                 <summary><h3 class="subgroup-title">Individual ball movement</h3></summary>
                 <div class="control-subgrid individual-ball-subgrid">
-                  <button id="individualBallAddButton" class="secondary-button individual-ball-dependent-control is-retracted" type="button">
-                    Add ball
-                  </button>
-                  <button id="individualBallRemoveButton" class="secondary-button individual-ball-dependent-control is-retracted" type="button">
-                    Remove ball
-                  </button>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Selected ball</span>
-                    <select id="individualBallSelectedId"></select>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Name</span>
-                    <input id="individualBallLabel" maxlength="24" type="text" />
-                  </label>
-                  <label class="field color-field individual-ball-dependent-control is-retracted">
-                    <span>Color</span>
-                    <input id="individualBallColor" type="color" />
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Radius</span>
-                    <input id="individualBallRadius" data-format="intPx" min="6" max="80" step="1" type="range" />
-                    <output data-for="individualBallRadius"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Move start</span>
-                    <input id="individualBallStartMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
-                    <output data-for="individualBallStartMs"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Speed</span>
-                    <input id="individualBallSpeed" data-format="float1" min="0" max="6500" step="1" type="range" />
-                    <output data-for="individualBallSpeed"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Acceleration</span>
-                    <input id="individualBallAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
-                    <output data-for="individualBallAccel"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Movement time</span>
-                    <input id="individualBallMoveMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
-                    <output data-for="individualBallMoveMs"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>On-screen</span>
-                    <input id="individualBallVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
-                    <output data-for="individualBallVisibleMs"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Angle</span>
-                    <input id="individualBallAngle" data-format="degrees" min="-180" max="180" step="1" type="range" />
-                    <output data-for="individualBallAngle"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Stop X</span>
-                    <input id="individualBallStopX" data-format="intPx" min="0" max="960" step="1" type="range" />
-                    <output data-for="individualBallStopX"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Stop Y</span>
-                    <input id="individualBallStopY" data-format="intPx" min="0" max="540" step="1" type="range" />
-                    <output data-for="individualBallStopY"></output>
-                  </label>
-                  <label class="field individual-ball-dependent-control is-retracted">
-                    <span>Occlusion order</span>
-                    <input id="individualBallOcclusionOrder" data-format="order" min="1" max="24" step="1" type="range" />
-                    <output data-for="individualBallOcclusionOrder"></output>
-                  </label>
+                  <div class="individual-ball-toolbar individual-ball-dependent-control is-retracted">
+                    <button id="individualBallAddButton" class="secondary-button" type="button">
+                      Add ball
+                    </button>
+                  </div>
+                  <div id="individualBallGroupList" class="individual-ball-group-list individual-ball-dependent-control is-retracted"></div>
                   <p class="microcopy wide-copy individual-ball-dependent-control is-retracted">
-                    Drag the selected ball's start or stop point in the preview. Dragging the stop point updates angle and movement time.
+                    Open a ball subgroup to edit it. The open subgroup is also the ball selected for preview start and stop handles.
                   </p>
+                  <div class="individual-ball-hidden-editor" hidden>
+                    <button id="individualBallRemoveButton" class="secondary-button" type="button">Remove selected ball</button>
+                    <select id="individualBallSelectedId"></select>
+                    <input id="individualBallLabel" maxlength="24" type="text" />
+                    <input id="individualBallColor" type="color" />
+                    <input id="individualBallRadius" data-format="intPx" min="6" max="80" step="1" type="range" />
+                    <input id="individualBallStartMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
+                    <input id="individualBallSpeed" data-format="float1" min="0" max="6500" step="1" type="range" />
+                    <input id="individualBallAccel" data-format="accel" min="-1500" max="3000" step="50" type="range" />
+                    <input id="individualBallMoveMs" data-format="ms" min="0" max="6000" data-hard-max="60000" step="50" type="range" />
+                    <input id="individualBallVisibleMs" data-format="visibilityMs" min="100" max="6000" data-hard-max="60000" step="50" type="range" />
+                    <input id="individualBallAngle" data-format="degrees" min="-180" max="180" step="1" type="range" />
+                    <input id="individualBallStopX" data-format="intPx" min="0" max="960" step="1" type="range" />
+                    <input id="individualBallStopY" data-format="intPx" min="0" max="540" step="1" type="range" />
+                    <input id="individualBallOcclusionOrder" data-format="order" min="1" max="24" step="1" type="range" />
+                  </div>
                   <input id="individualBallsJson" type="hidden" value="[]" />
                 </div>
               </details>

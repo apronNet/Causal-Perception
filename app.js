@@ -165,6 +165,7 @@
   const clearGroupingRectsButton = document.getElementById("clearGroupingRectsButton");
   const individualBallAddButton = document.getElementById("individualBallAddButton");
   const individualBallRemoveButton = document.getElementById("individualBallRemoveButton");
+  const individualBallGroupList = document.getElementById("individualBallGroupList");
   const textBoxAddButton = document.getElementById("textBoxAddButton");
   const textBoxRemoveButton = document.getElementById("textBoxRemoveButton");
   const movementPanel = document.querySelector(".movement-panel");
@@ -1182,6 +1183,20 @@
     "individualBallStopX",
     "individualBallStopY",
     "individualBallOcclusionOrder"
+  ];
+  const individualBallCardFields = [
+    { field: "label", controlId: "individualBallLabel", label: "Name", type: "text" },
+    { field: "color", controlId: "individualBallColor", label: "Color", type: "color" },
+    { field: "radius", controlId: "individualBallRadius", label: "Radius", type: "range", format: "intPx", min: 6, max: 80, step: 1 },
+    { field: "startMs", controlId: "individualBallStartMs", label: "Move start", type: "range", format: "ms", min: 0, max: 6000, hardMax: 60000, step: 50 },
+    { field: "speed", controlId: "individualBallSpeed", label: "Speed", type: "range", format: "float1", min: 0, max: 6500, step: 1 },
+    { field: "accel", controlId: "individualBallAccel", label: "Acceleration", type: "range", format: "accel", min: -1500, max: 3000, step: 50 },
+    { field: "moveMs", controlId: "individualBallMoveMs", label: "Movement time", type: "range", format: "ms", min: 0, max: 6000, hardMax: 60000, step: 50 },
+    { field: "visibleMs", controlId: "individualBallVisibleMs", label: "On-screen", type: "range", format: "visibilityMs", min: 100, max: 6000, hardMax: 60000, step: 50 },
+    { field: "angleDeg", controlId: "individualBallAngle", label: "Angle", type: "range", format: "degrees", min: -180, max: 180, step: 1 },
+    { field: "stopX", controlId: "individualBallStopX", label: "Stop X", type: "range", format: "intPx", min: 0, max: STAGE_WIDTH, step: 1 },
+    { field: "stopY", controlId: "individualBallStopY", label: "Stop Y", type: "range", format: "intPx", min: 0, max: STAGE_HEIGHT, step: 1 },
+    { field: "occlusionOrder", controlId: "individualBallOcclusionOrder", label: "Occlusion order", type: "range", format: "order", min: 1, max: INDIVIDUAL_BALL_MAX, step: 1 }
   ];
   const contextModeButtons = Array.from(document.querySelectorAll("[data-context-mode]"));
   const contextDirectionButtons = Array.from(document.querySelectorAll("[data-context-direction]"));
@@ -4008,11 +4023,196 @@
     return balls.find((ball) => ball.id === state.individualBallSelectedId) || balls[0] || null;
   }
 
-  function writeIndividualBalls(balls, selectedId = controls.individualBallSelectedId.value) {
+  function getIndividualBallCardId(index, field) {
+    return `individualBallCard${index}${field.charAt(0).toUpperCase()}${field.slice(1)}`;
+  }
+
+  function getIndividualBallCardElement(ballId) {
+    return Array.from(individualBallGroupList?.querySelectorAll(".individual-ball-card") || []).find(
+      (card) => card.dataset.ballId === ballId
+    );
+  }
+
+  function getIndividualBallCardFieldValue(ball, field) {
+    if (field.field === "label") {
+      return ball.label;
+    }
+    return ball[field.field];
+  }
+
+  function createIndividualBallCardField(ball, ballIndex, field) {
+    const label = document.createElement("label");
+    label.className = field.type === "color" ? "field color-field" : "field";
+
+    const span = document.createElement("span");
+    span.textContent = field.label;
+    label.appendChild(span);
+
+    const input = document.createElement("input");
+    input.id = getIndividualBallCardId(ballIndex, field.field);
+    input.type = field.type;
+    input.dataset.individualBallId = ball.id;
+    input.dataset.individualBallField = field.field;
+    input.dataset.individualBallControlId = field.controlId;
+
+    if (field.type === "range") {
+      input.dataset.format = field.format;
+      input.min = String(field.min);
+      input.max = String(field.max);
+      if (field.hardMax) {
+        input.dataset.hardMax = String(field.hardMax);
+      }
+      input.step = String(field.step);
+      input.value = getIndividualBallCardFieldValue(ball, field);
+      label.appendChild(input);
+
+      const output = document.createElement("output");
+      output.dataset.for = input.id;
+      label.appendChild(output);
+      return label;
+    }
+
+    if (field.type === "text") {
+      input.maxLength = 24;
+    }
+    input.value = getIndividualBallCardFieldValue(ball, field);
+    label.appendChild(input);
+    return label;
+  }
+
+  function renderIndividualBallGroups(
+    balls = normalizeIndividualBalls(controls.individualBallsJson.value, cloneState()),
+    selectedId = controls.individualBallSelectedId.value
+  ) {
+    if (!individualBallGroupList) {
+      return;
+    }
+
+    const selectedBallId = balls.some((ball) => ball.id === selectedId) ? selectedId : balls[0]?.id || "";
+    individualBallGroupList.replaceChildren();
+
+    balls.forEach((ball, ballIndex) => {
+      const card = document.createElement("details");
+      card.className = "control-subgroup collapsible-subgroup individual-ball-card";
+      card.dataset.ballId = ball.id;
+      card.open = ball.id === selectedBallId;
+      card.classList.toggle("is-selected", card.open);
+
+      const summary = document.createElement("summary");
+      const title = document.createElement("h4");
+      title.className = "individual-ball-card-title";
+      title.textContent = ball.label;
+      summary.appendChild(title);
+
+      const meta = document.createElement("span");
+      meta.className = "individual-ball-card-meta";
+      meta.textContent = `r${Math.round(ball.radius)} - ${Math.round(ball.startMs)} ms`;
+      summary.appendChild(meta);
+      card.appendChild(summary);
+
+      const grid = document.createElement("div");
+      grid.className = "control-subgrid individual-ball-card-grid";
+      individualBallCardFields.forEach((field) => {
+        grid.appendChild(createIndividualBallCardField(ball, ballIndex, field));
+      });
+
+      const removeButton = document.createElement("button");
+      removeButton.className = "secondary-button individual-ball-remove-card-button";
+      removeButton.type = "button";
+      removeButton.textContent = "Remove ball";
+      removeButton.dataset.individualBallAction = "remove";
+      removeButton.dataset.individualBallId = ball.id;
+      removeButton.disabled = balls.length <= 1;
+      grid.appendChild(removeButton);
+      card.appendChild(grid);
+
+      card.addEventListener("toggle", () => {
+        if (!card.open) {
+          card.classList.remove("is-selected");
+          return;
+        }
+        selectIndividualBall(ball.id, { renderCards: false, updatePreview: true });
+      });
+
+      individualBallGroupList.appendChild(card);
+    });
+
+    enhanceRangePrecision();
+    updateOutputs();
+  }
+
+  function syncIndividualBallCardOpenState(selectedId = controls.individualBallSelectedId.value) {
+    Array.from(individualBallGroupList?.querySelectorAll(".individual-ball-card") || []).forEach((card) => {
+      const isSelected = card.dataset.ballId === selectedId;
+      if (card.open !== isSelected) {
+        card.open = isSelected;
+      }
+      card.classList.toggle("is-selected", isSelected);
+    });
+  }
+
+  function syncIndividualBallCardControls(ball) {
+    const card = getIndividualBallCardElement(ball?.id);
+    if (!card || !ball) {
+      return;
+    }
+    const title = card.querySelector(".individual-ball-card-title");
+    if (title) {
+      title.textContent = ball.label;
+    }
+    const meta = card.querySelector(".individual-ball-card-meta");
+    if (meta) {
+      meta.textContent = `r${Math.round(ball.radius)} - ${Math.round(ball.startMs)} ms`;
+    }
+    individualBallCardFields.forEach((field) => {
+      const input = card.querySelector(`[data-individual-ball-field="${field.field}"]`);
+      if (!input || document.activeElement === input) {
+        return;
+      }
+      if (input.type === "range") {
+        setRangeValue(input, getIndividualBallCardFieldValue(ball, field));
+      } else {
+        input.value = getIndividualBallCardFieldValue(ball, field);
+      }
+    });
+    updateOutputs();
+  }
+
+  function selectIndividualBall(ballId, options = {}) {
+    const { renderCards = true, updatePreview = false } = options;
+    const state = cloneState();
+    const balls = normalizeIndividualBalls(state.individualBalls, state);
+    const selectedId = syncIndividualBallSelector(balls, ballId);
+    const ball = balls.find((candidate) => candidate.id === selectedId) || balls[0] || null;
+    setIndividualBallEditorControls(ball);
+    if (renderCards) {
+      renderIndividualBallGroups(balls, selectedId);
+    } else {
+      syncIndividualBallCardOpenState(selectedId);
+      syncIndividualBallCardControls(ball);
+    }
+    if (updatePreview) {
+      activePresetKey = null;
+      updateOutputs();
+      refreshText();
+      statusText.textContent = `${ball?.label || "Ball"} selected.`;
+      drawIdlePreview();
+    }
+    return ball;
+  }
+
+  function writeIndividualBalls(balls, selectedId = controls.individualBallSelectedId.value, options = {}) {
+    const { renderCards = true } = options;
     const normalized = normalizeIndividualBalls(balls, cloneState());
     controls.individualBallsJson.value = serializeIndividualBalls(normalized);
     const selectedStillExists = normalized.some((ball) => ball.id === selectedId);
-    syncIndividualBallSelector(normalized, selectedStillExists ? selectedId : normalized[0]?.id || "");
+    const nextSelectedId = syncIndividualBallSelector(normalized, selectedStillExists ? selectedId : normalized[0]?.id || "");
+    if (renderCards) {
+      renderIndividualBallGroups(normalized, nextSelectedId);
+    } else {
+      syncIndividualBallCardOpenState(nextSelectedId);
+      syncIndividualBallCardControls(normalized.find((ball) => ball.id === nextSelectedId) || normalized[0] || null);
+    }
   }
 
   function ensureIndividualBallsInitialized(force = false) {
@@ -4099,6 +4299,7 @@
     const balls = normalizeIndividualBalls(state.individualBalls, state);
     const selectedId = syncIndividualBallSelector(balls);
     setIndividualBallEditorControls(balls.find((ball) => ball.id === selectedId) || null);
+    renderIndividualBallGroups(balls, selectedId);
   }
 
   function syncIndividualBallMotionLayout(enabled) {
@@ -4129,7 +4330,8 @@
     syncSpecialDragUi();
   }
 
-  function updateSelectedIndividualBallFromControls(changedId = "") {
+  function updateSelectedIndividualBallFromControls(changedId = "", options = {}) {
+    const { renderCards = false } = options;
     if (isSyncingIndividualBallControls) {
       return;
     }
@@ -4162,9 +4364,29 @@
       ball = updateIndividualBallFromMotion(ball);
     }
     balls[index] = ball;
-    writeIndividualBalls(balls, ball.id);
+    writeIndividualBalls(balls, ball.id, { renderCards });
     syncIndividualBallSelector(balls);
     setIndividualBallEditorControls(ball);
+    if (!renderCards) {
+      syncIndividualBallCardControls(ball);
+    }
+  }
+
+  function updateIndividualBallFromCardControl(control) {
+    const controlId = control?.dataset?.individualBallControlId;
+    const ballId = control?.dataset?.individualBallId;
+    const hiddenControl = controls[controlId];
+    if (!controlId || !ballId || !hiddenControl) {
+      return;
+    }
+
+    selectIndividualBall(ballId, { renderCards: false });
+    if (hiddenControl.type === "range") {
+      setRangeValue(hiddenControl, control.value);
+    } else {
+      hiddenControl.value = control.value;
+    }
+    updateSelectedIndividualBallFromControls(controlId, { renderCards: false });
   }
 
   function addIndividualBall() {
@@ -12313,6 +12535,30 @@
     individualBallRemoveButton?.addEventListener("click", (event) => {
       event.preventDefault();
       removeSelectedIndividualBall();
+    });
+    individualBallGroupList?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-individual-ball-action='remove']");
+      if (!button || !individualBallGroupList.contains(button)) {
+        return;
+      }
+      event.preventDefault();
+      selectIndividualBall(button.dataset.individualBallId, { renderCards: false });
+      removeSelectedIndividualBall();
+    });
+    ["input", "change"].forEach((eventName) => {
+      individualBallGroupList?.addEventListener(eventName, (event) => {
+        const control = event.target.closest("[data-individual-ball-control-id]");
+        if (!control || !individualBallGroupList.contains(control)) {
+          return;
+        }
+        activePresetKey = null;
+        updateIndividualBallFromCardControl(control);
+        updateOutputs();
+        refreshText();
+        updateCompatibilityNotice(cloneState());
+        statusText.textContent = "Individual ball movement updated.";
+        drawIdlePreview();
+      });
     });
     textBoxAddButton?.addEventListener("click", (event) => {
       event.preventDefault();

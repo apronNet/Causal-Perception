@@ -642,7 +642,54 @@ h3 {
 }
 
 .individual-ball-subgrid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.individual-ball-toolbar {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.28fr);
+  gap: 4px;
+}
+
+.individual-ball-group-list {
+  display: grid;
+  gap: 6px;
+}
+
+.individual-ball-card {
+  background: rgba(255, 250, 240, 0.24);
+}
+
+.individual-ball-card.is-selected > summary {
+  background: rgba(180, 92, 74, 0.1);
+}
+
+.individual-ball-card > summary {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.individual-ball-card-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 860;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.individual-ball-card-meta {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 820;
+  white-space: nowrap;
+}
+
+.individual-ball-card-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.individual-ball-remove-card-button {
+  align-self: end;
 }
 
 .wide-checkbox-field {
