@@ -4404,12 +4404,13 @@
     if (!controlId || !ballId || !hiddenControl) {
       return;
     }
+    const nextValue = control.value;
 
     selectIndividualBall(ballId, { renderCards: false });
     if (hiddenControl.type === "range") {
-      setRangeValue(hiddenControl, control.value);
+      setRangeValue(hiddenControl, nextValue);
     } else {
-      hiddenControl.value = control.value;
+      hiddenControl.value = nextValue;
     }
     updateSelectedIndividualBallFromControls(controlId, { renderCards: false });
   }
