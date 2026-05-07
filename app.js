@@ -402,7 +402,7 @@
     billiardWallRestitution: "Changes: rail bounce. Higher values keep more speed after a wall bounce.",
     billiardStopSpeed: "Changes: the speed below which billiard balls are treated as stopped.",
     individualBallMotionEnabled:
-      "Changes: replaces the normal pair controls with independently defined ball paths. Current original and context balls are converted into editable individual balls.",
+      "Changes: replaces the pair-based launch controls with one card per ball. Current original and context balls become separately editable paths.",
     individualBallSelectedId: "Changes: which individual ball is being edited.",
     individualBallLabel: "Changes: the editor name for the selected ball. This is saved in metadata and frame logs.",
     individualBallColor: "Changes: selected ball color.",
@@ -441,7 +441,7 @@
     crosshairPostBlinkMode:
       "Changes: whether the crosshair disappears after the blink or stays visible during the launch.",
     trajectoryEditEnabled:
-      "Changes: shows editable start points and trajectory vectors in the preview. Use Angle for exact trajectory entry.",
+      "Changes: keeps the pair-based launch model but shows editable pair start points and path arrows in the preview. Use Angle for exact path entry.",
     selectedTrajectoryAngle:
       "Changes: angle of the selected trajectory vector. Moving a preview arrow updates this value; 0 follows the default path.",
     textBoxEnabled: "Changes: adds a simple text label to preview and export.",

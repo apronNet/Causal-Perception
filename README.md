@@ -22,7 +22,7 @@ If a phone or tablet has trouble exporting a movie, try a lower resolution first
 
 **Starting Position and Movement** controls where the objects begin and how they move. Important settings are radius, after-contact behavior, tunnel occluders, lead-in, O1 speed, O1 acceleration, O2 delay, O2 speed ratio, O2 acceleration, O2 angle, travel time after collision, visibility timing, and contact spacing. Travel time controls how long O2 keeps moving after contact; O2 on-screen time controls when O2 disappears. `Contact spacing = 0 px` means the borders just touch. Positive values leave a gap. Negative values overlap.
 
-**Manually adjust starting positions and trajectories** shows editable start-point handles and trajectory vectors in the preview.
+**Edit pair start points and paths** keeps the ordinary O1/O2 pair model but shows editable start-point handles and path arrows in the preview. **Set each ball's motion separately** replaces the pair controls with one card per ball.
 
 **Context** adds extra object pairs. New context pairs copy the original pair when they are added; later changes to the original pair do not automatically change those copied pairs. As more pairs are added, the app shrinks all rows so the full display stays readable.
 
