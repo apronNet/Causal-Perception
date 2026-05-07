@@ -54,7 +54,7 @@
   const TUNNEL_HEIGHT_RATIO = 3.8;
   const TUNNEL_ROW_CLEARANCE = 8;
   const PSYCHOPY_STIMULI_FOLDER = "stimuli";
-  const READY_STATUS = "Ready.";
+  const READY_STATUS = "";
   const CUSTOM_PRESETS_STORAGE_KEY = "causal-launching-custom-presets-v1";
   const HIDDEN_BUILT_IN_PRESETS_STORAGE_KEY = "causal-launching-hidden-built-ins-v1";
   const SHARED_PRESETS_URL = "shared-presets.json";
