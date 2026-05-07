@@ -100,7 +100,7 @@ Keep the documentation updated with every project adjustment, including changes 
 - If a code path changes, update the relevant checklist in this file.
 - If a feature changes what participants see or hear, include its experimental meaning, not only its UI label.
 
-Current ownership reminder: **Edit pair start points and paths** is one visible switch in Starting Position and Movement. Keep the separate `trajectoryEditEnabled` and `customStartEnabled` state fields for preset, metadata, and condition compatibility. The switch must work for the original pair, Context 1, and snapshot-backed Context 2+ rows. Whole-stimulus x/y offsets are internal hidden fields unless a specific experiment needs them exposed.
+Current ownership reminder: **Manually adjust as pairs in preview window** is one visible switch in Starting Position and Movement. Keep the separate `trajectoryEditEnabled` and `customStartEnabled` state fields for preset, metadata, and condition compatibility. The switch must work for the original pair, Context 1, and snapshot-backed Context 2+ rows. Whole-stimulus x/y offsets are internal hidden fields unless a specific experiment needs them exposed.
 
 ## Utility Interface Benchmarks
 
